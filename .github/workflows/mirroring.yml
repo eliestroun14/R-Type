@@ -26,4 +26,4 @@
         - uses: pixta-dev/repository-mirroring-action@v1
           with:
             target_repo_url: ${{env.MIRROR_URL}}
-            ssh_private_key: ${{secrets.MIRRORING2}}
+            ssh_private_key: ${{secrets.MIRRORING}}
