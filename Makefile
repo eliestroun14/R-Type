@@ -1,6 +1,6 @@
 ##
 ## EPITECH PROJECT, 2025
-## raytracer
+## R-Type
 ## File description:
 ## Makefile
 ##
