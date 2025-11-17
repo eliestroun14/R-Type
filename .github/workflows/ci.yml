@@ -1,0 +1,46 @@
+#name: CI
+#
+#on:
+#  push:
+#    branches:
+#      - main
+#      - dev
+#      - "feat/**"
+#
+#jobs:
+#  build-test:
+#    if: github.repository == 'eliestroun14/R-Type'
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout repo
+#        uses: actions/checkout@v3
+#
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: 18
+#
+#      - name: Check if client directory exists
+#        id: check-client
+#        run: |
+#          if [ -d "./client" ] && [ -f "./client/package.json" ]; then
+#            echo "client_exists=true" >> $GITHUB_OUTPUT
+#          else
+#            echo "client_exists=false" >> $GITHUB_OUTPUT
+#            echo "Client directory not found, skipping client steps"
+#          fi
+#
+#      - name: Check if docker-compose exists
+#        id: check-docker
+#        run: |
+#          if [ -f "./docker-compose.yml" ] || [ -f "./docker-compose.yaml" ]; then
+#            echo "docker_exists=true" >> $GITHUB_OUTPUT
+#          else
+#            echo "docker_exists=false" >> $GITHUB_OUTPUT
+#            echo "Docker compose file not found, skipping Docker build"
+#          fi
+#
+#      - name: Build Docker images
+#        if: steps.check-docker.outputs.docker_exists == 'true'
+#        run: docker compose build
+#
