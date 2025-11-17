@@ -1,35 +1,56 @@
-#name: CI
-#
-#on:
-#  push:
-#    branches:
-#      - main
-#      - dev
-#      - "feat/**"
-#
-#jobs:
-#  build-test:
-#    if: github.repository == 'eliestroun14/R-Type'
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout repo
-#        uses: actions/checkout@v3
-#
-#      - name: Set up Node.js
-#        uses: actions/setup-node@v3
-#        with:
-#          node-version: 18
-#
-#      - name: Check if client directory exists
-#        id: check-client
-#        run: |
-#          if [ -d "./client" ] && [ -f "./client/package.json" ]; then
-#            echo "client_exists=true" >> $GITHUB_OUTPUT
-#          else
-#            echo "client_exists=false" >> $GITHUB_OUTPUT
-#            echo "Client directory not found, skipping client steps"
-#          fi
-#
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - "feat/**"
+
+jobs:
+  build-test:
+    if: github.repository == 'eliestroun14/R-Type'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Check if client directory exists
+        id: check-client
+        run: |
+          if [ -d "./client" ] && [ -f "./client/package.json" ]; then
+            echo "client_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "client_exists=false" >> $GITHUB_OUTPUT
+            echo "Client directory not found, skipping client steps"
+          fi
+
+      - name: Check if server directory exists
+        id: check-server
+        run: |
+          if [ -d "./server" ] && [ -f "./server/package.json" ]; then
+            echo "server_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "server_exists=false" >> $GITHUB_OUTPUT
+            echo "Server directory not found, skipping server steps"
+          fi
+
+
+      - name: Check if doc directory exists
+        id: check-doc
+        run: |
+          if [ -d "./doc" ]; then
+            echo "doc_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "doc_exists=false" >> $GITHUB_OUTPUT
+            echo "Doc directory not found, skipping doc steps"
+          fi
+
 #      - name: Check if docker-compose exists
 #        id: check-docker
 #        run: |
