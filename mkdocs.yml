@@ -1,5 +1,5 @@
-site_name: Test de documentation
-site_description: Test de mkdocs
+site_name: R-Type
+site_description: R-Type documentation
 site_url: https://eliestroun14.github.io/R-Type/
 repo_url: https://github.com/eliestroun14/R-Type
 repo_name: GitHub
@@ -86,9 +86,5 @@ markdown_extensions:
 # Navigation
 nav:
   - Home: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-  - Architecture:
-    - Overview: architecture/overview.md
-  - API Reference: api-reference.md
   - Contributing: contributing.md
+  - Expectations: expectations.md
