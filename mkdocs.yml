@@ -86,9 +86,4 @@ markdown_extensions:
 # Navigation
 nav:
   - Home: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-  - Architecture:
-    - Overview: architecture/overview.md
-  - API Reference: api-reference.md
   - Contributing: contributing.md
