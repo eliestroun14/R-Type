@@ -88,7 +88,8 @@ nav:
   - Home: index.md
   - Contributing: Contributing/contributing.md
   - Expectations:
-    - Expectations/expectations.md
+    - Check List:
+      - Expectations/CheckList/expectations.md
     - Expectations/test.md
     - Test:
       - Expectations/test/test.md
