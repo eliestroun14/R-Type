@@ -45,7 +45,6 @@ theme:
 
     # TOC (Table of Contents à droite)
     - toc.follow                   # TOC suit le scroll
-    - toc.integrate                # TOC intégré dans sidebar (optionnel)
     - navigation.instant        # Navigation instantanée (SPA-like)
     - navigation.tracking       # URL update dans l'historique
     - navigation.path           # Breadcrumbs en haut de page
@@ -86,5 +85,10 @@ markdown_extensions:
 # Navigation
 nav:
   - Home: index.md
+
+  - Documentation:
+    - Documentation/index.md
+    - Writing Guide: Documentation/writing-guide.md
+
   - Contributing: contributing.md
-  - Expectations: expectations.md
+  - Expectations: Expectations/expectations.md
