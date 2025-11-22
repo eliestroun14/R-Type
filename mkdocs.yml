@@ -86,5 +86,6 @@ markdown_extensions:
 # Navigation
 nav:
   - Home: index.md
-  - Contributing: contributing.md
-  - Expectations: expectations.md
+  - Contributing: Contributing/contributing.md
+  - Expectations: Expectations/expectations.md
+  - ContributingTest: ../CONTRIBUTING.md
