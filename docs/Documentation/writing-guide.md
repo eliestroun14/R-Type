@@ -7,9 +7,6 @@ This guide explains how to add and organize documentation for the R-Type project
 1. [Project Structure](#project-structure)
 2. [Adding a New Page](#adding-a-new-page)
 3. [Routing System (Navigation)](#routing-system-navigation)
-4. [Markdown Syntax](#markdown-syntax)
-5. [Advanced Features](#advanced-features)
-6. [Contribution Workflow](#contribution-workflow)
 
 ---
 
