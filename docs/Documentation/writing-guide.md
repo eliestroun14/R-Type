@@ -273,8 +273,6 @@ nav:
 - [Creating a New System](creating-systems.md)
 - [Available Components](components-reference.md)
 
-```
-
 ---
 
 ## Support
