@@ -1528,4 +1528,86 @@ void on_ack_received(uint32_t acked_sequence) {
 }
 \end{lstlisting}
 
+\subsection{Version History}
+
+\begin{itemize}
+    \item \textbf{Version 1.0} (2025-01-XX): Initial protocol specification
+    \begin{itemize}
+        \item Core packet types for connection, input, world state, and events
+        \item Reliability mechanism with selective ACK
+        \item Position and velocity quantization
+        \item Security and validation guidelines
+    \end{itemize}
+\end{itemize}
+
+\section{Appendix I: References}
+
+\begin{itemize}
+    \item RFC 768: User Datagram Protocol
+    \newline \url{https://www.rfc-editor.org/rfc/rfc768}
+    
+    \item RFC 2119: Key words for use in RFCs to Indicate Requirement Levels
+    \newline \url{https://www.rfc-editor.org/rfc/rfc2119}
+    
+    \item Gaffer On Games: "Networked Physics"
+    \newline \url{https://gafferongames.com/post/networked_physics_2004/}
+    
+    \item Valve Developer Community: "Source Multiplayer Networking"
+    \newline \url{https://developer.valvesoftware.com/wiki/Source_Multiplayer_Networking}
+    
+    \item Gabriel Gambetta: "Fast-Paced Multiplayer" (Client-Side Prediction)
+    \newline \url{https://www.gabrielgambetta.com/client-side-prediction-server-reconciliation.html}
+    
+    \item Glenn Fiedler: "UDP vs TCP"
+    \newline \url{https://gafferongames.com/post/udp_vs_tcp/}
+    
+    \item "Quake 3 Network Model"
+    \newline \url{https://fabiensanglard.net/quake3/network.php}
+\end{itemize}
+
+\section{Appendix J: Glossary}
+
+\begin{description}
+    \item[ACK (Acknowledgment)] A confirmation message sent to indicate successful receipt of a packet.
+    
+    \item[Big-endian] Byte ordering where the most significant byte is stored first (network byte order).
+    
+    \item[Datagram] A self-contained, independent packet of data sent over UDP.
+    
+    \item[Dequantization] Converting compressed integer representation back to floating-point values.
+    
+    \item[Entity] Any game object (player, enemy, projectile, powerup, etc.).
+    
+    \item[Latency] The time delay between sending and receiving a packet (also called "lag").
+    
+    \item[Magic Number] A constant value used to validate packet format (0x5254 for R-Type).
+    
+    \item[Packet Loss] When network packets fail to reach their destination.
+    
+    \item[Quantization] Converting floating-point values to smaller integer representation to save bandwidth.
+    
+    \item[RTT (Round-Trip Time)] The time for a packet to travel from sender to receiver and back.
+    
+    \item[Sequence Number] A monotonically increasing counter used to detect packet loss and duplication.
+    
+    \item[Snapshot] A complete state update of the game world at a specific point in time.
+    
+    \item[TCP (Transmission Control Protocol)] A reliable, connection-oriented transport protocol.
+    
+    \item[UDP (User Datagram Protocol)] An unreliable, connectionless transport protocol optimized for speed.
+    
+    \item[World Tick] A discrete time step in the server's game simulation (typically 60 Hz = 16.67ms per tick).
+\end{description}
+
+\vspace{1cm}
+\hrule
+\vspace{0.5cm}
+\begin{center}
+\textbf{End of Document}
+
+\vspace{0.5cm}
+For questions, issues, or contributions to this protocol specification, \\
+please contact our R-Type development team.
+\end{center}
+
 \end{document}
