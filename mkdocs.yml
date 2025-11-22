@@ -86,23 +86,10 @@ markdown_extensions:
 # Navigation
 nav:
   - Home: index.md
-  
-  - Getting Started:
-    - getting-started/index.md
-    - Installation: getting-started/install.md
-    
-  - User Guide:
-    - Basics:
-      - guide/basics/intro.md
-      - Configuration: guide/basics/config.md
-    - Advanced:
-      - guide/advanced/features.md
-      
-  - API Reference:
-    - api/index.md
-    - Classes: api/classes.md
-    - Functions: api/functions.md
-    
+
+  - Documentation:
+    - Documentation/index.md
+    - Writing Guide: Documentation/writing-guide.md
+
   - Contributing: contributing.md
-  - Expectations: expectations.md
-  - GitHub: https://github.com/eliestroun14/R-Type
+  - Expectations: Expectations/expectations.md
