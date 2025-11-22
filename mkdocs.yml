@@ -90,4 +90,6 @@ nav:
   - Expectations:
     - Expectations/expectations.md
     - Expectations/test.md
+    - Test:
+      - Expectations/test/test.md
 
