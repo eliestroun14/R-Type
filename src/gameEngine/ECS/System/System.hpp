@@ -8,26 +8,31 @@
 #ifndef SYSTEM_HPP_
 #define SYSTEM_HPP_
 
-#include "Entity.hpp"
+#include "../Entity/Entity.hpp"
 #include <list>
 
 class System {
-    public:
-        System() = default;
-        ~System() = default;
+public:
+    using entity_type = Entity;
 
-        void onCreate(); // When system is create
+    System() = default;
+    virtual ~System() = default;
 
-        void onStartRunning(); // Before the first onUpdate(), everytime the system launch
+    virtual void onCreate() {}          // appelé à l'init globale des systèmes
+    virtual void onStartRunning() {}    // appelé au moment où le système commence à avoir des entités
+    virtual void onUpdate(float dt) {}  // appelé chaque frame si le système a des entités
+    virtual void onStopRunning() {}     // appelé quand le système n'a plus d'entités
+    virtual void onDestroy() {}         // appelé à la destruction globale des systèmes
 
-        void onUpdate(); // every frame, if system find entities
+    void addEntity(Entity e);
+    void removeEntity(Entity const& e);
 
-        void onStopRunning(); // when system does not find any entities
+    bool empty() const noexcept { return _entities.empty(); }
+    bool isRunning() const noexcept { return _running; }
 
-        void onDestroy(); // when system is destroyed
-
-    private:
-        std::list<Entity> _entities;
+protected:
+    std::list<Entity> _entities;
+    bool _running { false };
 };
 
 #endif /* !SYSTEM_HPP_ */
