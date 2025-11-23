@@ -8,7 +8,11 @@
 #ifndef COMPONENTMANAGER_HPP_
 #define COMPONENTMANAGER_HPP_
 
-template <typename Component> // You can also mirror the definition of std::vector, that takes an additional allocator.
+#include <optional>
+#include <vector>
+#include <cstddef>
+
+template <typename Component>
 
 class ComponentManager {
     public :
