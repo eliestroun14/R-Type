@@ -8,7 +8,7 @@
 #ifndef ENTITYMANAGER_HPP_
 #define ENTITYMANAGER_HPP_
 
-#include "ComponentManager.hpp"
+#include "../Component/ComponentManager.hpp"
 #include "Entity.hpp"
 #include <unordered_map>
 #include <vector>
