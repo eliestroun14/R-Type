@@ -8,7 +8,7 @@
 #ifndef ENTITYMANAGER_HPP_
 #define ENTITYMANAGER_HPP_
 
-#include "ComponentArray.hpp"
+#include "ComponentManager.hpp"
 #include "Entity.hpp"
 #include <unordered_map>
 #include <vector>
@@ -25,13 +25,13 @@ class EntityManager {
 
         // --- Enregistrement d’un type de composant ---
         template<class Component>
-        ComponentArray<Component>& register_component() {
+        ComponentManager<Component>& register_component() {
             std::type_index key(typeid(Component)); // créer une clé unique pour le type Component
 
             // try_emplace: n'insère que si la clé n'existe pas et renvoie pair<iterator,bool>
             auto [it, inserted] = this->_components_arrays.try_emplace(
                 key,
-                std::any(ComponentArray<Component>{})
+                std::any(ComponentManager<Component>{})
             );
 
             // Si on vient d'insérer, on doit aussi enregistrer l'eraser correspondant.
@@ -44,22 +44,22 @@ class EntityManager {
             // it->second est la std::any associée; on fait un any_cast vers notre type.
             // any_cast en référence est sûr ici, car nous venons soit d'insérer, soit la
             // map contenait déjà la même type d'objet.
-            return std::any_cast<ComponentArray<Component>&>(it->second);
+            return std::any_cast<ComponentManager<Component>&>(it->second);
         }
 
 
         // --- Récupération d’un tableau de composants ---
         template <class Component>
-        ComponentArray<Component> &get_components() {
-            return std::any_cast<ComponentArray<Component>&>(
+        ComponentManager<Component> &get_components() {
+            return std::any_cast<ComponentManager<Component>&>(
                 this->_components_arrays.at(std::type_index(typeid(Component)))
             );
         }
 
         // register_compoenent doit être absolument appelé avec le component en question
         template <class Component>
-        ComponentArray<Component> const &get_components() const {
-            return std::any_cast<const ComponentArray<Component>&>(
+        ComponentManager<Component> const &get_components() const {
+            return std::any_cast<const ComponentManager<Component>&>(
                 this->_components_arrays.at(std::type_index(typeid(Component)))
             );
         }
@@ -128,7 +128,7 @@ class EntityManager {
 
 
         template <class Component>
-        typename ComponentArray<Component>::reference_type add_component(Entity const &e, Component &&c)
+        typename ComponentManager<Component>::reference_type add_component(Entity const &e, Component &&c)
         {
             if (!is_alive(e))
                 throw std::runtime_error("Cannot add component to dead entity")
@@ -137,7 +137,7 @@ class EntityManager {
 
 
         template<class Component, class... Params>
-        typename ComponentArray<Component>::reference_type emplace_component(Entity const& e, Params&&... ps) {
+        typename ComponentManager<Component>::reference_type emplace_component(Entity const& e, Params&&... ps) {
             if (!is_alive(e))
                 throw std::runtime_error("Cannot add component to dead entity")
             return get_components<Component>().emplace_at(static_cast<std::size_t>(e), std::forward<Params>(ps)...);
@@ -153,9 +153,9 @@ class EntityManager {
 
 
     private:
-        // But : associer un type de composant → conteneur ComponentArray approprié.
+        // But : associer un type de composant → conteneur ComponentManager approprié.
         // Clé : std::type_index.
-        // Valeur : std::any contenant un ComponentArray<Component> concret.
+        // Valeur : std::any contenant un ComponentManager<Component> concret.
         std::unordered_map<std::type_index, std::any> _components_arrays;
 
         // But : pour chaque type enregistré, stocker une fonction capable de supprimer un composant d’une entité donnée.
