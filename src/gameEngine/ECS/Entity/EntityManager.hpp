@@ -23,10 +23,9 @@ class EntityManager {
     public :
         EntityManager() = default;
 
-        // --- Enregistrement d’un type de composant ---
         template<class Component>
         ComponentManager<Component>& register_component() {
-            std::type_index key(typeid(Component)); // créer une clé unique pour le type Component
+            std::type_index key(typeid(Component));
 
             // try_emplace: n'insère que si la clé n'existe pas et renvoie pair<iterator,bool>
             auto [it, inserted] = this->_components_arrays.try_emplace(
@@ -48,7 +47,6 @@ class EntityManager {
         }
 
 
-        // --- Récupération d’un tableau de composants ---
         template <class Component>
         ComponentManager<Component> &get_components() {
             return std::any_cast<ComponentManager<Component>&>(
@@ -98,7 +96,6 @@ class EntityManager {
             return Entity(id, name);
         }
 
-
         void kill_entity(Entity const &entity) {
             std::size_t id = static_cast<std::size_t>(entity);
 
@@ -112,11 +109,9 @@ class EntityManager {
             this->_free_ids.push_back(id);
         }
 
-
         bool is_alive(Entity const& e) const {
             return this->_alive_entities.find(static_cast<std::size_t>(e)) != this->_alive_entities.end();
         }
-
 
         template <class Component>
         bool has_component(Entity const& e) const {
@@ -126,48 +121,39 @@ class EntityManager {
             return id < components.size() && components[id].has_value();
         }
 
+        std::string getEntityName(Entity const& e) const {
+            return e._name;
+        }
+
 
         template <class Component>
         typename ComponentManager<Component>::reference_type add_component(Entity const &e, Component &&c)
         {
             if (!is_alive(e))
-                throw std::runtime_error("Cannot add component to dead entity")
+                throw std::runtime_error("Cannot add component to dead entity");
             return get_components<Component>().insert_at(static_cast<std::size_t>(e), std::forward<Component>(c));
         }
-
 
         template<class Component, class... Params>
         typename ComponentManager<Component>::reference_type emplace_component(Entity const& e, Params&&... ps) {
             if (!is_alive(e))
-                throw std::runtime_error("Cannot add component to dead entity")
+                throw std::runtime_error("Cannot add component to dead entity");
             return get_components<Component>().emplace_at(static_cast<std::size_t>(e), std::forward<Params>(ps)...);
         }
-
 
         template<class Component>
         void remove_component(Entity const& e) {
             if (!is_alive(e))
-                throw std::runtime_error("Cannot add component to dead entity")
+                throw std::runtime_error("Cannot add component to dead entity");
             get_components<Component>().erase(static_cast<std::size_t>(e));
         }
 
-
     private:
-        // But : associer un type de composant → conteneur ComponentManager approprié.
-        // Clé : std::type_index.
-        // Valeur : std::any contenant un ComponentManager<Component> concret.
         std::unordered_map<std::type_index, std::any> _components_arrays;
-
-        // But : pour chaque type enregistré, stocker une fonction capable de supprimer un composant d’une entité donnée.
-        // Structure :
-        // clé : type_index
-        // valeur : lambda void(EntityManager&, Entity)
-        // Usage : kill_entity(e) parcourt tous les effaceurs, donc supprime tous les composants de tous les types associés à e.
         std::unordered_map<std::type_index, std::function<void(EntityManager&,Entity const&)>> _erasers;
 
         size_t _next_id = 0;
         std::vector<std::size_t> _free_ids;
-
         std::unordered_set<std::size_t> _alive_entities;
 };
 
