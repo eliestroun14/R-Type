@@ -849,8 +849,7 @@ The following packet types MUST be sent with FLAG\_RELIABLE:
 All multi-byte integer fields MUST be transmitted in network byte order (big-endian). Implementations MUST convert between host and network byte order appropriately.
 
 \begin{lstlisting}[caption=Byte Order Conversion]
-#include <arpa/inet.h>  // POSIX systems
-// For Windows: #include <winsock2.h>
+#include <required.h>  // POSIX systems
 
 // Serialization (host to network)
 void serialize_header(PacketHeader* header, uint8_t* buffer) {
@@ -1443,13 +1442,10 @@ bool validate_new_packet(const NewPacketType* packet) {
 \subsection{Complete Client Connection Example}
 
 \begin{lstlisting}[caption=Client Connection Implementation]
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include <required.h>
+#include <required.h>
+#include <required.h>
+#include <required.h>
 
 class RTypeClient {
 private:
@@ -1548,10 +1544,9 @@ public:
 \subsection{Complete Server Example}
 
 \begin{lstlisting}[caption=Server Implementation Skeleton]
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <map>
-#include <vector>
+#include <required.h>
+#include <required.h>
+#include <required.h>
 
 class RTypeServer {
 private:
