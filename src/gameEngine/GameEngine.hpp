@@ -100,19 +100,19 @@ class GameEngine {
         template<class System, class... Params>
         System &RegisterSystem(Params &&... params)
         {
-            return this->_systemManager->register_system<System>(std::forward<Params>(params)...);
+            return this->_systemManager->addSystem<System>(std::forward<Params>(params)...);
         }
 
         template<class System>
         System &GetSystem() const
         {
-            return this->_systemManager->get_system<System>();
+            return this->_systemManager->getSystem<System>();
         }
 
         template<class System>
         void RemoveSystem()
         {
-            this->_systemManager->remove_system<System>();
+            this->_systemManager->deleteSystem<System>();
         }
 
         void UpdateSystems(float dt)
