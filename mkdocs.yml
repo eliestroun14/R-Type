@@ -93,6 +93,7 @@ nav:
       - What is an ECS: Documentation/ECS/ecs.md
       - Entity: Documentation/ECS/entity.md
       - Component Manager: Documentation/ECS/component-manager.md
+      - System: Documentation/ECS/system.md
 
   - Contributing: contributing.md
   - Expectations: Expectations/expectations.md
