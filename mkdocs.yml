@@ -89,10 +89,6 @@ nav:
   - Documentation:
     - Documentation/index.md
     - Writing Guide: Documentation/writing-guide.md
-    - ECS:
-      - What is an ECS: Documentation/ECS/ecs.md
-      - Entity: Documentation/ECS/entity.md
-      - Component Manager: Documentation/ECS/component-manager.md
 
   - Contributing: contributing.md
   - Expectations: Expectations/expectations.md

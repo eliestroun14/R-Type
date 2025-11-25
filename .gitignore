@@ -43,9 +43,6 @@
 build/
 .tmp
 
-
-.vscode
-
 # lATEX intermediate files
 *.aux
 *.lof
@@ -65,4 +62,3 @@ build/
 *.fdb_latexmk
 *.synctex.gz
 *.xdv
-
