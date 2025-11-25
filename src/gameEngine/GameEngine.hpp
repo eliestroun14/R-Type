@@ -8,27 +8,37 @@
 #ifndef GAMEENGINE_HPP_
 #define GAMEENGINE_HPP_
 
+#include <memory>
+#include <string>
+
 #include "ECS/System/SystemManager.hpp"
 #include "ECS/Entity/EntityManager.hpp"
-// #include "System/System.hpp"
+#include "ECS/System/SystemManager.hpp"
 
 class GameEngine {
     public:
+        // ==============================================================
+        //                          Initialisation
+        // ==============================================================
+
         void Init()
         {
             this->_entityManager = std::make_unique<EntityManager>();
             this->_systemManager = std::make_unique<SystemManager>();
         }
 
-        Entity CreateEntity(std::string entityName)
+        // ==============================================================
+        //                        Gestion des entités
+        // ==============================================================
+
+        Entity CreateEntity(const std::string &entityName)
         {
             return this->_entityManager->spawn_entity(entityName);
         }
 
-        void DestroyEntity(Entity& e)
+        void DestroyEntity(Entity &e)
         {
             this->_entityManager->kill_entity(e);
-            //TODO: demander à titi uwu pour comment on détruit le system d'une entity
         }
 
         bool IsAlive(Entity const &entity) const
@@ -41,13 +51,15 @@ class GameEngine {
             return this->_entityManager->get_entity_name(entity);
         }
 
+        // ==============================================================
+        //                       Gestion des composants
+        // ==============================================================
 
         template<class Component>
-        ComponentManager<Component>& RegisterComponent()
+        ComponentManager<Component> &RegisterComponent()
         {
             return this->_entityManager->register_component<Component>();
         }
-
 
         template <class Component>
         typename ComponentManager<Component>::reference_type
@@ -69,7 +81,6 @@ class GameEngine {
             this->_entityManager->remove_component<Component>(entity);
         }
 
-
         template<typename Component>
         ComponentManager<Component> &GetComponents() const
         {
@@ -77,13 +88,37 @@ class GameEngine {
         }
 
         template<typename Component>
-        std::optional<Component>& GetComponentEntity(Entity const &entity) const
+        std::optional<Component> &GetComponentEntity(Entity const &entity) const
         {
             return this->_entityManager->get_component<Component>(entity);
         }
 
+        // ==============================================================
+        //                        Gestion des systèmes
+        // ==============================================================
 
-        // TODO: RegisterSystem, à voir avec titi uwu
+        template<class System, class... Params>
+        System &RegisterSystem(Params &&... params)
+        {
+            return this->_systemManager->register_system<System>(std::forward<Params>(params)...);
+        }
+
+        template<class System>
+        System &GetSystem() const
+        {
+            return this->_systemManager->get_system<System>();
+        }
+
+        template<class System>
+        void RemoveSystem()
+        {
+            this->_systemManager->remove_system<System>();
+        }
+
+        void UpdateSystems(float dt)
+        {
+            this->_systemManager->updateAll(dt);
+        }
 
     private:
         std::unique_ptr<EntityManager> _entityManager;
