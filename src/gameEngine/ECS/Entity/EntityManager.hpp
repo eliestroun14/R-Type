@@ -121,7 +121,7 @@ class EntityManager {
             return id < components.size() && components[id].has_value();
         }
 
-        std::string getEntityName(Entity const& e) const {
+        std::string get_entity_name(Entity const& e) const {
             return e._name;
         }
 
