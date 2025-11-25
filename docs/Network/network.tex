@@ -1,0 +1,1613 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+
+\geometry{margin=1in}
+
+% Code listing settings
+\lstset{
+    language=C++,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+% Header and footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{R-Type Network Protocol v1.0}
+\lhead{RFC-RTYPE-2025}
+\cfoot{\thepage}
+
+% Title page info
+\title{\textbf{R-Type Network Protocol Specification}\\
+\large Binary Protocol for UDP Communication\\
+Version 1.0}
+\author{R-Type Development Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+This document specifies the binary network protocol used for client-server communication in the R-Type multiplayer game. The protocol is designed to operate over UDP, providing efficient real-time data transmission with optional reliability mechanisms. This specification describes packet structures, data serialization formats, and communication patterns required for implementing compatible R-Type clients and servers.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+\subsection{Purpose}
+This document defines the R-Type network protocol, a binary protocol designed for real-time multiplayer game communication. The protocol enables multiple clients to connect to a central authoritative server, exchange game state information, and synchronize gameplay events.
+
+\subsection{Scope}
+This specification covers:
+\begin{itemize}
+    \item Packet structure and format
+    \item Data serialization and quantization techniques
+    \item Message types and their payloads
+    \item Reliability mechanisms over UDP
+    \item Communication flows and patterns
+\end{itemize}
+
+\subsection{Requirements}
+The keywords "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
+
+\subsection{Protocol Characteristics}
+\begin{itemize}
+    \item \textbf{Transport Layer}: UDP (User Datagram Protocol)
+    \item \textbf{Format}: Binary (network byte order - big-endian)
+    \item \textbf{Maximum Packet Size}: 1200 bytes (recommended to avoid fragmentation)
+    \item \textbf{Protocol Version}: 1.0
+\end{itemize}
+
+\section{General Packet Structure}
+
+\subsection{Packet Format}
+
+Every packet in the R-Type protocol consists of two main parts:
+
+\begin{tcolorbox}[title=Packet Structure]
+\begin{verbatim}
++-------------------------------------------+
+|  Header (12 bytes)                        |
++-------------------------------------------+
+|  Payload (variable, 0-1188 bytes)         |
++-------------------------------------------+
+\end{verbatim}
+\end{tcolorbox}
+
+\subsection{Packet Header}
+
+The packet header is a fixed-size structure present in all protocol messages. It provides essential metadata for packet processing, validation, and ordering.
+
+\begin{lstlisting}[caption=Packet Header Structure]
+struct PacketHeader {
+    uint16_t magic;           // Protocol identifier: 0x5254 ('RT')
+    uint8_t  packet_type;     // Packet type identifier
+    uint8_t  flags;           // Control flags
+    uint32_t sequence_number; // Monotonic sequence number
+    uint32_t timestamp;       // Milliseconds since connection
+};
+// Total size: 12 bytes
+\end{lstlisting}
+
+\subsubsection{Receiver Responsibilities}
+
+\begin{enumerate}
+    \item Check if packet has FLAG\_RELIABLE set
+    \item Send ACK immediately
+    \item Check sequence number against last received
+    \item Discard if duplicate (already processed)
+    \item Process if new
+\end{enumerate}
+
+\begin{lstlisting}[caption=Reliable Receive Pseudocode]
+void on_packet_received(Packet packet) {
+    if (packet.header.flags & FLAG_RELIABLE) {
+        // Send acknowledgment immediately
+        send_ack(packet.header.sequence_number);
+    }
+    
+    // Check for duplicate
+    if (packet.header.sequence_number <= last_processed_sequence) {
+        // Duplicate packet, discard
+        return;
+    }
+    
+    // Process new packet
+    last_processed_sequence = packet.header.sequence_number;
+    process_packet(packet);
+}
+
+void send_ack(uint32_t sequence) {
+    Acknowledgment ack;
+    ack.header.magic = 0x5254;
+    ack.header.packet_type = 0x70;
+    ack.header.sequence_number = next_sequence++;
+    ack.acked_sequence = sequence;
+    ack.received_timestamp = get_current_time_ms();
+    
+    udp_send(ack);
+}
+\end{lstlisting}
+
+\subsection{Packets Requiring Reliability}
+
+The following packet types MUST be sent with FLAG\_RELIABLE:
+
+\begin{itemize}
+    \item CLIENT\_DISCONNECT (0x04)
+    \item ENTITY\_SPAWN (0x21)
+    \item ENTITY\_DESTROY (0x22)
+    \item PLAYER\_HIT (0x40)
+    \item PLAYER\_DEATH (0x41)
+    \item POWERUP\_PICKUP (0x43)
+    \item GAME\_START (0x60)
+    \item GAME\_END (0x61)
+    \item LEVEL\_COMPLETE (0x62)
+    \item LEVEL\_START (0x63)
+\end{itemize}
+
+\section{Data Serialization and Optimization}
+
+\subsection{Byte Order}
+
+All multi-byte integer fields MUST be transmitted in network byte order (big-endian). Implementations MUST convert between host and network byte order appropriately.
+
+\begin{lstlisting}[caption=Byte Order Conversion]
+#include <necessary_headers.h>
+
+// Serialization (host to network)
+void serialize_header(PacketHeader* header, uint8_t* buffer) {
+    uint16_t* buf16 = (uint16_t*)buffer;
+    uint32_t* buf32 = (uint32_t*)(buffer + 4);
+    
+    buf16[0] = htons(header->magic);
+    buffer[2] = header->packet_type;
+    buffer[3] = header->flags;
+    buf32[0] = htonl(header->sequence_number);
+    buf32[1] = htonl(header->timestamp);
+}
+
+// Deserialization (network to host)
+void deserialize_header(const uint8_t* buffer, PacketHeader* header) {
+    const uint16_t* buf16 = (const uint16_t*)buffer;
+    const uint32_t* buf32 = (const uint32_t*)(buffer + 4);
+    
+    header->magic = ntohs(buf16[0]);
+    header->packet_type = buffer[2];
+    header->flags = buffer[3];
+    header->sequence_number = ntohl(buf32[0]);
+    header->timestamp = ntohl(buf32[1]);
+}
+\end{lstlisting}
+
+\subsection{Position Quantization}
+
+To reduce bandwidth, floating-point positions are quantized to 16-bit integers.
+
+\begin{lstlisting}[caption=Position Quantization Implementation]
+// Configuration
+const float WORLD_MIN_X = 0.0f;
+const float WORLD_MAX_X = 2048.0f;
+const float WORLD_MIN_Y = 0.0f;
+const float WORLD_MAX_Y = 1536.0f;
+
+// Quantize float position to int16
+int16_t quantize_position_x(float x) {
+    float normalized = (x - WORLD_MIN_X) / (WORLD_MAX_X - WORLD_MIN_X);
+    normalized = clamp(normalized, 0.0f, 1.0f);
+    return (int16_t)(normalized * 65535.0f);
+}
+
+int16_t quantize_position_y(float y) {
+    float normalized = (y - WORLD_MIN_Y) / (WORLD_MAX_Y - WORLD_MIN_Y);
+    normalized = clamp(normalized, 0.0f, 1.0f);
+    return (int16_t)(normalized * 65535.0f);
+}
+
+// Dequantize int16 to float position
+float dequantize_position_x(int16_t quantized) {
+    float normalized = (float)quantized / 65535.0f;
+    return WORLD_MIN_X + normalized * (WORLD_MAX_X - WORLD_MIN_X);
+}
+
+float dequantize_position_y(int16_t quantized) {
+    float normalized = (float)quantized / 65535.0f;
+    return WORLD_MIN_Y + normalized * (WORLD_MAX_Y - WORLD_MIN_Y);
+}
+\end{lstlisting}
+
+\subsection{Velocity Quantization}
+
+Velocities are quantized to signed 16-bit integers.
+
+\begin{lstlisting}[caption=Velocity Quantization]
+const float MAX_VELOCITY = 500.0f;  // Game units per second
+
+int16_t quantize_velocity(float velocity) {
+    float normalized = velocity / MAX_VELOCITY;
+    normalized = clamp(normalized, -1.0f, 1.0f);
+    return (int16_t)(normalized * 32767.0f);
+}
+
+float dequantize_velocity(int16_t quantized) {
+    float normalized = (float)quantized / 32767.0f;
+    return normalized * MAX_VELOCITY;
+}
+\end{lstlisting}
+
+\subsection{Direction Vectors}
+
+Normalized direction vectors are stored as 16-bit fixed-point values.
+
+\begin{lstlisting}[caption=Direction Vector Quantization]
+struct Direction {
+    int16_t x;  // Range: -1000 to 1000 (represents -1.0 to 1.0)
+    int16_t y;
+};
+
+Direction quantize_direction(float dx, float dy) {
+    // Normalize the vector
+    float length = sqrt(dx * dx + dy * dy);
+    if (length > 0.0001f) {
+        dx /= length;
+        dy /= length;
+    }
+    
+    Direction dir;
+    dir.x = (int16_t)(dx * 1000.0f);
+    dir.y = (int16_t)(dy * 1000.0f);
+    return dir;
+}
+
+void dequantize_direction(Direction dir, float* dx, float* dy) {
+    *dx = (float)dir.x / 1000.0f;
+    *dy = (float)dir.y / 1000.0f;
+}
+\end{lstlisting}
+
+\section{Communication Flows}
+
+\subsection{Connection Establishment}
+
+\begin{verbatim}
+CLIENT                          SERVER
+   |                               |
+   |---(0x01) CLIENT_CONNECT------>|
+   |                               |
+   |                          [Validate connection]
+   |                               |
+   |<--(0x02) SERVER_ACCEPT--------|
+   |                               |
+   |                          Connection established
+   |                               |
+   |---(0x05) HEARTBEAT----------->|
+   |                               |
+   |<--(0x20) WORLD_SNAPSHOT-------|
+   |                               |
+\end{verbatim}
+
+\subsection{Rejection Flow}
+
+\begin{verbatim}
+CLIENT                          SERVER
+   |                               |
+   |---(0x01) CLIENT_CONNECT------>|
+   |                               |
+   |                          [Reject: server full]
+   |                               |
+   |<--(0x03) SERVER_REJECT--------|
+   |                               |
+   |                          Connection refused
+\end{verbatim}
+
+\subsection{Normal Gameplay Loop}
+
+\begin{verbatim}
+CLIENT                          SERVER
+   |                               |
+   |---(0x10) PLAYER_INPUT-------->|
+   |                               |
+   |                          [Process input]
+   |                          [Update game state]
+   |                               |
+   |<--(0x20) WORLD_SNAPSHOT-------|
+   |                               |
+   |                          [Render frame]
+   |                               |
+   |---(0x10) PLAYER_INPUT-------->|
+   |                               |
+   |<--(0x21) ENTITY_SPAWN---------|
+   |---(0x70) ACK----------------->|
+   |                               |
+   |<--(0x20) WORLD_SNAPSHOT-------|
+   |                               |
+   |---(0x10) PLAYER_INPUT-------->|
+   |                               |
+   |<--(0x44) WEAPON_FIRE----------|
+   |<--(0x20) WORLD_SNAPSHOT-------|
+   |                               |
+   (continues...)
+\end{verbatim}
+
+\subsection{Entity Destruction Flow}
+
+\begin{verbatim}
+CLIENT                          SERVER
+   |                               |
+   |---(0x10) PLAYER_INPUT-------->|
+   |        [SHOOT pressed]        |
+   |                               |
+   |                          [Spawn projectile]
+   |                               |
+   |<--(0x44) WEAPON_FIRE----------|
+   |<--(0x21) ENTITY_SPAWN---------|
+   |---(0x70) ACK----------------->|
+   |---(0x70) ACK----------------->|
+   |                               |
+   |<--(0x20) WORLD_SNAPSHOT-------|
+   |                               |
+   |                          [Collision detected]
+   |                          [Enemy destroyed]
+   |                               |
+   |<--(0x22) ENTITY_DESTROY-------|
+   |<--(0x42) SCORE_UPDATE---------|
+   |---(0x70) ACK----------------->|
+   |---(0x70) ACK----------------->|
+   |                               |
+\end{verbatim}
+
+\subsection{Player Death and Respawn}
+
+\begin{verbatim}
+CLIENT                          SERVER
+   |                               |
+   |                          [Player takes damage]
+   |                               |
+   |<--(0x40) PLAYER_HIT-----------|
+   |---(0x70) ACK----------------->|
+   |                               |
+   |                          [Health reaches 0]
+   |                               |
+   |<--(0x41) PLAYER_DEATH---------|
+   |---(0x70) ACK----------------->|
+   |                               |
+   |                          [Wait respawn timer]
+   |                               |
+   |<--(0x21) ENTITY_SPAWN---------|
+   |        [Player respawns]      |
+   |---(0x70) ACK----------------->|
+   |                               |
+   |<--(0x20) WORLD_SNAPSHOT-------|
+   |                               |
+\end{verbatim}
+
+\subsection{Graceful Disconnection}
+
+\begin{verbatim}
+CLIENT                          SERVER
+   |                               |
+   |---(0x04) CLIENT_DISCONNECT--->|
+   |        [FLAG_RELIABLE]        |
+   |                               |
+   |                          [Remove player]
+   |                          [Notify others]
+   |                               |
+   |<--(0x70) ACK------------------|
+   |                               |
+   |                          Connection closed
+\end{verbatim}
+
+\section{Security Considerations}
+
+\subsection{Input Validation}
+
+All received packets MUST be validated before processing:
+
+\begin{lstlisting}[caption=Packet Validation]
+bool validate_packet(const uint8_t* buffer, size_t length) {
+    // Minimum size check
+    if (length < sizeof(PacketHeader)) {
+        return false;
+    }
+    
+    PacketHeader header;
+    deserialize_header(buffer, &header);
+    
+    // Magic number validation
+    if (header.magic != 0x5254) {
+        return false;
+    }
+    
+    // Packet type validation
+    if (header.packet_type < 0x01 || header.packet_type > 0x7F) {
+        return false;
+    }
+    
+    // Size validation based on packet type
+    size_t expected_size = get_expected_packet_size(header.packet_type);
+    if (length < expected_size) {
+        return false;
+    }
+    
+    return true;
+}
+\end{lstlisting}
+
+\subsection{Rate Limiting}
+
+Servers SHOULD implement rate limiting to prevent abuse:
+
+\begin{itemize}
+    \item Maximum packets per second per client: 120
+    \item Maximum connection attempts per IP per minute: 10
+    \item Maximum reliable packet retransmissions: 5
+\end{itemize}
+
+\subsection{Sequence Number Validation}
+
+\begin{lstlisting}[caption=Sequence Number Validation]
+bool is_sequence_valid(uint32_t received_seq, uint32_t last_seq) {
+    // Allow for some reordering (window of 100)
+    const uint32_t MAX_SEQUENCE_WINDOW = 100;
+    
+    // Handle sequence number wraparound
+    if (received_seq < last_seq) {
+        // Check if it's a wraparound or an old packet
+        uint32_t diff = last_seq - received_seq;
+        return diff > (UINT32_MAX - MAX_SEQUENCE_WINDOW);
+    }
+    
+    // Forward sequence check
+    uint32_t diff = received_seq - last_seq;
+    return diff <= MAX_SEQUENCE_WINDOW;
+}
+\end{lstlisting}
+
+\subsection{Buffer Overflow Prevention}
+
+\begin{lstlisting}[caption=Safe String Copy]
+void safe_string_copy(char* dest, const char* src, size_t dest_size) {
+    if (dest_size == 0) return;
+    
+    size_t i;
+    for (i = 0; i < dest_size - 1 && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    dest[i] = '\0';
+}
+\end{lstlisting}
+
+\subsection{Denial of Service Prevention}
+
+Servers MUST implement the following protections:
+
+\begin{itemize}
+    \item Limit maximum packet size (1200 bytes)
+    \item Timeout idle connections (10 seconds without heartbeat)
+    \item Limit maximum entities per snapshot (64)
+    \item Validate all array bounds
+    \item Implement connection backlog limits
+\end{itemize}
+
+\section{Performance Optimization}
+
+\subsection{Snapshot Optimization}
+
+To reduce bandwidth usage for WORLD\_SNAPSHOT packets:
+
+\begin{lstlisting}[caption=Delta Compression]
+// Only send entities that changed since last snapshot
+struct DeltaSnapshot {
+    PacketHeader header;
+    uint32_t base_tick;           // Reference tick
+    uint16_t changed_entity_count;
+    EntityState changed_entities[];
+};
+\end{lstlisting}
+
+\subsection{Update Frequency Recommendations}
+
+\begin{itemize}
+    \item \textbf{PLAYER\_INPUT}: Every frame or on change (30-60 Hz)
+    \item \textbf{WORLD\_SNAPSHOT}: 20-30 Hz (reduced from server tick rate)
+    \item \textbf{HEARTBEAT}: 0.5-1 Hz
+    \item \textbf{PING/PONG}: 1 Hz
+\end{itemize}
+
+\subsection{Packet Batching}
+
+Multiple small packets MAY be combined into a single UDP datagram:
+
+\begin{lstlisting}[caption=Packet Batching]
+struct BatchedPacket {
+    uint16_t magic;           // 0x5254
+    uint16_t packet_count;    // Number of packets in batch
+    // Followed by multiple packets with size prefix
+    // [uint16_t size][packet data][uint16_t size][packet data]...
+};
+\end{lstlisting}
+
+\section{Error Handling}
+
+\subsection{Malformed Packets}
+
+Receivers MUST handle malformed packets gracefully:
+
+\begin{itemize}
+    \item Invalid magic number: Discard silently
+    \item Invalid packet type: Discard and log warning
+    \item Invalid size: Discard and log warning
+    \item Corrupted data: Discard and log error
+\end{itemize}
+
+\subsection{Connection Loss Detection}
+
+\begin{lstlisting}[caption=Connection Loss Detection]
+void check_connection_timeout() {
+    uint32_t current_time = get_current_time_ms();
+    uint32_t time_since_last_packet = current_time - last_packet_time;
+    
+    if (time_since_last_packet > CONNECTION_TIMEOUT_MS) {
+        // No packets received for too long
+        handle_connection_lost();
+    }
+}
+
+const uint32_t CONNECTION_TIMEOUT_MS = 10000;  // 10 seconds
+\end{lstlisting}
+
+\subsection{Network Congestion Handling}
+
+When network congestion is detected (high packet loss, increased latency):
+
+\begin{itemize}
+    \item Reduce WORLD\_SNAPSHOT frequency
+    \item Increase client-side prediction
+    \item Prioritize critical packets (player death, spawns)
+    \item Reduce entity count in snapshots
+\end{itemize}
+
+\section{Implementation Guidelines}
+
+\subsection{Creating New Packet Types}
+
+When adding new packet types, follow these guidelines:
+
+\begin{enumerate}
+    \item Choose an appropriate type code in the correct range
+    \item Define the structure with proper alignment
+    \item Document all fields and their valid ranges
+    \item Implement serialization/deserialization functions
+    \item Add validation logic
+    \item Determine if reliability is needed
+    \item Update protocol version if breaking change
+\end{enumerate}
+
+\begin{lstlisting}[caption=New Packet Type Template]
+// 1. Define the packet structure
+struct NewPacketType {
+    PacketHeader header;          // Always include header
+    uint32_t field1;              // Document each field
+    uint16_t field2;
+    uint8_t field3;
+    // ... additional fields
+};
+
+// 2. Implement serialization
+void serialize_new_packet(const NewPacketType* packet, 
+                          uint8_t* buffer) {
+    // Serialize header
+    serialize_header(&packet->header, buffer);
+    
+    // Serialize payload in network byte order
+    uint32_t* buf32 = (uint32_t*)(buffer + 12);
+    uint16_t* buf16 = (uint16_t*)(buffer + 16);
+    
+    buf32[0] = htonl(packet->field1);
+    buf16[0] = htons(packet->field2);
+    buffer[18] = packet->field3;
+}
+
+// 3. Implement deserialization
+void deserialize_new_packet(const uint8_t* buffer,
+                            NewPacketType* packet) {
+    // Deserialize header
+    deserialize_header(buffer, &packet->header);
+    
+    // Deserialize payload from network byte order
+    const uint32_t* buf32 = (const uint32_t*)(buffer + 12);
+    const uint16_t* buf16 = (const uint16_t*)(buffer + 16);
+    
+    packet->field1 = ntohl(buf32[0]);
+    packet->field2 = ntohs(buf16[0]);
+    packet->field3 = buffer[18];
+}
+
+// 4. Implement validation
+bool validate_new_packet(const NewPacketType* packet) {
+    // Validate field ranges
+    if (packet->field3 > MAX_VALID_VALUE) {
+        return false;
+    }
+    return true;
+}
+\end{lstlisting}
+
+\subsection{Serialization Best Practices}
+
+\begin{itemize}
+    \item Always use network byte order (big-endian)
+    \item Pack structures tightly (no padding)
+    \item Use fixed-size integer types (uint8\_t, uint16\_t, uint32\_t)
+    \item Avoid floating-point types in wire format
+    \item Document byte offsets for all fields
+    \item Consider alignment requirements
+\end{itemize}
+
+\subsection{Testing Recommendations}
+
+\begin{itemize}
+    \item Test packet serialization/deserialization round-trips
+    \item Simulate packet loss (random drop)
+    \item Simulate packet reordering
+    \item Simulate packet duplication
+    \item Test with high latency (250+ ms)
+    \item Test with bandwidth constraints
+    \item Fuzz test with malformed packets
+    \item Test sequence number wraparound
+\end{itemize}
+
+\section{Appendix A: Quick Reference}
+
+\subsection{Packet Type Summary V2}
+
+\begin{longtable}{|l|l|l|l|}
+\hline
+\textbf{Code} & \textbf{Name} & \textbf{Reliable} & \textbf{Direction} \\
+\hline
+\endfirsthead
+
+\multicolumn{4}{c}%
+{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+\hline
+\textbf{Code} & \textbf{Name} & \textbf{Reliable} & \textbf{Direction} \\
+\hline
+\endhead
+
+\hline \multicolumn{4}{|r|}{{Continued on next page}} \\ \hline
+\endfoot
+
+\hline
+\endlastfoot
+
+0x01 & CLIENT\_CONNECT & No & C$\rightarrow$S \\
+0x02 & SERVER\_ACCEPT & No & S$\rightarrow$C \\
+0x03 & SERVER\_REJECT & No & S$\rightarrow$C \\
+0x04 & CLIENT\_DISCONNECT & Yes & C$\leftrightarrow$S \\
+0x05 & HEARTBEAT & No & C$\rightarrow$S \\
+\hline
+0x10 & PLAYER\_INPUT & No & C$\rightarrow$S \\
+\hline
+0x20 & WORLD\_SNAPSHOT & No & S$\rightarrow$C \\
+0x21 & ENTITY\_SPAWN & Yes & S$\rightarrow$C \\
+0x22 & ENTITY\_DESTROY & Yes & S$\rightarrow$C \\
+0x23 & ENTITY\_UPDATE & No & S$\rightarrow$C \\
+\hline
+0x40 & PLAYER\_HIT & Yes & S$\rightarrow$C \\
+0x41 & PLAYER\_DEATH & Yes & S$\rightarrow$C \\
+0x42 & SCORE\_UPDATE & No & S$\rightarrow$C \\
+0x43 & POWERUP\_PICKUP & Yes & S$\rightarrow$C \\
+0x44 & WEAPON\_FIRE & No & S$\rightarrow$C \\
+\hline
+0x60 & GAME\_START & Yes & S$\rightarrow$C \\
+0x61 & GAME\_END & Yes & S$\rightarrow$C \\
+0x62 & LEVEL\_COMPLETE & Yes & S$\rightarrow$C \\
+0x63 & LEVEL\_START & Yes & S$\rightarrow$C \\
+\hline
+0x70 & ACK & No & C$\leftrightarrow$S \\
+0x71 & PING & No & C$\rightarrow$S \\
+0x72 & PONG & No & S$\rightarrow$C \\
+\hline
+\end{longtable}
+
+\subsection{Common Values}
+
+\begin{itemize}
+    \item \textbf{Magic Number}: 0x5254 ('RT')
+    \item \textbf{Protocol Version}: 1
+    \item \textbf{Default Port}: 4242 (UDP)
+    \item \textbf{Max Packet Size}: 1200 bytes
+    \item \textbf{Connection Timeout}: 10000 ms
+    \item \textbf{Heartbeat Interval}: 1000 ms
+    \item \textbf{ACK Timeout}: 500-1000 ms
+    \item \textbf{Max Retries}: 5
+\end{itemize}
+
+\subsection{Entity Type Codes}
+
+\begin{itemize}
+    \item 0x00: Player
+    \item 0x01-0x0F: Enemies (various types)
+    \item 0x10-0x1F: Projectiles
+    \item 0x20-0x2F: Powerups
+    \item 0x30-0x3F: Obstacles
+    \item 0x40-0x4F: Background elements
+\end{itemize}
+
+\section{Appendix B: Example Implementation}
+
+\subsection{Complete Client Connection Example}
+
+\begin{lstlisting}[caption=Client Connection Implementation]
+#include <necessary_headers.h>
+#include <necessary_headers.h>
+#include <necessary_headers.h>
+#include <necessary_headers.h>
+#include <necessary_headers.h>
+
+class RTypeClient {
+private:
+    int sockfd;
+    struct sockaddr_in server_addr;
+    uint32_t sequence_number;
+    uint32_t player_id;
+    bool connected;
+    
+public:
+    bool connect(const char* server_ip, uint16_t port) {
+        // Create UDP socket
+        sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sockfd < 0) {
+            return false;
+        }
+        
+        // Setup server address
+        memset(&server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(port);
+        inet_pton(AF_INET, server_ip, &server_addr.sin_addr);
+        
+        // Send CLIENT_CONNECT
+        ClientConnect connect_packet;
+        connect_packet.header.magic = 0x5254;
+        connect_packet.header.packet_type = 0x01;
+        connect_packet.header.flags = 0;
+        connect_packet.header.sequence_number = sequence_number++;
+        connect_packet.header.timestamp = get_current_time_ms();
+        connect_packet.protocol_version = 1;
+        strncpy(connect_packet.player_name, "Player1", 31);
+        connect_packet.client_id = generate_client_id();
+        
+        // Serialize and send
+        uint8_t buffer[256];
+        serialize_client_connect(&connect_packet, buffer);
+        sendto(sockfd, buffer, sizeof(ClientConnect), 0,
+               (struct sockaddr*)&server_addr, sizeof(server_addr));
+        
+        // Wait for SERVER_ACCEPT
+        if (wait_for_accept()) {
+            connected = true;
+            return true;
+        }
+        
+        return false;
+    }
+    
+    void send_input(uint16_t input_flags) {
+        if (!connected) return;
+        
+        PlayerInput input_packet;
+        input_packet.header.magic = 0x5254;
+        input_packet.header.packet_type = 0x10;
+        input_packet.header.flags = 0;
+        input_packet.header.sequence_number = sequence_number++;
+        input_packet.header.timestamp = get_current_time_ms();
+        input_packet.player_id = player_id;
+        input_packet.input_flags = input_flags;
+        input_packet.aim_x = 0;
+        input_packet.aim_y = 0;
+        
+        uint8_t buffer[256];
+        serialize_player_input(&input_packet, buffer);
+        sendto(sockfd, buffer, sizeof(PlayerInput), 0,
+               (struct sockaddr*)&server_addr, sizeof(server_addr));
+    }
+};
+\end{lstlisting}
+
+\section{Appendix C: Changelog}
+
+\begin{itemize}
+    \item \textbf{Version 1.0} (2025-11-22): Initial protocol specification
+\end{itemize}
+
+\section{Appendix D: References}
+
+\begin{itemize}
+    \item RFC 768: User Datagram Protocol
+    \item RFC 2119: Key words for use in RFCs
+    \item Gaffer On Games: "Networked Physics"
+    \newline \url{https://gafferongames.com/post/networked_physics_2004/}
+    \item Valve Developer Community: "Source Multiplayer Networking"
+    \newline \url{https://developer.valvesoftware.com/wiki/Source_Multiplayer_Networking}
+    \item Gabriel Gambetta: "Fast-Paced Multiplayer"
+    \newline \url{https://www.gabrielgambetta.com/client-side-prediction-live-demo.html}
+\end{itemize}
+
+\section{Header Fields Description}
+
+\begin{longtable}{|l|l|p{8cm}|}
+\hline
+\textbf{Field} & \textbf{Size} & \textbf{Description} \\
+\hline
+\endhead
+
+magic & 2 bytes & Protocol magic number (0x5254). Used for packet validation. Packets with invalid magic MUST be discarded. \\
+\hline
+packet\_type & 1 byte & Identifies the packet type. Valid range: 0x01-0x7F. See Section 3 for type definitions. \\
+\hline
+flags & 1 byte & Bitfield for packet control flags. See Section 2.3. \\
+\hline
+sequence\_number & 4 bytes & Monotonically increasing packet sequence number. Used for duplicate detection, ordering, and acknowledgment. \\
+\hline
+timestamp & 4 bytes & Timestamp in milliseconds since connection establishment. Used for latency measurement and interpolation. \\
+\hline
+\end{longtable}
+
+\subsection{Packet Flags}
+
+The flags field is an 8-bit bitfield used to specify packet processing requirements.
+
+\begin{lstlisting}[caption=Packet Flags Definition]
+enum PacketFlags {
+    FLAG_RELIABLE    = 0x01,  // Requires acknowledgment
+    FLAG_COMPRESSED  = 0x02,  // Payload is compressed
+    FLAG_ENCRYPTED   = 0x04,  // Payload is encrypted
+    FLAG_FRAGMENTED  = 0x08,  // Part of fragmented message
+    FLAG_PRIORITY    = 0x10,  // High priority processing
+    FLAG_RESERVED_5  = 0x20,  // Reserved for future use
+    FLAG_RESERVED_6  = 0x40,  // Reserved for future use
+    FLAG_RESERVED_7  = 0x80   // Reserved for future use
+};
+\end{lstlisting}
+
+\subsubsection{Flag Descriptions}
+
+\begin{itemize}
+    \item \textbf{FLAG\_RELIABLE (0x01)}: When set, the receiver MUST send an acknowledgment. The sender MUST retransmit if no ACK is received within the timeout period.
+    \item \textbf{FLAG\_COMPRESSED (0x02)}: Indicates the payload is compressed. The receiver MUST decompress before processing.
+    \item \textbf{FLAG\_ENCRYPTED (0x04)}: Indicates the payload is encrypted. Implementation-specific.
+    \item \textbf{FLAG\_FRAGMENTED (0x08)}: Indicates this packet is part of a larger fragmented message.
+    \item \textbf{FLAG\_PRIORITY (0x10)}: Suggests priority processing. Implementation MAY prioritize these packets.
+\end{itemize}
+
+\section{Packet Types}
+
+Packet types are organized into functional categories. Each category occupies a specific range of type identifiers.
+
+\subsection{Type Ranges}
+
+\begin{longtable}{|l|l|p{7cm}|}
+\hline
+\textbf{Range} & \textbf{Category} & \textbf{Description} \\
+\hline
+\endhead
+
+0x01-0x0F & Connection & Session establishment and management \\
+\hline
+0x10-0x1F & Input & Player input and control messages \\
+\hline
+0x20-0x3F & World State & Game world and entity state updates \\
+\hline
+0x40-0x5F & Game Events & Gameplay events and actions \\
+\hline
+0x60-0x6F & Game Control & Game lifecycle and state transitions \\
+\hline
+0x70-0x7F & Protocol Control & Reliability and connection maintenance \\
+\hline
+\end{longtable}
+
+\section{Connection Management Packets (0x01-0x0F)}
+
+\subsection{CLIENT\_CONNECT (0x01)}
+
+Sent by the client to initiate a connection to the server.
+
+\begin{lstlisting}[caption=CLIENT\_CONNECT Packet]
+struct ClientConnect {
+    PacketHeader header;          // type = 0x01
+    uint8_t protocol_version;     // Protocol version (current: 1)
+    char player_name[32];         // UTF-8 player name (null-terminated)
+    uint32_t client_id;           // Unique client identifier
+};
+// Total size: 49 bytes
+\end{lstlisting}
+
+\textbf{Fields:}
+\begin{itemize}
+    \item \texttt{protocol\_version}: Protocol version supported by the client. Current version is 1.
+    \item \texttt{player\_name}: Player's display name, null-terminated UTF-8 string. Maximum 31 characters + null terminator.
+    \item \texttt{client\_id}: Randomly generated unique identifier for this client instance.
+\end{itemize}
+
+\textbf{Usage:}
+\begin{enumerate}
+    \item Client generates unique \texttt{client\_id}
+    \item Client sends CLIENT\_CONNECT to server
+    \item Server responds with SERVER\_ACCEPT or SERVER\_REJECT
+\end{enumerate}
+
+\subsection{SERVER\_ACCEPT (0x02)}
+
+Sent by the server to accept a client connection.
+
+\begin{lstlisting}[caption=SERVER\_ACCEPT Packet]
+struct ServerAccept {
+    PacketHeader header;          // type = 0x02
+    uint32_t assigned_player_id;  // Server-assigned player ID
+    uint8_t max_players;          // Maximum players in game
+    uint32_t game_instance_id;    // Current game instance ID
+    uint16_t server_tick_rate;    // Server update rate (Hz)
+};
+// Total size: 23 bytes
+\end{lstlisting}
+
+\textbf{Fields:}
+\begin{itemize}
+    \item \texttt{assigned\_player\_id}: Unique player ID assigned by server. Client MUST use this ID in all subsequent communications.
+    \item \texttt{max\_players}: Maximum number of players supported (typically 2 to 4).
+    \item \texttt{game\_instance\_id}: Identifier for the game instance the player joined (can be useful for rejoining and future lobby management).
+    \item \texttt{server\_tick\_rate}: Server simulation tick rate in Hz (typically 60).
+\end{itemize}
+
+\subsection{SERVER\_REJECT (0x03)}
+
+Sent by the server to reject a connection attempt.
+
+\begin{lstlisting}[caption=SERVER\_REJECT Packet]
+struct ServerReject {
+    PacketHeader header;          // type = 0x03
+    uint8_t reason_code;          // Rejection reason code
+    char reason_message[64];      // Human-readable reason
+};
+// Total size: 77 bytes
+\end{lstlisting}
+
+\textbf{Reason Codes:}
+\begin{itemize}
+    \item 0x00: Server full
+    \item 0x01: Incompatible protocol version
+    \item 0x02: Invalid player name
+    \item 0x03: Banned client
+    \item 0xFF: Generic error
+    \item more to come with the network track
+\end{itemize}
+
+\subsection{CLIENT\_DISCONNECT (0x04)}
+
+Sent by either client or server to terminate the connection.
+
+\begin{lstlisting}[caption=CLIENT\_DISCONNECT Packet]
+struct ClientDisconnect {
+    PacketHeader header;          // type = 0x04, FLAG_RELIABLE
+    uint32_t player_id;           // Disconnecting player ID
+    uint8_t reason;               // Disconnect reason
+};
+// Total size: 17 bytes
+\end{lstlisting}
+
+\textbf{Reason Codes:}
+\begin{itemize}
+    \item 0x00: Normal disconnect
+    \item 0x01: Timeout
+    \item 0x02: Kicked by server
+    \item 0x03: Client error
+\end{itemize}
+
+\textbf{Note:} This packet MUST have the FLAG\_RELIABLE flag set.
+
+\subsection{HEARTBEAT (0x05)}
+
+Sent periodically by clients to maintain the connection.
+
+\begin{lstlisting}[caption=HEARTBEAT Packet]
+struct Heartbeat {
+    PacketHeader header;          // type = 0x05
+    uint32_t player_id;           // Player ID
+};
+// Total size: 16 bytes
+\end{lstlisting}
+
+\textbf{Usage:}
+\begin{itemize}
+    \item Client SHOULD send every 1-2 seconds
+    \item Server SHOULD disconnect clients that don't send heartbeat within 10 seconds
+\end{itemize}
+
+\section{Player Input Packets (0x10-0x1F)}
+
+\subsection{PLAYER\_INPUT (0x10)}
+
+Contains player input state. Sent frequently (typically every frame or when input changes).
+
+\begin{lstlisting}[caption=PLAYER\_INPUT Packet]
+struct PlayerInput {
+    PacketHeader header;          // type = 0x10
+    uint32_t player_id;           // Player ID
+    uint16_t input_flags;         // Bitfield of input states
+    int16_t aim_x;                // Optional: aim direction X (we need to define what we want the game to be)
+    int16_t aim_y;                // Optional: aim direction Y (we need to define what we want the game to be)
+};
+// Total size: 24 bytes
+\end{lstlisting}
+
+\textbf{Input Flags Bitfield:}
+\begin{lstlisting}
+Bit 0:  MOVE_UP
+Bit 1:  MOVE_DOWN
+Bit 2:  MOVE_LEFT
+Bit 3:  MOVE_RIGHT
+Bit 4:  ACTION_SHOOT
+Bit 5:  ACTION_SPECIAL
+Bit 6:  ACTION_6
+Bit 7:  ACTION_7
+Bits 8-15: Reserved for more bonus actions
+\end{lstlisting}
+
+\textbf{Example - Packing Input:}
+\begin{lstlisting}
+uint16_t pack_input(bool up, bool down, bool left, 
+                    bool right, bool shoot, bool special) {
+    return (up << 0) | (down << 1) | (left << 2) | 
+           (right << 3) | (shoot << 4) | (special << 5);
+}
+\end{lstlisting}
+
+\section{World State Packets (0x20-0x3F)}
+
+\subsection{WORLD\_SNAPSHOT (0x20)}
+
+Contains the current state of all entities in the game world. Sent regularly by the server (typically 20-60 times per second).
+
+\begin{lstlisting}[caption=Entity State Structure]
+struct EntityState {
+    uint32_t entity_id;           // Unique entity identifier
+    uint8_t entity_type;          // Entity type code
+    int16_t pos_x;                // Quantized X position
+    int16_t pos_y;                // Quantized Y position
+    int16_t vel_x;                // Quantized X velocity
+    int16_t vel_y;                // Quantized Y velocity
+    uint8_t health;               // Current health (0-255)
+    uint8_t state_flags;          // Entity-specific state flags
+};
+// Total size: 16 bytes per entity
+\end{lstlisting}
+
+\begin{lstlisting}[caption=WORLD\_SNAPSHOT Packet]
+struct WorldSnapshot {
+    PacketHeader header;          // type = 0x20
+    uint32_t world_tick;          // Server simulation tick
+    uint16_t entity_count;        // Number of entities in this packet
+    EntityState entities[];       // Variable-length array
+};
+// Total size: 18 + (16 * entity_count) bytes
+\end{lstlisting}
+
+\textbf{Entity Type Codes:}
+\begin{itemize}
+    \item 0x00: Player
+    \item 0x01: Enemy (generic)
+    \item 0x02: Enemy (snake pattern)
+    \item 0x03: Enemy (boss)
+    \item 0x10: Projectile (player)
+    \item 0x11: Projectile (enemy)
+    \item 0x20: Powerup
+    \item 0x30: Obstacle
+    \item 0x40: Background element
+\end{itemize}
+
+\textbf{Position Quantization:}
+
+Positions are stored as 16-bit integers representing game world coordinates. The conversion from floating-point to quantized format is:
+
+\begin{lstlisting}
+// Quantize position (float to int16)
+int16_t quantize_position(float pos, float world_min, 
+                         float world_max) {
+    float normalized = (pos - world_min) / (world_max - world_min);
+    return (int16_t)(normalized * 65535.0f);
+}
+
+// Dequantize position (int16 to float)
+float dequantize_position(int16_t quantized, float world_min,
+                          float world_max) {
+    float normalized = (float)quantized / 65535.0f;
+    return world_min + normalized * (world_max - world_min);
+}
+\end{lstlisting}
+
+\textbf{Recommended World Bounds:}
+\begin{itemize}
+    \item X: 0 to 2048 units
+    \item Y: 0 to 1536 units
+\end{itemize}
+
+\subsection{ENTITY\_SPAWN (0x21)}
+
+Notifies clients of a new entity entering the game world.
+
+\begin{lstlisting}[caption=ENTITY\_SPAWN Packet]
+struct EntitySpawn {
+    PacketHeader header;          // type = 0x21, FLAG_RELIABLE
+    uint32_t entity_id;           // New entity's unique ID
+    uint8_t entity_type;          // Entity type code
+    int16_t pos_x;                // Initial X position
+    int16_t pos_y;                // Initial Y position
+    uint8_t variant;              // Entity variant/subtype
+    uint8_t initial_health;       // Starting health
+    uint8_t initial_velocity_x;    // Initial X velocity (not sure to be discussed TODO)
+    uint8_t initial_velocity_y;    // Initial Y velocity (not sure to be discussed TODO)
+};
+// Total size: 24 bytes
+\end{lstlisting}
+
+\textbf{Note:} This packet MUST have the FLAG\_RELIABLE flag set to ensure delivery.
+
+\subsection{ENTITY\_DESTROY (0x22)}
+
+Notifies clients that an entity has been destroyed or removed.
+
+\begin{lstlisting}[caption=ENTITY\_DESTROY Packet]
+struct EntityDestroy {
+    PacketHeader header;          // type = 0x22, FLAG_RELIABLE
+    uint32_t entity_id;           // Destroyed entity's ID
+    uint8_t destroy_reason;       // Reason for destruction
+    int16_t final_pos_x;          // Final X position (for effects)
+    int16_t final_pos_y;          // Final Y position (for effects)
+};
+// Total size: 21 bytes
+\end{lstlisting}
+
+\textbf{Destroy Reason Codes:}
+\begin{itemize}
+    \item 0x00: Killed by player
+    \item 0x01: Killed by enemy
+    \item 0x02: Out of bounds
+    \item 0x03: Timeout/despawn
+    \item 0x04: Level transition
+\end{itemize}
+
+\subsection{ENTITY\_UPDATE (0x23)}
+
+Updates specific attributes of an entity without sending full state.
+
+\begin{lstlisting}[caption=ENTITY\_UPDATE Packet]
+struct EntityUpdate {
+    PacketHeader header;          // type = 0x23
+    uint32_t entity_id;           // Entity to update
+    uint8_t update_flags;         // Which fields are updated
+    int16_t pos_x;                // Updated X position (if flag set)
+    int16_t pos_y;                // Updated Y position (if flag set)
+    uint8_t health;               // Updated health (if flag set)
+    uint8_t shield;               // Updated shield (if flag set)
+    uint8_t state_flags;          // Updated state (if flag set)
+    uint8_t initial_velocity_x;    // updated X velocity (not sure to be discussed TODO)
+    uint8_t initial_velocity_y;    // updated Y velocity (not sure to be discussed TODO)
+};
+// Total size: 22 bytes
+\end{lstlisting}
+
+\textbf{Update Flags:}
+\begin{itemize}
+    \item Bit 0: Position updated
+    \item Bit 1: Health updated
+    \item Bit 2: Shield updated
+    \item Bit 3: State flags updated
+    \item Bits 4-5: Initial velocity updated
+    \item Bits 6-7: Reserved
+\end{itemize}
+
+\section{Game Event Packets (0x40-0x5F)}
+
+\subsection{PLAYER\_HIT (0x40)}
+
+Notifies that a player has been hit and taken damage.
+
+\begin{lstlisting}[caption=PLAYER\_HIT Packet]
+struct PlayerHit {
+    PacketHeader header;          // type = 0x40, FLAG_RELIABLE
+    uint32_t player_id;           // Player who was hit
+    uint32_t attacker_id;         // Entity that caused damage
+    uint8_t damage;               // Damage amount
+    uint8_t remaining_health;     // Health after damage
+    uint8_t remaining_shield;     // Shield after damage
+    int16_t hit_pos_x;            // Hit location X
+    int16_t hit_pos_y;            // Hit location Y
+};
+// Total size: 28 bytes
+\end{lstlisting}
+
+\subsection{PLAYER\_DEATH (0x41)}
+
+Notifies that a player has died.
+
+\begin{lstlisting}[caption=PLAYER\_DEATH Packet]
+struct PlayerDeath {
+    PacketHeader header;          // type = 0x41, FLAG_RELIABLE
+    uint32_t player_id;           // Player who died
+    uint32_t killer_id;           // Entity that killed player
+    uint32_t score_before_death;  // Player's score
+    int16_t death_pos_x;          // Death location X
+    int16_t death_pos_y;          // Death location Y
+};
+// Total size: 30 bytes
+\end{lstlisting}
+
+\subsection{SCORE\_UPDATE (0x42)}
+
+Updates a player's score.
+
+\begin{lstlisting}[caption=SCORE\_UPDATE Packet]
+struct ScoreUpdate {
+    PacketHeader header;          // type = 0x42
+    uint32_t player_id;           // Player whose score changed
+    uint32_t new_score;           // Updated total score
+    int16_t score_delta;          // Change in score (can be negative)
+    uint8_t reason;               // Reason for score change
+};
+// Total size: 23 bytes
+\end{lstlisting}
+
+\textbf{Score Change Reasons:}
+\begin{itemize}
+    \item 0x00: Enemy killed
+    \item 0x01: Boss killed
+    \item 0x02: Powerup collected
+    \item 0x03: Level completed
+    \item 0x04: Bonus points
+\end{itemize}
+
+\subsection{POWERUP\_PICKUP (0x43)}
+
+Notifies that a player collected a powerup.
+
+\begin{lstlisting}[caption=POWERUP\_PICKUP Packet]
+struct PowerupPickup {
+    PacketHeader header;          // type = 0x43, FLAG_RELIABLE
+    uint32_t player_id;           // Player who picked up powerup
+    uint32_t powerup_id;          // Powerup entity ID
+    uint8_t powerup_type;         // Type of powerup
+    uint8_t duration;             // Effect duration (seconds, 0=permanent)
+};
+// Total size: 22 bytes
+\end{lstlisting}
+
+\textbf{Powerup Types:}
+\begin{itemize}
+    \item 0x00: Speed boost
+    \item 0x01: Weapon upgrade
+    \item 0x02: Force (R-Type signature weapon)
+    \item 0x03: Shield
+    \item 0x04: Extra life
+    \item 0x05: Invincibility
+\end{itemize}
+
+\subsection{WEAPON\_FIRE (0x44)}
+
+Notifies that an entity fired a weapon.
+
+\begin{lstlisting}[caption=WEAPON\_FIRE Packet]
+struct WeaponFire {
+    PacketHeader header;          // type = 0x44
+    uint32_t shooter_id;          // Entity that fired
+    uint32_t projectile_id;       // New projectile entity ID
+    int16_t origin_x;             // Fire origin X
+    int16_t origin_y;             // Fire origin Y
+    int16_t direction_x;          // Direction vector X (normalized*1000)
+    int16_t direction_y;          // Direction vector Y (normalized*1000)
+    uint8_t weapon_type;          // Weapon type fired
+};
+// Total size: 31 bytes
+\end{lstlisting}
+
+\textbf{Weapon Types:}
+\begin{itemize}
+    \item 0x00: Basic shot
+    \item 0x01: Charged shot
+    \item 0x02: Spread shot
+    \item 0x03: Laser beam
+    \item 0x04: Missile
+    \item 0x05: Force shot
+\end{itemize}
+
+\section{Game Control Packets (0x60-0x6F)}
+
+\subsection{GAME\_START (0x60)}
+
+Notifies all clients that the game is starting.
+
+\begin{lstlisting}[caption=GAME\_START Packet]
+struct GameStart {
+    PacketHeader header;          // type = 0x60, FLAG_RELIABLE
+    uint32_t game_instance_id;    // Game instance identifier
+    uint8_t player_count;         // Number of players
+    uint32_t player_ids[4];       // Player IDs (up to 4) (not sure to be discussed TODO)
+    uint8_t level_id;             // Starting level
+    uint8_t difficulty;           // Difficulty setting
+};
+// Total size: 36 bytes
+\end{lstlisting}
+
+\textbf{Difficulty Levels:}
+\begin{itemize}
+    \item 0x00: Easy
+    \item 0x01: Normal
+    \item 0x02: Hard
+    \item 0x03: Insane
+\end{itemize}
+
+\subsection{GAME\_END (0x61)}
+
+Notifies clients that the game has ended.
+
+\begin{lstlisting}[caption=GAME\_END Packet]
+struct GameEnd {
+    PacketHeader header;          // type = 0x61, FLAG_RELIABLE
+    uint8_t end_reason;           // Reason game ended
+    uint32_t final_scores[4];     // Final scores for all players
+    uint8_t winner_id;            // Winning player (if applicable)
+    uint32_t play_time;           // Total game time (seconds)
+};
+// Total size: 34 bytes
+\end{lstlisting}
+
+\textbf{End Reasons:}
+\begin{itemize}
+    \item 0x00: Victory (all levels completed)
+    \item 0x01: Defeat (all players dead)
+    \item 0x02: Timeout
+    \item 0x03: Host disconnect
+    \item 0x04: Server shutdown
+\end{itemize}
+
+\subsection{LEVEL\_COMPLETE (0x62)}
+
+Notifies clients that the current level has been completed.
+
+\begin{lstlisting}[caption=LEVEL\_COMPLETE Packet]
+struct LevelComplete {
+    PacketHeader header;          // type = 0x62, FLAG_RELIABLE
+    uint8_t completed_level;      // Level that was completed
+    uint8_t next_level;           // Next level to load (0xFF=game end)
+    uint32_t bonus_score;         // Completion bonus
+    uint16_t completion_time;     // Time taken (seconds)
+};
+// Total size: 22 bytes
+\end{lstlisting}
+
+\subsection{LEVEL\_START (0x63)}
+
+Notifies clients that a new level is starting.
+
+\begin{lstlisting}[caption=LEVEL\_START Packet]
+struct LevelStart {
+    PacketHeader header;          // type = 0x63, FLAG_RELIABLE
+    uint8_t level_id;             // Level identifier
+    char level_name[32];          // Level name
+    uint16_t estimated_duration;  // Estimated time (seconds)
+};
+// Total size: 47 bytes
+\end{lstlisting}
+
+\section{Protocol Control Packets (0x70-0x7F)}
+
+\subsection{ACK - Acknowledgment (0x70)}
+
+Acknowledges receipt of a reliable packet.
+
+\begin{lstlisting}[caption=ACK Packet]
+struct Acknowledgment {
+    PacketHeader header;          // type = 0x70
+    uint32_t acked_sequence;      // Sequence number being ACKed
+    uint32_t received_timestamp;  // When packet was received
+};
+// Total size: 20 bytes
+\end{lstlisting}
+
+\textbf{Usage:}
+\begin{enumerate}
+    \item When receiving a packet with FLAG\_RELIABLE set, the receiver MUST send an ACK
+    \item The sender MUST retransmit if ACK is not received within timeout period (typically 500ms-1000ms)
+    \item Maximum retransmission attempts: 5
+\end{enumerate}
+
+\subsection{PING (0x71)}
+
+Measures round-trip time to server.
+
+\begin{lstlisting}[caption=PING Packet]
+struct Ping {
+    PacketHeader header;          // type = 0x71
+    uint32_t client_timestamp;    // Client's current timestamp
+};
+// Total size: 16 bytes
+\end{lstlisting}
+
+\subsection{PONG (0x72)}
+
+Response to PING packet.
+
+\begin{lstlisting}[caption=PONG Packet]
+struct Pong {
+    PacketHeader header;          // type = 0x72
+    uint32_t client_timestamp;    // Original client timestamp from PING
+    uint32_t server_timestamp;    // Server's timestamp when received
+};
+// Total size: 20 bytes
+\end{lstlisting}
+
+\textbf{RTT Calculation:}
+\begin{lstlisting}
+uint32_t calculate_rtt(uint32_t ping_sent_time, 
+                       uint32_t pong_received_time) {
+    return pong_received_time - ping_sent_time;
+}
+\end{lstlisting}
+
+\section{Reliability Mechanism}
+
+\subsection{Overview}
+
+While UDP is an unreliable protocol, certain game events require guaranteed delivery. Oyr R-Type protocol will implement a selective reliability mechanism.
+
+\subsection{Reliable Packet Handling}
+
+\subsubsection{Sender Responsibilities}
+
+\begin{enumerate}
+    \item Set FLAG\_RELIABLE in packet header
+    \item Store packet in retransmission queue
+    \item Start timeout timer (typically 500ms)
+    \item If ACK received, remove from queue
+    \item If timeout expires, retransmit up to MAX\_RETRIES (5) times
+    \item If all retries exhausted, consider connection lost
+\end{enumerate}
+
+\begin{lstlisting}[caption=Reliable Send Pseudocode]
+void send_reliable(Packet packet) {
+    packet.header.flags = FLAG_RELIABLE;
+    packet.header.sequence_number = next_sequence++;
+    
+    // Store for potential retransmission
+    retransmit_queue.add(packet);
+    
+    // Send packet
+    udp_send(packet);
+    
+    // Start timeout timer
+    start_timer(packet.header.sequence_number, TIMEOUT_MS);
+}
+
+void on_timeout(uint32_t sequence) {
+    Packet packet = retransmit_queue.get(sequence);
+    if (packet.retry_count < MAX_RETRIES) {
+        packet.retry_count++;
+        udp_send(packet);
+        start_timer(sequence, TIMEOUT_MS);
+    } else {
+        // Connection lost
+        handle_connection_lost();
+    }
+}
+
+void on_ack_received(uint32_t acked_sequence) {
+    retransmit_queue.remove(acked_sequence);
+}
+\end{lstlisting}
+
+\subsection{Version History}
+
+\begin{itemize}
+    \item \textbf{Version 1.0} (2025-01-XX): Initial protocol specification
+    \begin{itemize}
+        \item Core packet types for connection, input, world state, and events
+        \item Reliability mechanism with selective ACK
+        \item Position and velocity quantization
+        \item Security and validation guidelines
+    \end{itemize}
+\end{itemize}
+
+\section{Appendix I: References}
+
+\begin{itemize}
+    \item RFC 768: User Datagram Protocol
+    \newline \url{https://www.rfc-editor.org/rfc/rfc768}
+    
+    \item RFC 2119: Key words for use in RFCs to Indicate Requirement Levels
+    \newline \url{https://www.rfc-editor.org/rfc/rfc2119}
+    
+    \item Gaffer On Games: "Networked Physics"
+    \newline \url{https://gafferongames.com/post/networked_physics_2004/}
+    
+    \item Valve Developer Community: "Source Multiplayer Networking"
+    \newline \url{https://developer.valvesoftware.com/wiki/Source_Multiplayer_Networking}
+    
+    \item Gabriel Gambetta: "Fast-Paced Multiplayer" (Client-Side Prediction)
+    \newline \url{https://www.gabrielgambetta.com/client-side-prediction-server-reconciliation.html}
+    
+    \item Glenn Fiedler: "UDP vs TCP"
+    \newline \url{https://gafferongames.com/post/udp_vs_tcp/}
+    
+    \item "Quake 3 Network Model"
+    \newline \url{https://fabiensanglard.net/quake3/network.php}
+\end{itemize}
+
+\section{Appendix J: Glossary}
+
+\begin{description}
+    \item[ACK (Acknowledgment)] A confirmation message sent to indicate successful receipt of a packet.
+    
+    \item[Big-endian] Byte ordering where the most significant byte is stored first (network byte order).
+    
+    \item[Datagram] A self-contained, independent packet of data sent over UDP.
+    
+    \item[Dequantization] Converting compressed integer representation back to floating-point values.
+    
+    \item[Entity] Any game object (player, enemy, projectile, powerup, etc.).
+    
+    \item[Latency] The time delay between sending and receiving a packet (also called "lag").
+    
+    \item[Magic Number] A constant value used to validate packet format (0x5254 for R-Type).
+    
+    \item[Packet Loss] When network packets fail to reach their destination.
+    
+    \item[Quantization] Converting floating-point values to smaller integer representation to save bandwidth.
+    
+    \item[RTT (Round-Trip Time)] The time for a packet to travel from sender to receiver and back.
+    
+    \item[Sequence Number] A monotonically increasing counter used to detect packet loss and duplication.
+    
+    \item[Snapshot] A complete state update of the game world at a specific point in time.
+    
+    \item[TCP (Transmission Control Protocol)] A reliable, connection-oriented transport protocol.
+    
+    \item[UDP (User Datagram Protocol)] An unreliable, connectionless transport protocol optimized for speed.
+    
+    \item[World Tick] A discrete time step in the server's game simulation (typically 60 Hz = 16.67ms per tick).
+\end{description}
+
+\vspace{1cm}
+\hrule
+\vspace{0.5cm}
+\begin{center}
+\textbf{End of Document}
+
+\vspace{0.5cm}
+For questions, issues, or contributions to this protocol specification, \\
+please contact our R-Type development team.
+\end{center}
+
+\end{document}
