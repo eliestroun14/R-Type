@@ -24,7 +24,21 @@ set(SOURCES
     "src/main.cpp"
 )
 
+# Create main executable
 add_executable(R-Type ${SOURCES})
+
+# Include directories for the main target
+target_include_directories(R-Type PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/gameEngine
+    ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS
+)
 
 # Link logger library
 target_link_libraries(R-Type PRIVATE logger)
+
+# Enable testing
+enable_testing()
+
+# Add tests subdirectory
+add_subdirectory(tests)

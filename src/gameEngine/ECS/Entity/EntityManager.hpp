@@ -20,6 +20,19 @@
 #include <optional>
 
 class EntityManager {
+
+    private:
+        template<class Component>
+        static void erase_component_helper(EntityManager& em, Entity const& e) {
+            std::type_index key(typeid(Component));
+            auto it = em._components_arrays.find(key);
+            if (it != em._components_arrays.end()) {
+                auto& components = std::any_cast<ComponentManager<Component>&>(it->second);
+                if (components.size())
+                    components.erase(static_cast<size_t>(e));
+            }
+        }
+
     public :
         EntityManager() = default;
 
@@ -27,22 +40,14 @@ class EntityManager {
         ComponentManager<Component>& register_component() {
             std::type_index key(typeid(Component));
 
-            // try_emplace: n'insère que si la clé n'existe pas et renvoie pair<iterator,bool>
             auto [it, inserted] = this->_components_arrays.try_emplace(
                 key,
                 std::any(ComponentManager<Component>{})
             );
 
-            // Si on vient d'insérer, on doit aussi enregistrer l'eraser correspondant.
-            if (inserted) {
-                _erasers[key] = [](EntityManager& r, Entity const& e) {
-                    r.get_components<Component>().erase(static_cast<size_t>(e));
-                };
-            }
+            if (inserted)
+                this->_erasers[key] = &erase_component_helper<Component>;
 
-            // it->second est la std::any associée; on fait un any_cast vers notre type.
-            // any_cast en référence est sûr ici, car nous venons soit d'insérer, soit la
-            // map contenait déjà la même type d'objet.
             return std::any_cast<ComponentManager<Component>&>(it->second);
         }
 
@@ -102,11 +107,11 @@ class EntityManager {
             if (this->_alive_entities.find(id) == this->_alive_entities.end())
                 return; // l'entity est déjà morte
 
-            for (auto& [key, fn] : this->_erasers)
-                fn(*this, entity);
-
             this->_alive_entities.erase(id);
             this->_free_ids.push_back(id);
+
+            for (auto& [key, fn] : this->_erasers)
+                fn(*this, entity);
         }
 
         bool is_alive(Entity const& e) const {
