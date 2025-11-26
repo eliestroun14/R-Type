@@ -24,6 +24,14 @@ TEST(ComponentManagerTest, InsertAt) {
     EXPECT_EQ(mgr[0]->max, 100);
 }
 
+TEST(ComponentManagerTest, Size) {
+    ComponentManager<Health> mgr;
+
+    mgr.emplace_at(5, 50, 100);
+
+    EXPECT_EQ(mgr.size(), 6);
+}
+
 TEST(ComponentManagerTest, EmplaceAt) {
     ComponentManager<Health> mgr;
 

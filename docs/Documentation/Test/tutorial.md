@@ -190,7 +190,7 @@ ctest --output-on-failure
 ./tests/ecs_tests
 
 # Launch specifics tests
-./tests/ecs_tests --gtest_filter="EntityManagerTest.*"
+./tests/ecs_tests --gtest_filter="GameManagerTest.*"
 
 # Launch with more details
 ./tests/ecs_tests --gtest_color=yes
