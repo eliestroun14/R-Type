@@ -66,3 +66,4 @@ build/
 *.synctex.gz
 *.xdv
 
+vgcore.*
