@@ -96,7 +96,6 @@ nav:
       - System: Documentation/ECS/system.md
 
   - Logger:
-    - Logger/index.md
     - Getting Started: Logger/getting-started.md
     - Configuration: Logger/configuration.md
     - Usage Guide: Logger/usage.md
