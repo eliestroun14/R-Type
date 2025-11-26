@@ -95,5 +95,12 @@ nav:
       - Component Manager: Documentation/ECS/component-manager.md
       - System: Documentation/ECS/system.md
 
+  - Logger:
+    - Logger/index.md
+    - Getting Started: Logger/getting-started.md
+    - Configuration: Logger/configuration.md
+    - Usage Guide: Logger/usage.md
+    - API Reference: Logger/api-reference.md
+
   - Contributing: contributing.md
   - Expectations: Expectations/expectations.md
