@@ -14,6 +14,9 @@ add_executable(ecs_tests
     test_entity_manager.cpp
     test_game_engine.cpp
     test_debug.cpp
+    test_system_manager.cpp
+
+    ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS/System/System.cpp
 )
 
 # Link Google Test and your libraries
