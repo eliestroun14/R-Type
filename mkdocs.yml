@@ -95,6 +95,9 @@ nav:
         - What is an ECS: Documentation/ECS/ecs.md
         - Entity: Documentation/ECS/entity.md
         - Component Manager: Documentation/ECS/component-manager.md
+    - Tests:
+      - Why Google Test ?: Documentation/Test/justification.md
+      - How to add new tests: Documentation/Test/tutorial.md
 
   - Contributing: contributing.md
   - Expectations: Expectations/expectations.md
