@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <string>
+#include <array>
+#include <vector>
 
 namespace protocol {
 
@@ -21,37 +23,59 @@ namespace protocol {
 
         //CONNECTION          = 0x01-0x0F
         TYPE_CLIENT_CONNECT         = 0x01
-        TYPE_SERVER_ACCEPT          = 0x02
-        TYPE_SERVER_REJECT          = 0x03
-        TYPE_CLIENT_DISCONNECT      = 0x04
-        TYPE_HEARTBEAT              = 0x05
+        TYPE_SERVER_ACCEPT          = 0x02,
+        TYPE_SERVER_REJECT          = 0x03,
+        TYPE_CLIENT_DISCONNECT      = 0x04,
+        TYPE_HEARTBEAT              = 0x05,
 
         //INPUT               = 0x10-0x1F 
-        TYPE_PLAYER_INPUT = 0x10
+        TYPE_PLAYER_INPUT = 0x10,
 
         //WORLD_STATE         = 0x20-0x3F 
-        TYPE_WORLD_SNAPSHOT         = 0x20
-        TYPE_ENTITY_SPAWN           = 0x21
-        TYPE_ENTITY_DESTROY         = 0x22
-        TYPE_ENTITY_UPDATE          = 0x23
+        TYPE_WORLD_SNAPSHOT         = 0x20,
+        TYPE_ENTITY_SPAWN           = 0x21,
+        TYPE_ENTITY_DESTROY         = 0x22,
+        TYPE_ENTITY_UPDATE          = 0x23,
 
         //GAME_EVENTS                 = 0x40-0x5F 
-        TYPE_PLAYER_HIT             = 0x40
-        TYPE_PLAYER_DEATH           = 0x41
-        TYPE_SCORE_UPDATE           = 0x42
-        TYPE_POWER_PICKUP           = 0x43
-        TYPE_WEAPON_FIRE            = 0x44
+        TYPE_PLAYER_HIT             = 0x40,
+        TYPE_PLAYER_DEATH           = 0x41,
+        TYPE_SCORE_UPDATE           = 0x42,
+        TYPE_POWER_PICKUP           = 0x43,
+        TYPE_WEAPON_FIRE            = 0x44,
 
         //GAME_CONTROL                = 0x60-0x6F 
-        TYPE_GAME_START             = 0x60
-        TYPE_GAME_END               = 0x61
-        TYPE_LEVEL_COMPLETE         = 0x62
-        TYPE_LEVEL_START            = 0x63
+        TYPE_GAME_START             = 0x60,
+        TYPE_GAME_END               = 0x61,
+        TYPE_LEVEL_COMPLETE         = 0x62,
+        TYPE_LEVEL_START            = 0x63,
 
         //PROTOCOL_CONTROL            = 0x70-0x7F
-        TYPE_ACK                    = 0x70
-        TYPE_PING                   = 0x71
-        TYPE_PONG                   = 0x72
+        TYPE_ACK                    = 0x70,
+        TYPE_PING                   = 0x71,
+        TYPE_PONG                   = 0x72,
+
+        //ECS_COMPONENTS              = 0x24-0x2F
+        TYPE_TRANSFORM_SNAPSHOT     = 0x24,             // Snapshot des Transform components
+        TYPE_VELOCITY_SNAPSHOT      = 0x25,             // Snapshot des Velocity components
+        TYPE_HEALTH_SNAPSHOT        = 0x26,             // Snapshot des Health components
+        TYPE_WEAPON_SNAPSHOT        = 0x27,             // Snapshot des Weapon components
+        TYPE_AI_SNAPSHOT            = 0x28,             // Snapshot des AI components
+        TYPE_ANIMATION_SNAPSHOT     = 0x29,             // Snapshot des Animation components
+        TYPE_COMPONENT_ADD          = 0x2A,             // Ajouter un composant (reliable)
+        TYPE_COMPONENT_REMOVE       = 0x2B,             // Retirer un composant (reliable)
+        TYPE_TRANSFORM_SNAPSHOT_DELTA = 0x2C,           // Delta Transform snapshot
+        TYPE_HEALTH_SNAPSHOT_DELTA  = 0x2D,             // Delta Health snapshot
+        TYPE_ENTITY_FULL_STATE      = 0x2E,             // État complet d'une entité (spawn)
+
+        //EFFECTS                     = 0x50-0x5F
+        TYPE_VISUAL_EFFECT          = 0x50,
+        TYPE_AUDIO_EFFECT           = 0x51,
+        TYPE_PARTICLE_SPAWN         = 0x52,
+
+        //GAME_SYSTEMS                = 0x64-0x6F
+        TYPE_FORCE_STATE            = 0x64,
+        TYPE_AI_STATE               = 0x65
     };
 
 
@@ -165,7 +189,7 @@ namespace protocol {
         uint16_t   position_y;                         // Y position
         uint16_t   velocity_x;                         // X velocity
         uint16_t   velocity_y;                         // Y velocity
-        uint8_t   health;                             // Current health
+        uint8_t    health;                             // Current health
         uint8_t    state_flags;                        // State flags (e.g., alive, active)
     };
     // total size: 16 bytes
@@ -175,7 +199,7 @@ namespace protocol {
         protocol::PacketHeader header;                // type = 0x20
         uint32_t               world_tick;            // Server world tick number
         uint16_t               entity_count;          // Number of entities in the snapshot
-        EntityState            entities[];           // Variable length array
+        EntityState            entities[];            // Variable length array
     };
     // total size: 18 + (entity_count * 16) bytes
 
@@ -226,16 +250,16 @@ namespace protocol {
 
     // Server -> Client
     struct EntityUpdate {
-        PacketHeader   header;                      // type = 0 x23
-        uint32_t       entity_id;                   // Entity to update
-        uint8_t        update_flags;                // Which fields are updated
-        int16_t        pos_x;                       // Updated X position ( if flag set )
-        int16_t        pos_y;                       // Updated Y position ( if flag set )
-        uint8_t        health;                      // Updated health ( if flag set )
-        uint8_t        shield;                      // Updated shield ( if flag set )
-        uint8_t        state_flags;                 // Updated state ( if flag set )
-        int16_t        velocity_x;                  // Updated X velocity ( if flag set )
-        int16_t        velocity_y;                  // Updated Y velocity ( if flag set )
+        PacketHeader   header;                         // type = 0 x23
+        uint32_t       entity_id;                      // Entity to update
+        uint8_t        update_flags;                   // Which fields are updated
+        int16_t        pos_x;                          // Updated X position ( if flag set )
+        int16_t        pos_y;                          // Updated Y position ( if flag set )
+        uint8_t        health;                         // Updated health ( if flag set )
+        uint8_t        shield;                         // Updated shield ( if flag set )
+        uint8_t        state_flags;                    // Updated state ( if flag set )
+        int16_t        velocity_x;                     // Updated X velocity ( if flag set )
+        int16_t        velocity_y;                     // Updated Y velocity ( if flag set )
     };
     // Total size : 26 bytes
 
@@ -251,35 +275,35 @@ namespace protocol {
 
     // Server -> Client
     struct PlayerHit {
-        PacketHeader   header;                  // type = 0x40, FLAG_RELIABLE
-        uint32_t       player_id;               // Player who was hit
-        uint32_t       attacker_id;             // Entity that caused damage
-        uint8_t        damage;                  // Damage amount
-        uint8_t        remaining_health;        // Health after damage
-        uint8_t        remaining_shield;        // Shield after damage
-        int16_t        hit_pos_x;               // Hit location X
-        int16_t        hit_pos_y;               // Hit location Y
+        PacketHeader   header;                          // type = 0x40, FLAG_RELIABLE
+        uint32_t       player_id;                       // Player who was hit
+        uint32_t       attacker_id;                     // Entity that caused damage
+        uint8_t        damage;                          // Damage amount
+        uint8_t        remaining_health;                // Health after damage
+        uint8_t        remaining_shield;                // Shield after damage
+        int16_t        hit_pos_x;                       // Hit location X
+        int16_t        hit_pos_y;                       // Hit location Y
     };
     // Total size: 29 bytes
 
     // Server -> Client
     struct PlayerDeath {
-        PacketHeader    header;                 // type = 0x41, FLAG_RELIABLE
-        uint32_t        player_id;              // Player who died
-        uint32_t        killer_id;              // Entity that killed player
-        uint32_t        score_before_death;     // Player's score
-        int16_t         death_pos_x;            // Death location X
-        int16_t         death_pos_y;            // Death location Y
+        PacketHeader    header;                         // type = 0x41, FLAG_RELIABLE
+        uint32_t        player_id;                      // Player who died
+        uint32_t        killer_id;                      // Entity that killed player
+        uint32_t        score_before_death;             // Player's score
+        int16_t         death_pos_x;                    // Death location X
+        int16_t         death_pos_y;                    // Death location Y
     };
     // Total size: 30 bytes
 
     // Server -> Client
     struct ScoreUpdate {
-        PacketHeader    header;                 // type = 0x42
-        uint32_t        player_id;              // Player whose score changed
-        uint32_t        new_score;              // Updated total score
-        int16_t         score_delta;            // Change in score (can be negative)
-        uint8_t         reason;                 // Reason for score change
+        PacketHeader    header;                         // type = 0x42
+        uint32_t        player_id;                      // Player whose score changed
+        uint32_t        new_score;                      // Updated total score
+        int16_t         score_delta;                    // Change in score (can be negative)
+        uint8_t         reason;                         // Reason for score change
     };
     // Total size: 23 bytes
 
@@ -295,11 +319,11 @@ namespace protocol {
 
     // Server -> Client
     struct PowerupPickup {
-        PacketHeader    header;                 // type = 0x43, FLAG_RELIABLE
-        uint32_t        player_id;              // Player who picked up powerup
-        uint32_t        powerup_id;             // Powerup entity ID
-        uint8_t         powerup_type;           // Type of powerup
-        uint8_t         duration;               // Effect duration (seconds, 0=permanent)
+        PacketHeader    header;                         // type = 0x43, FLAG_RELIABLE
+        uint32_t        player_id;                      // Player who picked up powerup
+        uint32_t        powerup_id;                     // Powerup entity ID
+        uint8_t         powerup_type;                   // Type of powerup
+        uint8_t         duration;                       // Effect duration (seconds, 0=permanent)
     };
     // Total size: 22 bytes
 
@@ -410,4 +434,482 @@ namespace protocol {
         uint32_t        server_timestamp;      // Server's timestamp when received
     };
     // Total size: 20 bytes
+
+    // ============================================================================
+    // ECS COMPONENT SYSTEM
+    // ============================================================================
+
+    // Component Type Identifiers
+    enum class ComponentType : uint8_t {
+        COMPONENT_TRANSFORM       = 0x01,       // Position, rotation, scale
+        COMPONENT_VELOCITY        = 0x02,       // Linear velocity
+        COMPONENT_HEALTH          = 0x03,       // Health/shield
+        COMPONENT_WEAPON          = 0x04,       // Weapon state
+        COMPONENT_AI              = 0x05,       // AI behavior
+        COMPONENT_FORCE           = 0x06,       // R-Type Force attachment
+        COMPONENT_COLLISION       = 0x07,       // Collision bounds
+        COMPONENT_SPRITE          = 0x08,       // Visual representation
+        COMPONENT_ANIMATION       = 0x09,       // Animation state
+        COMPONENT_POWERUP         = 0x0A,       // Powerup effect
+        COMPONENT_SCORE           = 0x0B,       // Score tracking
+        COMPONENT_INPUT           = 0x0C,       // Input state (for players)
+        COMPONENT_PHYSICS         = 0x0D,       // Physics properties
+        COMPONENT_LIFETIME        = 0x0E,       // Auto-destroy after time
+        COMPONENT_PARENT          = 0x0F,       // Parent-child relationship
+        // Reserved 0x10-0xFF for future components
+    };
+
+    // Individual Component Data Structures
+    struct ComponentTransform {
+        int16_t   pos_x;
+        int16_t   pos_y;
+        uint16_t  rotation;                     // 0-65535 maps to 0-360 degrees
+        uint16_t  scale;                        // Fixed point: 1000 = 1.0x scale
+    };
+    // Size: 8 bytes
+
+    struct ComponentVelocity {
+        int16_t   vel_x;
+        int16_t   vel_y;
+        int16_t   acceleration_x;               // Optional acceleration
+        int16_t   acceleration_y;
+    };
+    // Size: 8 bytes
+
+    struct ComponentHealth {
+        uint8_t   current_health;
+        uint8_t   max_health;
+        uint8_t   current_shield;
+        uint8_t   max_shield;
+    };
+    // Size: 4 bytes
+
+    struct ComponentWeapon {
+        uint8_t   weapon_type;
+        uint8_t   ammo_count;
+        uint16_t  cooldown_remaining;           // Milliseconds
+        uint8_t   power_level;                  // 1-5 for R-Type
+    };
+    // Size: 5 bytes
+
+    struct ComponentAI {
+        uint8_t   ai_state;                     // Current AI state
+        uint8_t   behavior_type;                // AI behavior pattern
+        uint32_t  target_entity_id;             // Current target (0 = no target)
+        uint16_t  state_timer;                  // Time in current state (ms)
+    };
+    // Size: 8 bytes
+
+    struct ComponentForce {
+        uint32_t  parent_ship_id;               // Ship this Force is attached to
+        uint8_t   attachment_point;             // 0=front, 1=back, 2=detached
+        uint8_t   force_level;                  // Power level
+        uint8_t   charge_state;                 // Charge beam state
+    };
+    // Size: 7 bytes
+
+    struct ComponentCollision {
+        uint8_t   collision_layer;              // Physics layer
+        uint8_t   collision_mask;               // What layers it collides with
+        uint16_t  radius;                       // Collision radius (for circle)
+        int16_t   bounds_width;                 // For AABB
+        int16_t   bounds_height;
+    };
+    // Size: 8 bytes
+
+    struct ComponentSprite {
+        uint16_t  sprite_id;          // Sprite asset ID
+        uint8_t   color_tint_r;       // Color modulation
+        uint8_t   color_tint_g;
+        uint8_t   color_tint_b;
+        uint8_t   alpha;              // Transparency
+        uint8_t   layer;              // Rendering layer
+    };
+    // Size: 7 bytes
+
+    struct ComponentAnimation {
+        uint16_t  animation_id;       // Current animation
+        uint16_t  frame_index;        // Current frame
+        uint16_t  frame_duration;     // MS per frame
+        uint8_t   loop_mode;          // 0=once, 1=loop, 2=pingpong
+    };
+    // Size: 7 bytes
+
+    struct ComponentPowerup {
+        uint8_t   powerup_type;
+        uint16_t  duration_remaining; // Milliseconds (0=permanent)
+        uint8_t   stack_count;        // For stackable powerups
+    };
+    // Size: 4 bytes
+
+    struct ComponentLifetime {
+        uint16_t  remaining_ms;       // Time until auto-destroy
+    };
+    // Size: 2 bytes
+
+    struct ComponentParent {
+        uint32_t  parent_entity_id;   // Parent entity (0 = no parent)
+        int16_t   offset_x;           // Relative position to parent
+        int16_t   offset_y;
+    };
+    // Size: 8 bytes
+
+    // ============================================================================
+    // ECS COMPONENT SNAPSHOTS (Pure ECS Architecture) /!\ A LIRE /!\
+    // ============================================================================
+    
+    /**
+     * ARCHITECTURE : SNAPSHOTS PAR TYPE DE COMPOSANT
+     * 
+     * Cette approche est mieux pour une architecture ECS car :
+     * 1. Chaque type de composant a son propre packet
+     * 2. Le serveur itère sur un seul type de composant à la fois (cache-friendly)
+     * 3. Permet des fréquences d'update différentes par composant
+     * 4. Compression optimale (données homogènes)
+     * 5. Aligné avec l'architecture ECS pure (un système = un type de composant)
+     * 
+     * Exemple d'utilistion :
+     * - TransformSnapshot : 60 Hz (mouvement fluide)
+     * - HealthSnapshot : 20 Hz (moins critique)
+     * - SpriteSnapshot : 10 Hz (changements rares)
+     */
+
+    // ============================================================================
+    // COMPONENT SNAPSHOTS (0x24-0x2F)
+    // ============================================================================
+
+    // Server -> Client: Snapshot of Transform components
+    // Envoyé fréquemment (30-60 Hz) pour le mouvement
+    struct TransformSnapshot {
+        PacketHeader    header;                 // type = 0x24
+        uint32_t        world_tick;             // Server tick number
+        uint16_t        entity_count;           // Number of entities with Transform
+        // Followed by entity_count entries of:
+        // [uint32_t entity_id][ComponentTransform data (8 bytes)]
+        // Total per entity: 12 bytes
+    };
+    // Base size: 18 bytes + (entity_count × 12) bytes
+    // Exemple: 20 entités = 18 + 240 = 258 bytes
+
+    // Server -> Client: Snapshot of Velocity components
+    // Envoyé moyennement (20-30 Hz)
+    struct VelocitySnapshot {
+        PacketHeader    header;                 // type = 0x25
+        uint32_t        world_tick;
+        uint16_t        entity_count;
+        // Followed by: [uint32_t entity_id][ComponentVelocity data (8 bytes)]
+        // Total per entity: 12 bytes
+    };
+    // Base size: 18 bytes + (entity_count × 12) bytes
+
+    // Server -> Client: Snapshot of Health components
+    // Envoyé moins souvent (10-20 Hz) car moins critique pour l'affichage
+    struct HealthSnapshot {
+        PacketHeader    header;                 // type = 0x26
+        uint32_t        world_tick;
+        uint16_t        entity_count;
+        // Followed by: [uint32_t entity_id][ComponentHealth data (4 bytes)]
+        // Total per entity: 8 bytes
+    };
+    // Base size: 18 bytes + (entity_count × 8) bytes
+    // Plus compact ! 20 entités = 18 + 160 = 178 bytes
+
+    // Server -> Client: Snapshot of Weapon components
+    // Envoyé rarement (5-10 Hz) sauf changement
+    struct WeaponSnapshot {
+        PacketHeader    header;                 // type = 0x27
+        uint32_t        world_tick;
+        uint16_t        entity_count;
+        // Followed by: [uint32_t entity_id][ComponentWeapon data (5 bytes)]
+        // Total per entity: 9 bytes
+    };
+    // Base size: 18 bytes + (entity_count × 9) bytes
+
+    // Server -> Client: Snapshot of AI components
+    // Envoyé rarement (2-5 Hz) car l'IA est prédictible
+    struct AISnapshot {
+        PacketHeader    header;                 // type = 0x28
+        uint32_t        world_tick;
+        uint16_t        entity_count;
+        // Followed by: [uint32_t entity_id][ComponentAI data (8 bytes)]
+        // Total per entity: 12 bytes
+    };
+    // Base size: 18 bytes + (entity_count × 12) bytes
+
+    // Server -> Client: Snapshot of Animation components
+    // Envoyé moyennement (10-20 Hz)
+    struct AnimationSnapshot {
+        PacketHeader    header;                 // type = 0x29
+        uint32_t        world_tick;
+        uint16_t        entity_count;
+        // Followed by: [uint32_t entity_id][ComponentAnimation data (7 bytes)]
+        // Total per entity: 11 bytes
+    };
+    // Base size: 18 bytes + (entity_count × 11) bytes
+
+    // ============================================================================
+    // COMPONENT LIFECYCLE (Reliable packets)
+    // ============================================================================
+
+    // Server -> Client: Add a component to an entity
+    // Utilisé quand une entité gagne un nouveau composant
+    // Exemple : Joueur ramasse un powerup -> ajoute ComponentPowerup
+    struct ComponentAdd {
+        PacketHeader    header;                 // type = 0x2A, FLAG_RELIABLE
+        uint32_t        entity_id;              // Target entity
+        uint8_t         component_type;         // ComponentType enum
+        uint8_t         data_size;              // Size of component data
+        // Followed by component data (variable size)
+    };
+    // Base size: 18 bytes + component_data_size
+    // Exemple avec Health: 18 + 4 = 22 bytes
+
+    // Server -> Client: Remove a component from an entity
+    // Utilisé quand un composant est retiré
+    // Exemple : Powerup expire -> retire ComponentPowerup
+    struct ComponentRemove {
+        PacketHeader    header;                 // type = 0x2B, FLAG_RELIABLE
+        uint32_t        entity_id;              // Target entity
+        uint8_t         component_type;         // ComponentType to remove
+    };
+    // Size: 17 bytes
+
+    // ============================================================================================
+    // DELTA SNAPSHOTS (Optimisation avancée) Mentionné dans bcp d'articles pour des vrais jeux
+    // ============================================================================================
+
+    /**
+     * DELTA SNAPSHOTS : Envoie uniquement les changements depuis le dernier snapshot
+     * 
+     * Utilisation :
+     * - Snapshot FULL : Toutes les entités avec ce composant
+     * - Snapshot DELTA : Seulement celles qui ont changé
+     * 
+     * Le client maintient l'état et applique les deltas
+     */
+
+    // Server -> Client: Delta Transform snapshot (only changed entities)
+
+
+    struct TransformSnapshotDelta {
+
+        PacketHeader    header;                 // type = 0x2C
+        uint32_t        world_tick;
+        uint32_t        base_tick;              // Tick de référence
+        uint16_t        entity_count;           // Seulement les entités modifiées
+        // Followed by: [uint32_t entity_id][ComponentTransform data]
+    };
+    // Économie massive : Si seulement 5/40 entités bougent
+    // Full: 18 + 40×12 = 498 bytes
+    // Delta: 18 + 5×12 = 78 bytes → 84% d'économie !
+
+    // Server -> Client: Delta Health snapshot
+    struct HealthSnapshotDelta {
+        PacketHeader    header;                 // type = 0x2D
+        uint32_t        world_tick;
+        uint32_t        base_tick;
+        uint16_t        entity_count;
+        // Followed by: [uint32_t entity_id][ComponentHealth data]
+    };
+
+    // ============================================================================
+    // MULTI-COMPONENT SNAPSHOT (Cas particulier)
+    // ============================================================================
+
+    /**
+     * Utilisé pour synchroniser plusieurs composants d'une entité spécifique
+     * Cas d'usage : Nouveau joueur rejoint (souvent en cas de reconnexion) → envoie son état complet
+     */
+    struct EntityFullState {
+        PacketHeader    header;                 // type = 0x2E, FLAG_RELIABLE
+        uint32_t        entity_id;
+        uint8_t         entity_type;            // EntityTypes enum
+        uint8_t         component_count;        // Number of components
+        // Followed by component_count entries of:
+        // [uint8_t component_type][uint8_t size][component_data]
+    };
+    // Usage : Spawn complet d'un joueur avec tous ses composants
+
+    // ============================================================================
+    // EFFECTS SYSTEM (Visual and Audio feedback)
+    // ============================================================================
+
+    enum class VisualEffectType : uint8_t {
+        VFX_EXPLOSION_SMALL       = 0x00,
+        VFX_EXPLOSION_MEDIUM      = 0x01,
+        VFX_EXPLOSION_LARGE       = 0x02,
+        VFX_MUZZLE_FLASH          = 0x03,
+        VFX_IMPACT_SPARK          = 0x04,
+        VFX_POWERUP_GLOW          = 0x05,
+        VFX_SHIELD_HIT            = 0x06,
+        VFX_WARP_IN               = 0x07,
+        VFX_WARP_OUT              = 0x08,
+        VFX_CHARGE_BEAM           = 0x09,
+        VFX_FORCE_DETACH          = 0x0A,
+        VFX_PLAYER_SPAWN          = 0x0B,
+        VFX_BOSS_INTRO            = 0x0C
+        // Add more as needed
+    };
+
+    enum class AudioEffectType : uint8_t {
+        SFX_SHOOT_BASIC           = 0x00,
+        SFX_SHOOT_CHARGED         = 0x01,
+        SFX_SHOOT_LASER           = 0x02,
+        SFX_EXPLOSION_SMALL       = 0x03,
+        SFX_EXPLOSION_LARGE       = 0x04,
+        SFX_POWERUP_COLLECT       = 0x05,
+        SFX_PLAYER_HIT            = 0x06,
+        SFX_PLAYER_DEATH          = 0x07,
+        SFX_FORCE_ATTACH          = 0x08,
+        SFX_FORCE_DETACH          = 0x09,
+        SFX_BOSS_ROAR             = 0x0A,
+        SFX_MENU_SELECT           = 0x0B,
+        SFX_ALERT                 = 0x0C
+        // Add more as needed
+    };
+
+    // Server -> Client: Spawn a visual effect
+    struct VisualEffect {
+        PacketHeader    header;                 // type = 0x50
+        uint8_t         effect_type;
+        int16_t         pos_x;
+        int16_t         pos_y;
+        uint16_t        duration_ms;            // Effect duration
+        uint8_t         scale;                  // Scale multiplier (100 = 1.0x)
+        uint8_t         color_tint_r;           // Optional color modulation
+        uint8_t         color_tint_g;
+        uint8_t         color_tint_b;
+    };
+    // Size: 23 bytes
+
+    // Server -> Client: Play an audio effect
+    struct AudioEffect {
+        PacketHeader    header;                 // type = 0x51
+        uint8_t         effect_type;
+        int16_t         pos_x;                  // 3D audio positioning
+        int16_t         pos_y;
+        uint8_t         volume;                 // 0-255
+        uint8_t         pitch;                  // Pitch modifier (100 = normal)
+    };
+    // Size: 19 bytes
+
+    // Server -> Client: Spawn particle system
+    struct ParticleSpawn {
+        PacketHeader    header;                 // type = 0x52
+        uint16_t        particle_system_id;     // Particle system type
+        int16_t         pos_x;
+        int16_t         pos_y;
+        int16_t         velocity_x;             // Initial velocity
+        int16_t         velocity_y;
+        uint16_t        particle_count;         // Number of particles
+        uint16_t        lifetime_ms;            // Particle lifetime
+        uint8_t         color_start_r;          // Start color
+        uint8_t         color_start_g;
+        uint8_t         color_start_b;
+        uint8_t         color_end_r;            // End color (for fade)
+        uint8_t         color_end_g;
+        uint8_t         color_end_b;
+    };
+    // Size: 32 bytes
+
+    // ============================================================================
+    // GAME SYSTEMS (R-Type specific mechanics)
+    // ============================================================================
+
+    enum class ForceAttachmentPoint : uint8_t {
+        FORCE_DETACHED            = 0x00,
+        FORCE_FRONT               = 0x01,
+        FORCE_BACK                = 0x02,
+        FORCE_ORBITING            = 0x03  // For special modes
+    };
+
+    enum class AIBehaviorType : uint8_t {
+        AI_IDLE                   = 0x00,
+        AI_PATROL                 = 0x01,
+        AI_CHASE                  = 0x02,
+        AI_FLEE                   = 0x03,
+        AI_ATTACK_PATTERN_1       = 0x04,  // Straight line
+        AI_ATTACK_PATTERN_2       = 0x05,  // Sine wave
+        AI_ATTACK_PATTERN_3       = 0x06,  // Circle
+        AI_BOSS_PHASE_1           = 0x07,
+        AI_BOSS_PHASE_2           = 0x08,
+        AI_BOSS_PHASE_3           = 0x09,
+        AI_KAMIKAZE               = 0x0A
+        // Add more patterns as needed
+    };
+
+    // Server -> Client: Update Force (R-Type signature weapon) state
+    struct ForceState {
+        PacketHeader    header;                 // type = 0x64
+        uint32_t        force_entity_id;        // The Force entity
+        uint32_t        parent_ship_id;         // Ship it's attached to (0 = detached)
+        uint8_t         attachment_point;       // Where it's attached
+        uint8_t         power_level;            // 1-5
+        uint8_t         charge_percentage;      // 0-100 for charge beam
+        uint8_t         is_firing;              // Boolean flag
+    };
+    // Size: 24 bytes
+
+    // Server -> Client: Update AI state
+    struct AIState {
+        PacketHeader    header;                 // type = 0x65
+        uint32_t        entity_id;              // AI entity
+        uint8_t         current_state;          // Current AI state
+        uint8_t         behavior_type;          // Behavior pattern
+        uint32_t        target_entity_id;       // Current target (0 = no target)
+        int16_t         waypoint_x;             // Next waypoint or target pos
+        int16_t         waypoint_y;
+        uint16_t        state_timer;            // Time remaining in current state
+    };
+    // Size: 30 bytes
+
+    // ============================================================================
+    // HELPER STRUCTURES
+    // ============================================================================
+
+    /**
+     * Structure helper pour construire les snapshots
+     * Utilisé côté serveur pour itérer efficacement sur les composants
+     */
+    struct ComponentSnapshotEntry {
+        uint32_t  entity_id;
+        uint8_t   component_data[32];  // Max component size (ajuster selon besoin)
+    };
+
+    /**
+     * Configuration des fréquences d'update par composant
+     * À ajuster selon les besoins du jeu
+     */
+    struct ComponentUpdateFrequencies {
+        static constexpr uint8_t TRANSFORM_HZ   = 60;  // Critique : mouvement fluide
+        static constexpr uint8_t VELOCITY_HZ    = 30;  // Moyen : prédiction possible
+        static constexpr uint8_t HEALTH_HZ      = 20;  // Bas : changements rares
+        static constexpr uint8_t WEAPON_HZ      = 10;  // Bas : changements rares
+        static constexpr uint8_t AI_HZ          = 5;   // Très bas : prédictible
+        static constexpr uint8_t ANIMATION_HZ   = 15;  // Moyen : visible mais interpolable
+    };
+
+    /**
+     * Masque de bits pour tracking des composants "dirty"
+     * Utilisé pour les delta snapshots
+     */
+    struct ComponentDirtyFlags {
+        static constexpr uint16_t TRANSFORM     = 0x0001;
+        static constexpr uint16_t VELOCITY      = 0x0002;
+        static constexpr uint16_t HEALTH        = 0x0004;
+        static constexpr uint16_t WEAPON        = 0x0008;
+        static constexpr uint16_t AI            = 0x0010;
+        static constexpr uint16_t FORCE         = 0x0020;
+        static constexpr uint16_t COLLISION     = 0x0040;
+        static constexpr uint16_t SPRITE        = 0x0080;
+        static constexpr uint16_t ANIMATION     = 0x0100;
+        static constexpr uint16_t POWERUP       = 0x0200;
+        static constexpr uint16_t SCORE         = 0x0400;
+        static constexpr uint16_t INPUT         = 0x0800;
+        static constexpr uint16_t PHYSICS       = 0x1000;
+        static constexpr uint16_t LIFETIME      = 0x2000;
+        static constexpr uint16_t PARENT        = 0x4000;
+    };
 }
+
+#endif // PROTOCOL_HPP_
