@@ -8,43 +8,43 @@ Here is the class:
 ```c++
 class GameEngine {
     public:
-        void Init();
+        void init();
 
-        Entity CreateEntity(std::string entityName);
-        void DestroyEntity(Entity& e);
-        bool IsAlive(Entity const& entity) const;
-        std::string GetEntityName(Entity const& entity) const;
+        Entity createEntity(std::string entityName);
+        void destroyEntity(Entity& e);
+        bool isAlive(Entity const& entity) const;
+        std::string getEntityName(Entity const& entity) const;
 
         template<class Component>
-        ComponentManager<Component>& RegisterComponent();
+        ComponentManager<Component>& registerComponent();
 
         template <class Component>
         typename ComponentManager<Component>::referenceType
-        AddComponent(Entity const& entity, Component&& component);
+        addComponent(Entity const& entity, Component&& component);
 
         template<class Component, class... Params>
         typename ComponentManager<Component>::referenceType
-        EmplaceComponent(Entity const& entity, Params&&... params);
+        emplaceComponent(Entity const& entity, Params&&... params);
 
         template<class Component>
-        void RemoveComponent(Entity const& entity);
+        void removeComponent(Entity const& entity);
 
         template<typename Component>
-        ComponentManager<Component>& GetComponents() const;
+        ComponentManager<Component>& getComponents() const;
 
         template<typename Component>
-        std::optional<Component>& GetComponentEntity(Entity const& entity) const;
+        std::optional<Component>& getComponentEntity(Entity const& entity) const;
 
         template<class System, class... Params>
-        System& RegisterSystem(Params&&... params);
+        System& registerSystem(Params&&... params);
 
         template<class System>
-        System& GetSystem() const;
+        System& getSystem() const;
 
         template<class System>
-        void RemoveSystem();
+        void removeSystem();
 
-        void UpdateSystems(float dt);
+        void updateSystems(float dt);
 
     private:
         std::unique_ptr<EntityManager> _entityManager;
@@ -53,24 +53,24 @@ class GameEngine {
 ```
 
 ## Initialization
-`Init()`
+`init()`
 ```c++
-void Init();
+void init();
 ```
 **Initializes** the game engine by creating fresh instances of `EntityManager` and `SystemManager`. **This method must be called before any other operations**. It allocates the internal managers using `std::make_unique` to ensure proper lifetime management.
 
 
 ## Entity Lifecyle Operations
-`CreateEntity(std::string entityName)`
+`createEntity(std::string entityName)`
 ```c++
-Entity CreateEntity(std::string entityName);
+Entity createEntity(std::string entityName);
 ```
 **Creates a new entity** with the specified debug name. This method delegates to `EntityManager::spawnEntity()`. Returns the newly created `Entity` object.
 
 
-`DestroyEntity(Entity& e)`
+`destroyEntity(Entity& e)`
 ```c++
-void DestroyEntity(Entity& e);
+void destroyEntity(Entity& e);
 ```
 **Destroys an entity** and **removes all of its components**. This method delegates to `EntityManager::killEntity()`. The entity ID is recycled for future use.
 
@@ -78,68 +78,68 @@ void DestroyEntity(Entity& e);
 > System cleanup for destroyed entities is currently under development.
 
 
-`IsAlive(Entity const& entity)`
+`isAlive(Entity const& entity)`
 ```c++
-bool IsAlive(Entity const& entity) const;
+bool isAlive(Entity const& entity) const;
 ```
 Checks whether the specified entity is currently active. Returns `true` if the **entity exists**, `false` **otherwise**.
 
 
-`GetEntityName(Entity const& entity)`
+`getEntityName(Entity const& entity)`
 ```c++
-std::string GetEntityName(Entity const& entity) const;
+std::string getEntityName(Entity const& entity) const;
 ```
 Retrieves the **debug name** of the specified entity. Useful for logging and debugging purposes.
 
 
 ## Component Type Registration
-`RegisterComponent<Component>()`
+`registerComponent<Component>()`
 ```c++
 template<class Component>
-ComponentManager<Component>& RegisterComponent();
+ComponentManager<Component>& registerComponent();
 ```
 Registers a component type with the engine by creating a `ComponentManager<Component>` in the underlying `EntityManager`. **This must be called once per component type before that type can be used**. Returns a reference to the component manager for the registered type.
 
 
 ## Component Operations
-`AddComponent<Component>(Entity const& entity, Component&& component)`
+`addComponent<Component>(Entity const& entity, Component&& component)`
 ```c++
 template <class Component>
 typename ComponentManager<Component>::referenceType
-AddComponent(Entity const& entity, Component&& component);
+addComponent(Entity const& entity, Component&& component);
 ```
 Attaches an **already-constructed component** to an entity by moving it into storage. The entity **must be alive**. Returns a reference to the stored `std::optional<Component>`.
 
 
-`EmplaceComponent<Component>(Entity const& entity, Params&&... params)`
+`emplaceComponent<Component>(Entity const& entity, Params&&... params)`
 ```c++
 template<class Component, class... Params>
 typename ComponentManager<Component>::referenceType
-EmplaceComponent(Entity const& entity, Params&&... params);
+emplaceComponent(Entity const& entity, Params&&... params);
 ```
-Constructs a component directly in storage at the entity's index using perfect forwarding. This is more efficient than `AddComponent` as it avoids copies or moves. **The component type must have a constructor matching the provided arguments**. Returns a reference to the newly constructed component.
+Constructs a component directly in storage at the entity's index using perfect forwarding. This is more efficient than `addComponent` as it avoids copies or moves. **The component type must have a constructor matching the provided arguments**. Returns a reference to the newly constructed component.
 
 
-`RemoveComponent<Component>(Entity const& entity)`
+`removeComponent<Component>(Entity const& entity)`
 ```c++
 template<class Component>
-void RemoveComponent(Entity const& entity);
+void removeComponent(Entity const& entity);
 ```
 Removes the specified component type from an entity. The component slot becomes empty but **remains allocated** in the `ComponentManager`.
 
 ## Component Access
-`GetComponents<Component>()`
+`getComponents<Component>()`
 ```c++
 template<typename Component>
-ComponentManager<Component>& GetComponents() const;
+ComponentManager<Component>& getComponents() const;
 ```
 Retrieves the `ComponentManager<Component>` for the specified type. This **allows direct iteration** over all components of a given type across all entities. **Useful for implementing systems that process multiple entities**.
 
 
-`GetComponentEntity<Component>(Entity const& entity)`
+`getComponentEntity<Component>(Entity const& entity)`
 ```c++
 template<typename Component>
-std::optional<Component>& GetComponentEntity(Entity const& entity) const;
+std::optional<Component>& getComponentEntity(Entity const& entity) const;
 ```
 Returns a reference to the `std::optional<Component>` for the specified entity. The caller **must check `has_value()` before dereferencing** to ensure the component exists.
 
@@ -150,10 +150,10 @@ The `GameEngine` provides a complete interface for managing game systems, which 
 
 ### System Registration
 
-`RegisterSystem<System>(Params&&... params)`
+`registerSystem<System>(Params&&... params)`
 ```c++
 template<class System, class... Params>
-System& RegisterSystem(Params&&... params);
+System& registerSystem(Params&&... params);
 ```
 **Registers a new system** with the engine by forwarding the provided constructor arguments to the system's constructor. This method delegates to `SystemManager::addSystem()`. **Each system type can only be registered once**. Returns a reference to the newly created system instance.
 
@@ -164,19 +164,19 @@ System& RegisterSystem(Params&&... params);
 **Example:**
 ```c++
 // Register a system with no constructor arguments
-engine.RegisterSystem<RenderSystem>();
+engine.registerSystem<RenderSystem>();
 
 // Register a system with constructor arguments
-engine.RegisterSystem<PhysicsSystem>(9.81f, 60);
+engine.registerSystem<PhysicsSystem>(9.81f, 60);
 ```
 
 
 ### System Access
 
-`GetSystem<System>()`
+`getSystem<System>()`
 ```c++
 template<class System>
-System& GetSystem() const;
+System& getSystem() const;
 ```
 Retrieves a reference to a previously registered system. This allows direct access to system-specific methods and state. **The system must have been registered before calling this method**.
 
@@ -185,17 +185,17 @@ Retrieves a reference to a previously registered system. This allows direct acce
 
 **Example:**
 ```c++
-auto& physics = engine.GetSystem<PhysicsSystem>();
+auto& physics = engine.getSystem<PhysicsSystem>();
 physics.SetGravity(12.0f);
 ```
 
 
 ### System Removal
 
-`RemoveSystem<System>()`
+`removeSystem<System>()`
 ```c++
 template<class System>
-void RemoveSystem();
+void removeSystem();
 ```
 **Removes a system** from the engine. This method delegates to `SystemManager::deleteSystem()`. The system is destroyed and can no longer be accessed or updated.
 
@@ -204,15 +204,15 @@ void RemoveSystem();
 
 **Example:**
 ```c++
-engine.RemoveSystem<DebugRenderSystem>();
+engine.removeSystem<DebugRenderSystem>();
 ```
 
 
 ### System Execution
 
-`UpdateSystems(float dt)`
+`updateSystems(float dt)`
 ```c++
-void UpdateSystems(float dt);
+void updateSystems(float dt);
 ```
 **Executes all registered systems** in the order they were registered. This method should be called once per frame in the game loop. Each system's `update()` method is invoked with the provided delta time.
 
@@ -224,7 +224,7 @@ void UpdateSystems(float dt);
 // In game loop
 while (running) {
     float deltaTime = calculateDeltaTime();
-    engine.UpdateSystems(deltaTime);
+    engine.updateSystems(deltaTime);
 }
 ```
 
@@ -265,8 +265,8 @@ public:
     MovementSystem(GameEngine& engine) : _engine(engine) {}
 
     void update(float dt) {
-        auto& transforms = _engine.GetComponents<Transform>();
-        auto& velocities = _engine.GetComponents<Velocity>();
+        auto& transforms = _engine.getComponents<Transform>();
+        auto& velocities = _engine.getComponents<Velocity>();
 
         for (std::size_t id = 0; id < transforms.size(); ++id) {
             if (!transforms[id].has_value() || !velocities[id].has_value())
@@ -289,7 +289,7 @@ public:
     HealthSystem(GameEngine& engine) : _engine(engine) {}
 
     void update(float dt) {
-        auto& healths = _engine.GetComponents<Health>();
+        auto& healths = _engine.getComponents<Health>();
 
         for (std::size_t id = 0; id < healths.size(); ++id) {
             if (!healths[id].has_value())
@@ -300,8 +300,8 @@ public:
             // Kill entities with zero health
             if (health.current <= 0) {
                 Entity entity(id);
-                if (_engine.IsAlive(entity)) {
-                    _engine.DestroyEntity(entity);
+                if (_engine.isAlive(entity)) {
+                    _engine.destroyEntity(entity);
                 }
             }
         }
@@ -318,28 +318,28 @@ int main()
 {
     // Initialize engine
     GameEngine engine;
-    engine.Init();
+    engine.init();
 
     // Register component types
-    engine.RegisterComponent<Transform>();
-    engine.RegisterComponent<Health>();
-    engine.RegisterComponent<Velocity>();
+    engine.registerComponent<Transform>();
+    engine.registerComponent<Health>();
+    engine.registerComponent<Velocity>();
 
     // Register systems
-    engine.RegisterSystem<MovementSystem>(engine);
-    engine.RegisterSystem<HealthSystem>(engine);
+    engine.registerSystem<MovementSystem>(engine);
+    engine.registerSystem<HealthSystem>(engine);
 
     // Create entities
-    Entity player = engine.CreateEntity("Player");
-    Entity enemy = engine.CreateEntity("Enemy");
+    Entity player = engine.createEntity("Player");
+    Entity enemy = engine.createEntity("Enemy");
 
     // Attach components
-    engine.EmplaceComponent<Transform>(player, 0.f, 0.f, 0.f);
-    engine.EmplaceComponent<Health>(player, 100, 100);
-    engine.EmplaceComponent<Velocity>(player, 5.f, 0.f);
+    engine.emplaceComponent<Transform>(player, 0.f, 0.f, 0.f);
+    engine.emplaceComponent<Health>(player, 100, 100);
+    engine.emplaceComponent<Velocity>(player, 5.f, 0.f);
 
-    engine.EmplaceComponent<Transform>(enemy, 50.f, 30.f, 180.f);
-    engine.EmplaceComponent<Health>(enemy, 50, 50);
+    engine.emplaceComponent<Transform>(enemy, 50.f, 30.f, 180.f);
+    engine.emplaceComponent<Health>(enemy, 50, 50);
 
     // Game loop
     bool running = true;
@@ -347,16 +347,16 @@ int main()
 
     while (running) {
         // Update all systems
-        engine.UpdateSystems(deltaTime);
+        engine.updateSystems(deltaTime);
 
         // Access and modify components
-        auto& playerHealth = engine.GetComponentEntity<Health>(player);
+        auto& playerHealth = engine.getComponentEntity<Health>(player);
         if (playerHealth.has_value()) {
             playerHealth->current -= 1; // Take damage each frame
         }
 
         // Check entity status
-        if (!engine.IsAlive(player)) {
+        if (!engine.isAlive(player)) {
             std::cout << "Player died!\n";
             running = false;
         }
@@ -371,20 +371,20 @@ int main()
 int main()
 {
     GameEngine engine;
-    engine.Init();
+    engine.init();
 
-    engine.RegisterComponent<Transform>();
+    engine.registerComponent<Transform>();
 
-    Entity e1 = engine.CreateEntity("ObjectA");
-    Entity e2 = engine.CreateEntity("ObjectB");
-    Entity e3 = engine.CreateEntity("ObjectC");
+    Entity e1 = engine.createEntity("ObjectA");
+    Entity e2 = engine.createEntity("ObjectB");
+    Entity e3 = engine.createEntity("ObjectC");
 
-    engine.EmplaceComponent<Transform>(e1, 10.f, 20.f, 0.f);
-    engine.EmplaceComponent<Transform>(e2, 30.f, 40.f, 90.f);
-    engine.EmplaceComponent<Transform>(e3, 50.f, 60.f, 180.f);
+    engine.emplaceComponent<Transform>(e1, 10.f, 20.f, 0.f);
+    engine.emplaceComponent<Transform>(e2, 30.f, 40.f, 90.f);
+    engine.emplaceComponent<Transform>(e3, 50.f, 60.f, 180.f);
 
     // Get all transforms
-    auto& transforms = engine.GetComponents<Transform>();
+    auto& transforms = engine.getComponents<Transform>();
 
     // Process all entities with transforms
     for (std::size_t id = 0; id < transforms.size(); ++id) {
@@ -407,7 +407,7 @@ The `GameEngine` class acts as a facade pattern, hiding the complexity of the un
 
 - **Simplifies API usage**: Game developers interact with a **single class** instead of managing multiple managers.
 - **Encapsulates implementation details**: Internal changes to `EntityManager` or `SystemManager` **don't affect** client code.
-- **Centralizes initialization**: All ECS components are initialized through **a single `Init()` call**.
+- **Centralizes initialization**: All ECS components are initialized through **a single `init()` call**.
 - **Maintains type safety**: Template methods preserve compile-time type checking while allowing flexible component types.
 - **Coordinates system execution**: The engine manages system lifecycle and execution order through a simple update loop.
 
@@ -428,7 +428,7 @@ Systems in this ECS architecture follow these conventions:
 
 - **Register all component types** before creating entities that use them.
 - **Register all systems** before entering the game loop.
-- **Call `UpdateSystems()`** once per frame with accurate delta time.
+- **Call `updateSystems()`** once per frame with accurate delta time.
 - **Systems should be independent**: Avoid tight coupling between systems; use components for communication.
 - **Use system order wisely**: Systems execute in registration order, so register dependent systems accordingly (e.g., physics before rendering).
-- **Handle destroyed entities**: Systems should check `IsAlive()` or validate component existence before accessing entity data.
+- **Handle destroyed entities**: Systems should check `isAlive()` or validate component existence before accessing entity data.

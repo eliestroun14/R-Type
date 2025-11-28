@@ -47,7 +47,7 @@ TEST_F(EntityManagerTest, KillEntityWithComponent) {
     EXPECT_FALSE(em.isAlive(e));
 }
 
-TEST_F(EntityManagerTest, AddComponent) {
+TEST_F(EntityManagerTest, addComponent) {
     Entity e = em.spawnEntity("TestEntity");
     em.emplaceComponent<Position>(e, 10.f, 20.f);
 
@@ -57,7 +57,7 @@ TEST_F(EntityManagerTest, AddComponent) {
     EXPECT_FLOAT_EQ(pos->y, 20.f);
 }
 
-TEST_F(EntityManagerTest, RemoveComponent) {
+TEST_F(EntityManagerTest, removeComponent) {
     Entity e = em.spawnEntity("TestEntity");
     em.emplaceComponent<Position>(e, 10.f, 20.f);
 
