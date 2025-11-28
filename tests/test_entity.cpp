@@ -11,7 +11,7 @@
 
 TEST(EntityTest, ImplicitConversion) {
     EntityManager em;
-    Entity e = em.spawn_entity("Test");
+    Entity e = em.spawnEntity("Test");
 
     size_t id = e; // Test implicit conversion
     EXPECT_GE(id, 0);
@@ -19,9 +19,9 @@ TEST(EntityTest, ImplicitConversion) {
 
 TEST(EntityTest, MultipleEntitiesHaveUniqueIds) {
     EntityManager em;
-    Entity e1 = em.spawn_entity("First");
-    Entity e2 = em.spawn_entity("Second");
-    Entity e3 = em.spawn_entity("Third");
+    Entity e1 = em.spawnEntity("First");
+    Entity e2 = em.spawnEntity("Second");
+    Entity e3 = em.spawnEntity("Third");
 
     size_t id1 = e1;
     size_t id2 = e2;

@@ -300,7 +300,7 @@ int main()
     sm.onCreateAll();
 
     // Create entities and add them to systems
-    Entity player = em.spawn_entity("Player");
+    Entity player = em.spawnEntity("Player");
     sm.getSystem<MovementSystem>().addEntity(player);
 
     // Main game loop
@@ -327,8 +327,8 @@ class PhysicsSystem : public System {
         PhysicsSystem(EntityManager& em) : _em(em) {}
 
         void onUpdate(float dt) override {
-            auto& positions = _em.get_components<Position>();
-            auto& velocities = _em.get_components<Velocity>();
+            auto& positions = _em.getComponents<Position>();
+            auto& velocities = _em.getComponents<Velocity>();
 
             for (auto const& entity : _entities) {
                 std::size_t id = static_cast<std::size_t>(entity);
@@ -354,16 +354,16 @@ int main()
     SystemManager sm;
 
     // Register components
-    em.register_component<Position>();
-    em.register_component<Velocity>();
+    em.registerComponent<Position>();
+    em.registerComponent<Velocity>();
 
     // Add system with EntityManager reference
     sm.addSystem<PhysicsSystem>(em);
 
     // Create entity with components
-    Entity e = em.spawn_entity("MovingObject");
-    em.emplace_component<Position>(e, 0.f, 0.f);
-    em.emplace_component<Velocity>(e, 10.f, 5.f);
+    Entity e = em.spawnEntity("MovingObject");
+    em.emplaceComponent<Position>(e, 0.f, 0.f);
+    em.emplaceComponent<Velocity>(e, 10.f, 5.f);
 
     // Add entity to system
     sm.getSystem<PhysicsSystem>().addEntity(e);

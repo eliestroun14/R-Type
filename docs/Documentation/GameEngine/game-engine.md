@@ -19,11 +19,11 @@ class GameEngine {
         ComponentManager<Component>& RegisterComponent();
 
         template <class Component>
-        typename ComponentManager<Component>::reference_type
+        typename ComponentManager<Component>::referenceType
         AddComponent(Entity const& entity, Component&& component);
 
         template<class Component, class... Params>
-        typename ComponentManager<Component>::reference_type
+        typename ComponentManager<Component>::referenceType
         EmplaceComponent(Entity const& entity, Params&&... params);
 
         template<class Component>
@@ -65,14 +65,14 @@ void Init();
 ```c++
 Entity CreateEntity(std::string entityName);
 ```
-**Creates a new entity** with the specified debug name. This method delegates to `EntityManager::spawn_entity()`. Returns the newly created `Entity` object.
+**Creates a new entity** with the specified debug name. This method delegates to `EntityManager::spawnEntity()`. Returns the newly created `Entity` object.
 
 
 `DestroyEntity(Entity& e)`
 ```c++
 void DestroyEntity(Entity& e);
 ```
-**Destroys an entity** and **removes all of its components**. This method delegates to `EntityManager::kill_entity()`. The entity ID is recycled for future use.
+**Destroys an entity** and **removes all of its components**. This method delegates to `EntityManager::killEntity()`. The entity ID is recycled for future use.
 
 > [!NOTE]
 > System cleanup for destroyed entities is currently under development.
@@ -105,7 +105,7 @@ Registers a component type with the engine by creating a `ComponentManager<Compo
 `AddComponent<Component>(Entity const& entity, Component&& component)`
 ```c++
 template <class Component>
-typename ComponentManager<Component>::reference_type
+typename ComponentManager<Component>::referenceType
 AddComponent(Entity const& entity, Component&& component);
 ```
 Attaches an **already-constructed component** to an entity by moving it into storage. The entity **must be alive**. Returns a reference to the stored `std::optional<Component>`.
@@ -114,7 +114,7 @@ Attaches an **already-constructed component** to an entity by moving it into sto
 `EmplaceComponent<Component>(Entity const& entity, Params&&... params)`
 ```c++
 template<class Component, class... Params>
-typename ComponentManager<Component>::reference_type
+typename ComponentManager<Component>::referenceType
 EmplaceComponent(Entity const& entity, Params&&... params);
 ```
 Constructs a component directly in storage at the entity's index using perfect forwarding. This is more efficient than `AddComponent` as it avoids copies or moves. **The component type must have a constructor matching the provided arguments**. Returns a reference to the newly constructed component.

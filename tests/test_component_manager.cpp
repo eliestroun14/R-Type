@@ -17,7 +17,7 @@ struct Health {
 TEST(ComponentManagerTest, InsertAt) {
     ComponentManager<Health> mgr;
 
-    mgr.insert_at(0, Health{100, 100});
+    mgr.insertAt(0, Health{100, 100});
 
     ASSERT_TRUE(mgr[0].has_value());
     EXPECT_EQ(mgr[0]->current, 100);
@@ -27,7 +27,7 @@ TEST(ComponentManagerTest, InsertAt) {
 TEST(ComponentManagerTest, Size) {
     ComponentManager<Health> mgr;
 
-    mgr.emplace_at(5, 50, 100);
+    mgr.emplaceAt(5, 50, 100);
 
     EXPECT_EQ(mgr.size(), 6);
 }
@@ -35,7 +35,7 @@ TEST(ComponentManagerTest, Size) {
 TEST(ComponentManagerTest, EmplaceAt) {
     ComponentManager<Health> mgr;
 
-    mgr.emplace_at(5, 50, 100);
+    mgr.emplaceAt(5, 50, 100);
 
     EXPECT_EQ(mgr.size(), 6);
     ASSERT_TRUE(mgr[5].has_value());
@@ -45,7 +45,7 @@ TEST(ComponentManagerTest, EmplaceAt) {
 TEST(ComponentManagerTest, Erase) {
     ComponentManager<Health> mgr;
 
-    mgr.emplace_at(0, 100, 100);
+    mgr.emplaceAt(0, 100, 100);
     EXPECT_TRUE(mgr[0].has_value());
 
     mgr.erase(0);
@@ -55,9 +55,9 @@ TEST(ComponentManagerTest, Erase) {
 TEST(ComponentManagerTest, Iteration) {
     ComponentManager<Health> mgr;
 
-    mgr.emplace_at(0, 100, 100);
-    mgr.emplace_at(2, 50, 50);
-    mgr.emplace_at(4, 75, 75);
+    mgr.emplaceAt(0, 100, 100);
+    mgr.emplaceAt(2, 50, 50);
+    mgr.emplaceAt(4, 75, 75);
 
     int count = 0;
     for (auto& health : mgr) {

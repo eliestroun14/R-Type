@@ -204,6 +204,6 @@ This example demonstrates component insertion, access, iteration, and removal us
 
 ## Integration with EntityManager
 
-`EntityManager` **stores one** `ComponentManager<T>` **per registered component type** inside a `std::unordered_map<std::type_index, std::any>`. When you call `register_component<T>()`, **it creates a** `ComponentManager<T>` **and wraps it in** `std::any`. All subsequent component operations extract the manager using `std::any_cast` and forward calls to the appropriate `ComponentManager` methods.
+`EntityManager` **stores one** `ComponentManager<T>` **per registered component type** inside a `std::unordered_map<std::type_index, std::any>`. When you call `registerComponent<T>()`, **it creates a** `ComponentManager<T>` **and wraps it in** `std::any`. All subsequent component operations extract the manager using `std::any_cast` and forward calls to the appropriate `ComponentManager` methods.
 
 This architecture keeps **component storage contiguous and type-safe while allowing `EntityManager` to manage multiple component types dynamically**.
