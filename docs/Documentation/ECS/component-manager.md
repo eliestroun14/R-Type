@@ -16,9 +16,9 @@ class ComponentManager {
         using referenceType = valueType &;
         using constReferenceType = valueType const&;
         using containerT = std::vector<valueType>;
-        using sizeType = typename containerT::sizeType;
+        using sizeType = typename containerT::size_type;
         using iterator = typename containerT::iterator;
-        using constIterator = typename containerT::constIterator;
+        using constIterator = typename containerT::const_iterator;
 
     public:
         ComponentManager() = default;
