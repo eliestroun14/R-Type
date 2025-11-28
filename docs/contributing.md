@@ -9,7 +9,8 @@ Welcome to the R-Type project! This guide will help you understand how to contri
 3. [Commit Structure](#commit-structure)
 4. [Examples](#examples)
 5. [Best Practices](#best-practices)
-6. [FAQ](#faq)
+6. [Programming Case Types](#programming-case-types)
+7. [FAQ](#faq)
 
 ---
 
@@ -321,6 +322,16 @@ Here's a complete workflow for contributing:
 4. **Create a Pull Request** on GitHub following the PR template
 
 5. **Wait for review and merge**
+
+---
+
+## Programming Case Types
+
+| Type | Case used | Example |
+|------|-------------|------------------|
+| `class` and `struct` | 👨‍🔬 PascalCase `PascalCase` | `class EntityManager` or `struct MovementPattern` |
+| Methods and variables | 🐫 `camelCase` | `std::string getEntityName()` or `int entityId` |
+| Variables in `class` | 🐫 `camelCase` but with a `_` before the variable name | `std::size_t _entityId` |
 
 ---
 
