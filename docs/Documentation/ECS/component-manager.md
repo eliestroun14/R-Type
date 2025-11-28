@@ -65,7 +65,7 @@ The class defines several type **aliases** to match standard container conventio
 `referenceType`: `std::optional<Component>&` — mutable reference to an element.
 `constReferenceType`: const `std::optional<Component>&` — const reference to an element.
 `containerT`: `std::vector<std::optional<Component>>` — the underlying storage.
-`sizeType`: `std::vector::sizeType` — unsigned integer type for sizes and indices.
+`sizeType`: `std::vector::size_type` — unsigned integer type for sizes and indices.
 `iterator` and `constIterator`: standard iterator types from the vector.
 
 ## Construction and Assignment
