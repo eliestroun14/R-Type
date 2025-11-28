@@ -30,17 +30,17 @@
 //     EntityManager em;
 
 //     std::cout << "Registering component..." << std::endl;
-//     em.register_component<Position>();
+//     em.registerComponent<Position>();
 
 //     std::cout << "Spawning entity..." << std::endl;
-//     Entity e = em.spawn_entity("TestEntity");
+//     Entity e = em.spawnEntity("TestEntity");
 
 //     std::cout << "Entity ID: " << static_cast<size_t>(e) << std::endl;
-//     std::cout << "Is alive before kill: " << em.is_alive(e) << std::endl;
+//     std::cout << "Is alive before kill: " << em.isAlive(e) << std::endl;
 
 //     std::cout << "Killing entity..." << std::endl;
-//     em.kill_entity(e);  // <- Le SEGFAULT arrive probablement ici
+//     em.killEntity(e);  // <- Le SEGFAULT arrive probablement ici
 
-//     std::cout << "Is alive after kill: " << em.is_alive(e) << std::endl;
-//     EXPECT_FALSE(em.is_alive(e));
+//     std::cout << "Is alive after kill: " << em.isAlive(e) << std::endl;
+//     EXPECT_FALSE(em.isAlive(e));
 // }

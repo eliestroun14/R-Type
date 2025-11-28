@@ -9,8 +9,8 @@ Google Test is the standard for C++ unit testing in professional environments. I
 ### Clear and Expressive Syntax
 The framework provides intuitive assertion macros that make tests readable and maintainable:
 ```c++
-EXPECT_EQ(engine.GetEntityName(e), "Player");
-EXPECT_TRUE(engine.IsAlive(e));
+EXPECT_EQ(engine.getEntityName(e), "Player");
+EXPECT_TRUE(engine.isAlive(e));
 ASSERT_TRUE(component.has_value());
 ```
 The distinction between `EXPECT_*` (continues on failure) and `ASSERT_*` (stops on failure) allows fine-grained control over test execution flow, which is crucial when testing complex ECS state.
@@ -21,9 +21,9 @@ ECS testing requires repeated initialization sequences. Google Test's fixture sy
 class ECSTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        engine.Init();
-        engine.RegisterComponent<Position>();
-        engine.RegisterComponent<Velocity>();
+        engine.init();
+        engine.registerComponent<Position>();
+        engine.registerComponent<Velocity>();
     }
 
     GameEngine engine;

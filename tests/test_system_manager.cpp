@@ -49,7 +49,7 @@ TEST(SystemManagerTest, AddSystemAndHasSystem)
     EXPECT_TRUE(sys.empty());
 
     EntityManager em;
-    Entity e = em.spawn_entity("dummy");
+    Entity e = em.spawnEntity("dummy");
     sys.addEntity(e);
 
     EXPECT_FALSE(sys.empty());
@@ -135,7 +135,7 @@ TEST(SystemManagerTest, UpdateAllCallsOnUpdateWhenNotEmpty)
     auto &sys = manager.addSystem<DummySystem>();
 
     EntityManager em;
-    Entity e = em.spawn_entity("dummy");
+    Entity e = em.spawnEntity("dummy");
     sys.addEntity(e);
 
     EXPECT_EQ(sys.updateCount, 0);

@@ -21,7 +21,7 @@ class GameEngine {
         //                          Initialisation
         // ==============================================================
 
-        void Init()
+        void init()
         {
             this->_entityManager = std::make_unique<EntityManager>();
             this->_systemManager = std::make_unique<SystemManager>();
@@ -31,24 +31,24 @@ class GameEngine {
         //                        Gestion des entités
         // ==============================================================
 
-        Entity CreateEntity(const std::string &entityName)
+        Entity createEntity(const std::string &entityName)
         {
-            return this->_entityManager->spawn_entity(entityName);
+            return this->_entityManager->spawnEntity(entityName);
         }
 
-        void DestroyEntity(Entity &e)
+        void destroyEntity(Entity &e)
         {
-            this->_entityManager->kill_entity(e);
+            this->_entityManager->killEntity(e);
         }
 
-        bool IsAlive(Entity const &entity) const
+        bool isAlive(Entity const &entity) const
         {
-            return this->_entityManager->is_alive(entity);
+            return this->_entityManager->isAlive(entity);
         }
 
-        std::string GetEntityName(Entity const &entity) const
+        std::string getEntityName(Entity const &entity) const
         {
-            return this->_entityManager->get_entity_name(entity);
+            return this->_entityManager->getEntityName(entity);
         }
 
         // ==============================================================
@@ -56,41 +56,41 @@ class GameEngine {
         // ==============================================================
 
         template<class Component>
-        ComponentManager<Component> &RegisterComponent()
+        ComponentManager<Component> &registerComponent()
         {
-            return this->_entityManager->register_component<Component>();
+            return this->_entityManager->registerComponent<Component>();
         }
 
         template <class Component>
-        typename ComponentManager<Component>::reference_type
-            AddComponent(Entity const &entity, Component &&component)
+        typename ComponentManager<Component>::referenceType
+            addComponent(Entity const &entity, Component &&component)
         {
-            return this->_entityManager->add_component(entity, component);
+            return this->_entityManager->addComponent(entity, component);
         }
 
         template<class Component, class... Params>
-        typename ComponentManager<Component>::reference_type
-            EmplaceComponent(Entity const &entity, Params&&... params)
+        typename ComponentManager<Component>::referenceType
+            emplaceComponent(Entity const &entity, Params&&... params)
         {
-            return this->_entityManager->emplace_component<Component>(entity, params...);
+            return this->_entityManager->emplaceComponent<Component>(entity, params...);
         }
 
         template<class Component>
-        void RemoveComponent(Entity const &entity)
+        void removeComponent(Entity const &entity)
         {
-            this->_entityManager->remove_component<Component>(entity);
+            this->_entityManager->removeComponent<Component>(entity);
         }
 
         template<typename Component>
-        ComponentManager<Component> &GetComponents() const
+        ComponentManager<Component> &getComponents() const
         {
-            return this->_entityManager->get_components<Component>();
+            return this->_entityManager->getComponents<Component>();
         }
 
         template<typename Component>
-        std::optional<Component> &GetComponentEntity(Entity const &entity) const
+        std::optional<Component> &getComponentEntity(Entity const &entity) const
         {
-            return this->_entityManager->get_component<Component>(entity);
+            return this->_entityManager->getComponent<Component>(entity);
         }
 
         // ==============================================================
@@ -98,24 +98,24 @@ class GameEngine {
         // ==============================================================
 
         template<class System, class... Params>
-        System &RegisterSystem(Params &&... params)
+        System &registerSystem(Params &&... params)
         {
             return this->_systemManager->addSystem<System>(std::forward<Params>(params)...);
         }
 
         template<class System>
-        System &GetSystem() const
+        System &getSystem() const
         {
             return this->_systemManager->getSystem<System>();
         }
 
         template<class System>
-        void RemoveSystem()
+        void removeSystem()
         {
             this->_systemManager->deleteSystem<System>();
         }
 
-        void UpdateSystems(float dt)
+        void updateSystems(float dt)
         {
             this->_systemManager->updateAll(dt);
         }
