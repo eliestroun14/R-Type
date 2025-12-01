@@ -90,9 +90,9 @@ nav:
     - Documentation/index.md
     - Writing Guide: Documentation/writing-guide.md
     - Game Engine:
-      - Game Engine: Documentation/GameEngine/game-engine.md
+      - Game Engine: Documentation/GameEngine/index.md
       - ECS:
-        - What is an ECS: Documentation/ECS/ecs.md
+        - What is an ECS: Documentation/ECS/index.md
         - Entity: Documentation/ECS/entity.md
         - Component Manager: Documentation/ECS/component-manager.md
     - Tests:
