@@ -43,9 +43,6 @@
 build/
 .tmp
 
-
-.vscode
-
 # lATEX intermediate files
 *.aux
 *.lof
@@ -67,3 +64,4 @@ build/
 *.xdv
 
 vgcore.*
+*.xdv
