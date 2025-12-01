@@ -15,6 +15,7 @@ add_executable(ecs_tests
     test_game_engine.cpp
     test_debug.cpp
     test_system_manager.cpp
+    LoggerTest.cpp
 
     ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS/System/System.cpp
 )
@@ -24,6 +25,8 @@ target_link_libraries(ecs_tests
     GTest::GTest
     GTest::Main
     pthread
+    logger
+    spdlog::spdlog
 )
 
 # Discover tests
