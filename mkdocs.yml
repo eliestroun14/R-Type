@@ -104,6 +104,9 @@ nav:
       - Configuration: Logger/configuration.md
       - Usage Guide: Logger/usage.md
       - API Reference: Logger/api-reference.md
+    - Error_messages:
+      - Error_messages/index.md
+      - How to add error messages: Error_messages/how_to.md
 
   - Contributing: contributing.md
   - Expectations: Expectations/expectations.md
