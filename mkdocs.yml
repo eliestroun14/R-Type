@@ -90,9 +90,9 @@ nav:
     - Documentation/index.md
     - Writing Guide: Documentation/writing-guide.md
     - Game Engine:
-      - Game Engine: Documentation/GameEngine/game-engine.md
+      - Game Engine: Documentation/GameEngine/index.md
       - ECS:
-        - What is an ECS: Documentation/ECS/ecs.md
+        - What is an ECS: Documentation/ECS/index.md
         - Entity: Documentation/ECS/entity.md
         - Component Manager: Documentation/ECS/component-manager.md
     - Tests:
@@ -104,6 +104,13 @@ nav:
       - Configuration: Logger/configuration.md
       - Usage Guide: Logger/usage.md
       - API Reference: Logger/api-reference.md
+    - Client:
+      - Documentation/Client/index.md
+      - Graphical library: Documentation/Client/graphical-lib.md
+      # - Networking: Documentation/Client/networking.md
+      # - Rendering: Documentation/Client/rendering.md
+      # - User Input: Documentation/Client/user-input.md
+      # - Audio: Documentation/Client/audio.md
 
   - Contributing: contributing.md
   - Expectations: Expectations/expectations.md
