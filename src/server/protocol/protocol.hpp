@@ -731,7 +731,7 @@ namespace protocol {
     // Usage : Spawn complet d'un joueur avec tous ses composants
 
     // ============================================================================
-    // EFFECTS SYSTEM (Visual and Audio feedback)
+    // EFFECTS SYSTEM (Visual and Audio feedback
     // ============================================================================
 
     enum class VisualEffectType : uint8_t {
