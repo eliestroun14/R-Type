@@ -89,6 +89,21 @@ nav:
   - Documentation:
     - Documentation/index.md
     - Writing Guide: Documentation/writing-guide.md
+    - Game Engine:
+      - Game Engine: Documentation/GameEngine/game-engine.md
+      - ECS:
+        - What is an ECS: Documentation/ECS/ecs.md
+        - Entity: Documentation/ECS/entity.md
+        - Component Manager: Documentation/ECS/component-manager.md
+    - Tests:
+      - Why Google Test ?: Documentation/Test/justification.md
+      - How to add new tests: Documentation/Test/tutorial.md
+    - Logger:
+      - Logger/index.md
+      - Getting Started: Logger/getting-started.md
+      - Configuration: Logger/configuration.md
+      - Usage Guide: Logger/usage.md
+      - API Reference: Logger/api-reference.md
 
   - Contributing: contributing.md
   - Expectations: Expectations/expectations.md
