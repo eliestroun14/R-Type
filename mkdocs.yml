@@ -87,7 +87,7 @@ nav:
   - Home: index.md
 
   - Game Engine & Architecture:
-    - Game Engine: Documentation/GameEngine/index.md
+    - Game Engine: GameEngine/index.md
     - ECS:
       - What is an ECS: ECS/index.md
       - Entity: ECS/entity.md
