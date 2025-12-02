@@ -116,7 +116,7 @@ nav:
 
   - Contributing:
     - Documentation:
-      - Documentation/index.md
-      - Writing Guide: Documentation/writing-guide.md
-    - Contributing Guide: contributing.md
-    - Expectations: Expectations/expectations.md
+      - Contributing/Documentation/index.md
+      - Writing Guide: Contributing/Documentation/writing-guide.md
+    - Contributing Guide: Contributing/contributing.md
+    - Expectations: Contributing/Expectations/expectations.md
