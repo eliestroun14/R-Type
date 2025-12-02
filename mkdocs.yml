@@ -104,6 +104,7 @@ nav:
       - Configuration: Logger/configuration.md
       - Usage Guide: Logger/usage.md
       - API Reference: Logger/api-reference.md
+      - Design Rationale: Logger/design-rationale.md
     - Client:
       - Documentation/Client/index.md
       - Graphical library: Documentation/Client/graphical-lib.md
