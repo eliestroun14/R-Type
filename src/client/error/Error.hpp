@@ -3,6 +3,7 @@
 
 #include <exception>
 #include <string>
+#include "ErrorMessages.hpp"
 
 // Enum for error types
 enum class ErrorType {
@@ -10,7 +11,22 @@ enum class ErrorType {
     GameplayError,
     ResourceError,
     ConfigurationError,
-    SystemError
+    SystemError,
+    ServerError,
+    ClientError,
+    ClientGraphicalError,
+    InvalidMagicNumber,
+    InvalidPacketType,
+    InvalidSize,
+    CorruptedData,
+    ConnectionFailed,
+    Disconnected,
+    InvalidResponse,
+    Timeout,
+    RenderFailure,
+    ResourceLoadFailure,
+    UnsupportedResolution,
+    GraphicsInitializationFailed
 };
 
 class Error : public std::exception {
