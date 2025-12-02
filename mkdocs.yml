@@ -107,7 +107,8 @@ nav:
     - Test/justification.md
     - How to add new tests: Test/tutorial.md
 
-  - Build System: Cmake/cpm-rationale.md
+  - Build System:
+    - Cmake/cpm-rationale.md
 
   - Client:
     - Client/index.md
