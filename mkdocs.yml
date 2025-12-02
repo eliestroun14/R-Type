@@ -31,7 +31,6 @@ theme:
     - navigation.expand            # Auto-expand sections
     - navigation.indexes           # Pages d'index pour sections
     - navigation.top               # Bouton "Back to top"
-    - toc.integrate
 
     # Recherche
     - search.suggest
@@ -89,13 +88,13 @@ nav:
   - Game Engine & Architecture:
     - Game Engine: Documentation/GameEngine/index.md
     - ECS:
-      - Overview: ECS/index.md
+      - What is an ECS: ECS/index.md
       - Entity: ECS/entity.md
       - Component Manager: ECS/component-manager.md
       - System: ECS/system.md
 
   - Logger:
-    - Overview: Logger/index.md
+    - Logger/index.md
     - Getting Started: Logger/getting-started.md
     - Configuration: Logger/configuration.md
     - Usage Guide: Logger/usage.md
@@ -103,7 +102,6 @@ nav:
     - Design Rationale: Logger/design-rationale.md
 
   - Tests:
-    - Overview: Test/justification.md
     - Why Google Test ?: Test/justification.md
     - How to add new tests: Test/tutorial.md
 
@@ -111,7 +109,7 @@ nav:
     - CPM Rationale: cmake/cpm-rationale.md
 
   - Client:
-    - Overview: Client/index.md
+    - Client/index.md
     - Graphical library: Client/graphical-lib.md
 
   - Contributing:
