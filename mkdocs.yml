@@ -87,7 +87,7 @@ nav:
   - Home: index.md
 
   - Game Engine & Architecture:
-    - GameEngine&Architecture/index.md
+    - Overview: GameEngine&Architecture/index.md
     - Game Engine: GameEngine&Architecture/GameEngine/index.md
     - ECS:
       - What is an ECS: GameEngine&Architecture/ECS/index.md
@@ -96,7 +96,7 @@ nav:
       - System: GameEngine&Architecture/ECS/system.md
 
   - Logger:
-    - Logger/index.md
+    - Overview: Logger/index.md
     - Getting Started: Logger/getting-started.md
     - Configuration: Logger/configuration.md
     - Usage Guide: Logger/usage.md
@@ -104,20 +104,20 @@ nav:
     - Design Rationale: Logger/design-rationale.md
 
   - Tests:
-    - Test/justification.md
+    - Overview: Test/justification.md
     - How to add new tests: Test/tutorial.md
 
   - Build System:
-    - Cmake/cpm-rationale.md
+    - Overview: Cmake/cpm-rationale.md
 
   - Client:
-    - Client/index.md
+    - Overview: Client/index.md
     - Graphical library: Client/graphical-lib.md
 
   - Contributing:
     - Contributing/index.md
     - Documentation:
-      - Contributing/Documentation/index.md
+      - Overview: Contributing/Documentation/index.md
       - Writing Guide: Contributing/Documentation/writing-guide.md
     - Contributing Guide: Contributing/contributing.md
     - Expectations: Contributing/Expectations/expectations.md
