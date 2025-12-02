@@ -16,6 +16,9 @@ enum class ErrorType {
     ResourceError,
     ConfigurationError,
     SystemError,
+    ServerError,
+    ClientError,
+    ClientGraphicalError,
     NewErrorType // Add your new error type here
 };
 ```

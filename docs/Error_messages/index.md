@@ -11,6 +11,21 @@ The `Error` class supports the following error types:
 - **ResourceError**: For problems with loading or accessing resources.
 - **ConfigurationError**: For invalid or missing configuration parameters.
 - **SystemError**: For system-level issues such as permissions or hardware limitations.
+- **ServerError**: For errors occurring on the server side, such as invalid packets or corrupted data.
+- **ClientError**: For client-side issues, such as connection failures or timeouts.
+- **ClientGraphicalError**: For graphical interface issues, such as rendering failures or unsupported resolutions.
+- **InvalidMagicNumber**: For packets with unrecognized headers.
+- **InvalidPacketType**: For packets with unknown types.
+- **InvalidSize**: For packets with inconsistent sizes.
+- **CorruptedData**: For packets with unreadable or malformed payloads.
+- **ConnectionFailed**: For failures to establish a connection to the server.
+- **Disconnected**: For unexpected disconnections from the server.
+- **InvalidResponse**: For unrecognized or malformed server responses.
+- **Timeout**: For server responses that exceed the expected time frame.
+- **RenderFailure**: For failures to render the graphical interface.
+- **ResourceLoadFailure**: For failures to load graphical assets such as textures or models.
+- **UnsupportedResolution**: For unsupported screen resolutions.
+- **GraphicsInitializationFailed**: For failures to initialize the graphical subsystem.
 
 ## Usage
 
@@ -22,7 +37,7 @@ To throw an error, create an instance of the `Error` class with the appropriate 
 #include "ErrorMessages.hpp"
 
 void connectToServer() {
-    throw Error(ErrorType::NetworkError, ErrorMessages::NETWORK_ERROR);
+    throw Error(ErrorType::ConnectionFailed, ErrorMessages::CONNECTION_FAILED);
 }
 ```
 
@@ -34,7 +49,7 @@ try {
     connectToServer();
 } catch (const Error &e) {
     std::cerr << "Error: " << e.what() << std::endl;
-    if (e.getType() == ErrorType::NetworkError) {
+    if (e.getType() == ErrorType::ConnectionFailed) {
         std::cerr << "Please check your network connection." << std::endl;
     }
 }
