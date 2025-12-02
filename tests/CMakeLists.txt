@@ -16,6 +16,7 @@ add_executable(ecs_tests
     test_debug.cpp
     test_system_manager.cpp
     LoggerTest.cpp
+    Error_messages_test.cpp
 
     ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS/System/System.cpp
 )
