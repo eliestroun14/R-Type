@@ -28,9 +28,9 @@ theme:
   features:
     # Navigation
     - navigation.sections          # Sections dépliables
-    - navigation.expand            # Auto-expand sections
     - navigation.indexes           # Pages d'index pour sections
     - navigation.top               # Bouton "Back to top"
+    - navigation.prune             # Hide nav items not on current page
 
     # Recherche
     - search.suggest
@@ -51,6 +51,7 @@ theme:
 plugins:
   - search
   - include-markdown
+  - section-index
 
 markdown_extensions:
   # Code blocks
