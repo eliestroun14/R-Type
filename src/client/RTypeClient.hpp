@@ -36,6 +36,8 @@ class RTypeClient {
         uint32_t _playerId;
         bool _connected;
         sf::Clock _clock;
+
+        uint32_t _playerId;
 };
 
 #endif /* !RTYPECLIENT_HPP_ */

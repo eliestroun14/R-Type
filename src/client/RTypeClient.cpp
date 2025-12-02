@@ -30,10 +30,11 @@ void RTypeClient::sendInput(uint16_t inputFlags)
 
 void RTypeClient::sendHeartbeat()
 {
-    protocol::PacketHeader *header;
+    protocol::HeartBeat *heartbeat;
 
-    header->packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT);
-    send(this->_sockfd, header, sizeof(protocol::PacketHeader), NULL);
+    heartbeat->header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT);
+    heartbeat->player_id = this->_playerId;
+    send(this->_sockfd, heartbeat, sizeof(protocol::HeartBeat), NULL);
 }
 
 void RTypeClient::processWorldSnapshot()
