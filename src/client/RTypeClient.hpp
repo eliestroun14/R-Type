@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <sys/socket.h>
 #include <SFML/Graphics.hpp>
+#include "src/server/protocol/protocol.hpp"
 
 class RTypeClient {
     public:
