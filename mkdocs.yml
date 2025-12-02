@@ -87,12 +87,13 @@ nav:
   - Home: index.md
 
   - Game Engine & Architecture:
-    - Game Engine: GameEngine/index.md
+    - GameEngine&Architecture/index.md
+    - Game Engine: GameEngine&Architecture/GameEngine/index.md
     - ECS:
-      - What is an ECS: ECS/index.md
-      - Entity: ECS/entity.md
-      - Component Manager: ECS/component-manager.md
-      - System: ECS/system.md
+      - What is an ECS: GameEngine&Architecture/ECS/index.md
+      - Entity: GameEngine&Architecture/ECS/entity.md
+      - Component Manager: GameEngine&Architecture/ECS/component-manager.md
+      - System: GameEngine&Architecture/ECS/system.md
 
   - Logger:
     - Logger/index.md
@@ -103,11 +104,10 @@ nav:
     - Design Rationale: Logger/design-rationale.md
 
   - Tests:
-    - Why Google Test ?: Test/justification.md
+    - Test/justification.md
     - How to add new tests: Test/tutorial.md
 
-  - Build System:
-    - CPM Rationale: cmake/cpm-rationale.md
+  - Build System: cmake/cpm-rationale.md
 
   - Client:
     - Client/index.md
