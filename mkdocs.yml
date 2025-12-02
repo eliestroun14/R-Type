@@ -115,6 +115,7 @@ nav:
     - Graphical library: Client/graphical-lib.md
 
   - Contributing:
+    - Contributing/index.md
     - Documentation:
       - Contributing/Documentation/index.md
       - Writing Guide: Contributing/Documentation/writing-guide.md
