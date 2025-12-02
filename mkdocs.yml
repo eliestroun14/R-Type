@@ -86,31 +86,36 @@ markdown_extensions:
 nav:
   - Home: index.md
 
-  - Documentation:
-    - Documentation/index.md
-    - Writing Guide: Documentation/writing-guide.md
-  - Game Engine:
+  - Game Engine & Architecture:
     - Game Engine: Documentation/GameEngine/index.md
-  - ECS:
-    - What is an ECS: ECS/index.md
-    - Entity: ECS/entity.md
-    - Component Manager: ECS/component-manager.md
-    - System: ECS/system.md
-  - Tests:
-    - Why Google Test ?: Test/justification.md
-    - How to add new tests: Test/tutorial.md
+    - ECS:
+      - Overview: ECS/index.md
+      - Entity: ECS/entity.md
+      - Component Manager: ECS/component-manager.md
+      - System: ECS/system.md
+
   - Logger:
-    - Logger/index.md
+    - Overview: Logger/index.md
     - Getting Started: Logger/getting-started.md
     - Configuration: Logger/configuration.md
     - Usage Guide: Logger/usage.md
     - API Reference: Logger/api-reference.md
     - Design Rationale: Logger/design-rationale.md
+
+  - Tests:
+    - Overview: Test/justification.md
+    - Why Google Test ?: Test/justification.md
+    - How to add new tests: Test/tutorial.md
+
   - Build System:
     - CPM Rationale: cmake/cpm-rationale.md
+
   - Client:
-    - Client/index.md
+    - Overview: Client/index.md
     - Graphical library: Client/graphical-lib.md
 
-  - Contributing: contributing.md
-  - Expectations: Expectations/expectations.md
+  - Contributing:
+    - Contributing Guide: contributing.md
+    - Documentation Guide: Documentation/index.md
+    - Writing Guide: Documentation/writing-guide.md
+    - Expectations: Expectations/expectations.md
