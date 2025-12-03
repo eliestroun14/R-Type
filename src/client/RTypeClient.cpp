@@ -147,6 +147,8 @@ void RTypeClient::processWorldSnapshot()
 
 void RTypeClient::run()
 {
+    sf::Time time = this->_clock.getElapsedTime();
+
     while (true) {
         sendInput(getInput());
         sendHeartbeat();
