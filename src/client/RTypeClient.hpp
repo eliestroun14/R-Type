@@ -21,7 +21,7 @@ class RTypeClient {
         RTypeClient();
         ~RTypeClient();
 
-        void init(const char* serverIp, uint16_t port);
+        void init(const char* serverIp, uint16_t port, std::string playerName);
 
         bool waitForAccept(protocol::ServerAccept *serverAccept);
         bool connect(const char* serverIp, uint16_t port, std::string playerName);

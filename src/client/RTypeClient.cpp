@@ -11,7 +11,7 @@
 #include <src/utils/client/ClientUtils.hpp>
 #include <thread>
 
-RTypeClient::RTypeClient()
+RTypeClient::RTypeClient() : _sockfd(-1), _sequenceNumber(0), _playerId(0), _connected(false)
 {
 }
 
@@ -19,8 +19,10 @@ RTypeClient::~RTypeClient()
 {
 }
 
-void RTypeClient::init(const char *serverIp, uint16_t port)
+void RTypeClient::init(const char *serverIp, uint16_t port, std::string playerName)
 {
+    if (connect(serverIp, port, playerName) == false)
+        throw std::runtime_error("Error connecting to server");
 }
 
 bool RTypeClient::waitForAccept(protocol::ServerAccept *serverAccept)
