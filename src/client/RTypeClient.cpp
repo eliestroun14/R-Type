@@ -91,6 +91,45 @@ bool RTypeClient::connect(const char *serverIp, uint16_t port, std::string playe
 
 void RTypeClient::sendInput(uint16_t inputFlags)
 {
+    protocol::PlayerInput packet;
+
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT);
+    packet.header.flags = 0;
+    packet.header.sequence_number = this->_sequenceNumber++;
+    packet.header.timestamp = getCurrentTimeMs();
+
+    packet.player_id = this->_playerId;
+    packet.input_state = inputFlags;
+
+    packet.aim_direction_x = 0;
+    packet.aim_direction_y = 0;
+
+    sendto(
+        this->_sockfd,
+        &packet,
+        sizeof(protocol::PlayerInput),
+        0,
+        reinterpret_cast<sockaddr*>(&this->_serverAddr),
+        sizeof(this->_serverAddr)
+    );
+}
+
+uint16_t RTypeClient::getInput() const
+{
+    uint16_t input = 0;
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+        input |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP);
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+        input |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_DOWN);
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+        input |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_LEFT);
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        input |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_RIGHT);
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+        input |= static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY);
+
+    return input;
 }
 
 void RTypeClient::sendHeartbeat()
@@ -108,10 +147,9 @@ void RTypeClient::processWorldSnapshot()
 
 void RTypeClient::run()
 {
-    sf::Time time = this->_clock.getElapsedTime();
-
     while (true) {
-
+        sendInput(getInput());
         sendHeartbeat();
     }
 }
+

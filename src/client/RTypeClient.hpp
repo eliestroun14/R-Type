@@ -27,6 +27,7 @@ class RTypeClient {
         bool connect(const char* serverIp, uint16_t port, std::string playerName);
 
         void sendInput(uint16_t inputFlags);
+        uint16_t getInput() const;
         void sendHeartbeat();
 
         void processWorldSnapshot();
