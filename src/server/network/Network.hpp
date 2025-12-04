@@ -10,21 +10,7 @@
 #include <thread>
 #include <queue>
 #include <mutex>
-
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    #pragma comment(lib, "ws2_32.lib")
-    typedef int socklen_t;
-#else
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    #define INVALID_SOCKET -1
-    #define SOCKET_ERROR -1
-    typedef int SOCKET;
-#endif
+#include <asio.hpp>
 
 namespace network {
 
@@ -33,32 +19,33 @@ namespace network {
 
     /**
      * @brief Structure représentant une adresse client (IP + Port)
+     * Utilise asio::ip::udp::endpoint en interne
      */
-    struct ClientAddress {
-        sockaddr_in addr;
+    class ClientAddress {
+    public:
+        ClientAddress() = default;
         
-        ClientAddress() {
-            std::memset(&addr, 0, sizeof(addr));
-        }
-        
-        explicit ClientAddress(const sockaddr_in& address) : addr(address) {}
+        explicit ClientAddress(const asio::ip::udp::endpoint& ep) : m_endpoint(ep) {}
         
         std::string toString() const {
-            char ip[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &addr.sin_addr, ip, INET_ADDRSTRLEN);
-            return std::string(ip) + ":" + std::to_string(ntohs(addr.sin_port));
+            return m_endpoint.address().to_string() + ":" + std::to_string(m_endpoint.port());
         }
         
+        const asio::ip::udp::endpoint& getEndpoint() const { return m_endpoint; }
+        asio::ip::udp::endpoint& getEndpoint() { return m_endpoint; }
+        
         bool operator==(const ClientAddress& other) const {
-            return addr.sin_addr.s_addr == other.addr.sin_addr.s_addr &&
-                   addr.sin_port == other.addr.sin_port;
+            return m_endpoint == other.m_endpoint;
         }
         
         bool operator<(const ClientAddress& other) const {
-            if (addr.sin_addr.s_addr != other.addr.sin_addr.s_addr)
-                return addr.sin_addr.s_addr < other.addr.sin_addr.s_addr;
-            return addr.sin_port < other.addr.sin_port;
+            if (m_endpoint.address() != other.m_endpoint.address())
+                return m_endpoint.address() < other.m_endpoint.address();
+            return m_endpoint.port() < other.m_endpoint.port();
         }
+
+    private:
+        asio::ip::udp::endpoint m_endpoint;
     };
 
     /**
@@ -77,7 +64,7 @@ namespace network {
 
     /**
      * @brief UDP Socket Manager - Layer 1 de l'architecture
-     * Gère le socket UDP unique, les threads de réception/envoi
+     * Gère le socket UDP unique avec ASIO (cross-platform)
      */
     class UDPSocketManager {
     public:
@@ -133,18 +120,28 @@ namespace network {
         size_t getPendingPacketCount() const;
 
     private:
-        SOCKET m_socket;
-        sockaddr_in m_serverAddr;
+        // ASIO context and socket
+        std::unique_ptr<asio::io_context> m_ioContext;
+        std::unique_ptr<asio::ip::udp::socket> m_socket;
+        
         std::atomic<bool> m_running;
         std::atomic<bool> m_initialized;
 
         // Thread de réception
         std::unique_ptr<std::thread> m_receiveThread;
         void receiveThreadFunction();
+        
+        // Buffer pour la réception asynchrone
+        std::array<uint8_t, RECEIVE_BUFFER_SIZE> m_receiveBuffer;
+        asio::ip::udp::endpoint m_remoteEndpoint;
+        
+        // Démarrage de la réception asynchrone
+        void startReceive();
+        void handleReceive(const asio::error_code& error, size_t bytesReceived);
 
-        // Queue de paquets reçus (lock-free serait idéal, mais pour MVP on utilise mutex)
+        // Queue de paquets reçus (thread-safe)
         std::queue<RawPacket> m_receiveQueue;
-        std::mutex m_receiveMutex;
+        mutable std::mutex m_receiveMutex;
 
         // Statistics
         std::atomic<uint64_t> m_packetsReceived;
@@ -153,8 +150,6 @@ namespace network {
         std::atomic<uint64_t> m_bytesSent;
 
         // Helpers
-        bool initializeSocket();
-        void cleanupSocket();
         uint32_t getCurrentTimestamp() const;
     };
 
@@ -165,8 +160,9 @@ namespace std {
     template<>
     struct hash<network::ClientAddress> {
         size_t operator()(const network::ClientAddress& addr) const {
-            size_t h1 = std::hash<uint32_t>{}(addr.addr.sin_addr.s_addr);
-            size_t h2 = std::hash<uint16_t>{}(addr.addr.sin_port);
+            const auto& ep = addr.getEndpoint();
+            size_t h1 = std::hash<std::string>{}(ep.address().to_string());
+            size_t h2 = std::hash<uint16_t>{}(ep.port());
             return h1 ^ (h2 << 1);
         }
     };

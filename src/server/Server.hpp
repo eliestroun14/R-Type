@@ -5,7 +5,7 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-#include "network/NetworkAsio.hpp"
+#include "network/Network.hpp"
 #include "session/Session.hpp"
 #include "protocol/Protocol.hpp"
 
