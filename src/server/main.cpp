@@ -9,7 +9,7 @@
 #include <string>
 #include <csignal>
 #include <memory>
-#include "server/Server.hpp"
+#include "Server.hpp"
 
 // Global server pointer for signal handling
 std::unique_ptr<server::Server> g_server;
