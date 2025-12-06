@@ -197,5 +197,147 @@ ctest --output-on-failure
 ```
 
 **Congratulations, you made tests** !!
+
+## Step 8: Code Coverage Analysis
+
+### Overview
+
+Code coverage measures how much of your code is actually tested. This project includes automated coverage reporting using `lcov` and `genhtml`.
+
+### Prerequisites
+
+Install the coverage tools:
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install lcov
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install lcov
+```
+
+### Generating Coverage Reports
+
+#### 1. Configure with Coverage Support
+
+```bash
+cd build
+rm -rf *
+cmake .. -DENABLE_COVERAGE=ON
+make
+```
+
+The `-DENABLE_COVERAGE=ON` flag enables the compilation with coverage instrumentation (`--coverage` flag).
+
+#### 2. Clean Previous Coverage Data
+
+```bash
+make coverage_clean
+```
+
+This clears any existing `.gcda` (coverage data) files.
+
+#### 3. Run the Tests
+
+```bash
+ctest
+```
+
+Running tests generates new coverage data.
+
+#### 4. Generate the Coverage Report
+
+```bash
+make coverage
+```
+
+This command:
+- Collects coverage data with `lcov`
+- Generates an HTML report with `genhtml`
+- Outputs the report to `build/coverage_report/index.html`
+
+### Viewing the Coverage Report
+
+```bash
+# Option 1: Start a local web server
+cd build/coverage_report
+python3 -m http.server 8000
+# Then open http://localhost:8000 in your browser
+
+# Option 2: Open directly with your browser
+firefox build/coverage_report/index.html
+
+# Option 3: Use xdg-open (Linux)
+xdg-open build/coverage_report/index.html
+
+# Option 4: Open your file explorer and double clic on the index.html
+```
+
+### Understanding Coverage Metrics
+
+The report shows:
+- **Line Coverage**: Percentage of code lines executed
+- **Function Coverage**: Percentage of functions called
+- **Branch Coverage**: Percentage of conditional branches taken
+
+**Good coverage targets:**
+- 70%+ for production code
+- 80%+ for critical modules
+- 100% for core logic
+
+### Excluding External Libraries from Coverage
+
+By default, external dependencies (spdlog, Asio, GTest) are excluded from coverage reports to show only your project's code coverage.
+
+**Current exclusions in `tests/CMakeLists.txt`:**
+```cmake
+set(COVERAGE_EXCLUDES
+    '/usr/*'                      # System libraries
+    '${CMAKE_SOURCE_DIR}/tests/*' # Test files themselves
+    '${CMAKE_BINARY_DIR}/_deps/*' # All CPM dependencies
+)
+```
+
+**When adding new dependencies:**
+
+1. Add them via CPM in `CMakeLists.txt`
+2. They are automatically excluded (since CPM places them in `_deps/`)
+3. If using system packages, update `COVERAGE_EXCLUDES` if needed
+
+### Complete Coverage Workflow
+
+```bash
+cd build
+
+# One-time setup
+rm -rf *
+cmake .. -DENABLE_COVERAGE=ON
+make
+
+# Regular coverage check
+make coverage_clean
+ctest
+make coverage
+
+# View report
+python3 -m http.server 8000 -d coverage_report
+# Open http://localhost:8000
+```
+
+### Troubleshooting
+
+**Error: `No rule to make target 'coverage'`**
+- Make sure you compiled with `-DENABLE_COVERAGE=ON`
+- Rebuild: `cmake .. -DENABLE_COVERAGE=ON && make`
+
+**Error: `lcov not found`**
+- Install lcov: `sudo apt-get install lcov` (Ubuntu) or `sudo dnf install lcov` (Fedora)
+
+**Report shows no coverage data**
+- Ensure tests actually ran: `ctest --output-on-failure`
+- Check that coverage flags are set: `cmake .. -DENABLE_COVERAGE=ON`
+
 --------------------------------------
 

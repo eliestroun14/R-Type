@@ -5,6 +5,16 @@ project(R-Type VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Option to enable code coverage
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+
+if(ENABLE_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(--coverage -O0)
+        add_link_options(--coverage)
+    endif()
+endif()
+
 # Include CPM (C++ Package Manager)
 include(cmake/CPM.cmake)
 
@@ -16,6 +26,20 @@ CPMAddPackage(
     OPTIONS
         "SPDLOG_FMT_EXTERNAL OFF"
 )
+
+# Add Asio dependency (header-only library for networking)
+CPMAddPackage(
+    NAME asio
+    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+    GIT_TAG asio-1-28-0
+    SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/asio-src
+    DOWNLOAD_ONLY YES
+)
+
+if(asio_ADDED)
+    add_library(asio INTERFACE IMPORTED)
+    target_include_directories(asio INTERFACE ${CMAKE_BINARY_DIR}/_deps/asio-src/asio/include)
+endif()
 
 # Add logger subdirectory
 add_subdirectory(src/logger)
@@ -39,7 +63,7 @@ target_include_directories(r-type_server PRIVATE
 )
 
 # Link logger library
-target_link_libraries(r-type_server PRIVATE logger)
+target_link_libraries(r-type_server PRIVATE logger asio)
 
 # Platform-specific network libraries
 if(WIN32)
@@ -56,6 +80,8 @@ add_executable(test_client ${TEST_CLIENT_SOURCES})
 target_include_directories(test_client PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
+
+target_link_libraries(test_client PRIVATE asio)
 
 if(WIN32)
     target_link_libraries(test_client PRIVATE ws2_32)
