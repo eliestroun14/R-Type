@@ -22,7 +22,7 @@ namespace protocol {
     enum class PacketTypes : uint8_t {
 
         //CONNECTION          = 0x01-0x0F
-        TYPE_CLIENT_CONNECT         = 0x01
+        TYPE_CLIENT_CONNECT         = 0x01,
         TYPE_SERVER_ACCEPT          = 0x02,
         TYPE_SERVER_REJECT          = 0x03,
         TYPE_CLIENT_DISCONNECT      = 0x04,

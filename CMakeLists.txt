@@ -20,22 +20,46 @@ CPMAddPackage(
 # Add logger subdirectory
 add_subdirectory(src/logger)
 
-set(SOURCES
+# Server sources
+set(SERVER_SOURCES
     "src/main.cpp"
+    "src/server/Server.cpp"
+    "src/server/network/Network.cpp"
+    "src/server/session/Session.cpp"
 )
 
-# Create main executable
-add_executable(R-Type ${SOURCES})
+# Create main server executable
+add_executable(r-type_server ${SERVER_SOURCES})
 
-# Include directories for the main target
-target_include_directories(R-Type PRIVATE
+# Include directories for the server
+target_include_directories(r-type_server PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/gameEngine
     ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS
 )
 
 # Link logger library
-target_link_libraries(R-Type PRIVATE logger)
+target_link_libraries(r-type_server PRIVATE logger)
+
+# Platform-specific network libraries
+if(WIN32)
+    target_link_libraries(r-type_server PRIVATE ws2_32)
+endif()
+
+# Test client for debugging
+set(TEST_CLIENT_SOURCES
+    "src/server/utils/test_client.cpp"
+)
+
+add_executable(test_client ${TEST_CLIENT_SOURCES})
+
+target_include_directories(test_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+if(WIN32)
+    target_link_libraries(test_client PRIVATE ws2_32)
+endif()
 
 # Enable testing
 enable_testing()

@@ -102,6 +102,10 @@ nav:
     - Usage Guide: Logger/usage.md
     - API Reference: Logger/api-reference.md
     - Design Rationale: Logger/design-rationale.md
+    
+  - Error_messages:
+      - Error_messages/index.md
+      - How to add error messages: Error_messages/how_to.md
 
   - Tests:
     - Overview: Test/justification.md
