@@ -21,11 +21,9 @@ class Entity {
 
     private:
         std::size_t _id;
-        std::string _name; //TODO: revoir si on met un name à notre entity
 
         // constructeur privé : seul le EntityManager peut créer une entité
-        explicit Entity(std::size_t id, std::string name)
-            : _id(id), _name(name) {}
+        explicit Entity(std::size_t id) : _id(id) {}
 
         // friend du EntityManager
         friend class EntityManager;

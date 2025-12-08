@@ -8,8 +8,8 @@
 #ifndef SYSTEM_HPP_
 #define SYSTEM_HPP_
 
-#include "./Entity.hpp"
-#include <list>
+#include "../entity/Entity.hpp"
+#include <vector>
 
 class System {
 public:
@@ -31,7 +31,7 @@ public:
     bool isRunning() const noexcept { return _running; }
 
 protected:
-    std::list<Entity> _entities;
+    std::vector<Entity> _entities;
     bool _running { false };
 };
 
