@@ -26,8 +26,9 @@ target_include_directories(r-type-client PRIVATE
 target_link_libraries(r-type-client PRIVATE 
     engine
     common
+    ${COMMON_LIBS}
 )
 
-# Link rendering/audio libraries (SFML, SDL, etc.)
-# find_package(SFML COMPONENTS graphics window system audio REQUIRED)
-# target_link_libraries(r-type-client PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
+# Link rendering/audio libraries (SFML)
+find_package(SFML 2.6 COMPONENTS graphics window system REQUIRED)
+target_link_libraries(r-type-client PRIVATE sfml-graphics sfml-window sfml-system)

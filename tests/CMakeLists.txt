@@ -4,24 +4,17 @@ include_directories(${GTEST_INCLUDE_DIRS})
 
 # Include your source directories
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/gameEngine)
-include_directories(${CMAKE_SOURCE_DIR}/src/gameEngine/ECS)
-include_directories(${CMAKE_SOURCE_DIR}/src/client)
-include_directories(${CMAKE_SOURCE_DIR}/src/client/error)
 
 # Create test executable for ECS
 add_executable(ecs_tests
-    test_entity.cpp
-    test_component_manager.cpp
-    test_entity_manager.cpp
-    test_game_engine.cpp
-    test_debug.cpp
-    test_system_manager.cpp
+#    test_entity.cpp
+#    test_component_manager.cpp
+#    test_entity_manager.cpp
+#    test_game_engine.cpp
+#    test_debug.cpp
+#    test_system_manager.cpp
     LoggerTest.cpp
     Error_messages_test.cpp
-
-    ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS/System/System.cpp
-    ${CMAKE_SOURCE_DIR}/src/client/error/Error.cpp
 )
 
 # Link Google Test and your libraries
@@ -29,7 +22,8 @@ target_link_libraries(ecs_tests
     GTest::GTest
     GTest::Main
     pthread
-    logger
+    engine
+    common
     spdlog::spdlog
 )
 

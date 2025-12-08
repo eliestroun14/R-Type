@@ -26,4 +26,5 @@ target_include_directories(r-type-server PRIVATE
 target_link_libraries(r-type-server PRIVATE 
     engine
     common
+    ${COMMON_LIBS}
 )

@@ -5,9 +5,9 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-#include "network/Network.hpp"
-#include "session/Session.hpp"
-#include "protocol/Protocol.hpp"
+#include "../network/Network.hpp"
+#include "../session/Session.hpp"
+#include "../../../../common/include/common/protocol/Protocol.hpp"
 
 namespace server {
 

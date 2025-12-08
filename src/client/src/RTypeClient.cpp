@@ -5,10 +5,10 @@
 ** RTypeClient
 */
 
-#include "RTypeClient.hpp"
+#include "../include/client/core/RTypeClient.hpp"
 #include <string.h>
 #include <arpa/inet.h>
-#include <src/utils/client/ClientUtils.hpp>
+#include "../include/client/utils/ClientUtils.hpp"
 #include <thread>
 
 RTypeClient::RTypeClient() : _sockfd(-1), _sequenceNumber(0), _playerId(0), _connected(false)
@@ -138,7 +138,7 @@ void RTypeClient::sendHeartbeat()
 
     heartbeat.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT);
     heartbeat.player_id = this->_playerId;
-    send(this->_sockfd, &heartbeat, sizeof(protocol::HeartBeat), NULL);
+    send(this->_sockfd, &heartbeat, sizeof(protocol::HeartBeat), 0);
 }
 
 void RTypeClient::processWorldSnapshot()

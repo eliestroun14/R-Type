@@ -8,7 +8,7 @@
 #include <queue>
 #include <map>
 #include "../network/Network.hpp"
-#include "../protocol/Protocol.hpp"
+#include "../../../../common/include/common/protocol/Protocol.hpp"
 
 namespace session {
 

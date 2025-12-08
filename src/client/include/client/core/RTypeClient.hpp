@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <SFML/Graphics.hpp>
 #include <netinet/in.h>
-#include "src/server/protocol/protocol.hpp"
+#include "../../../../common/include/common/protocol/Protocol.hpp"
 
 #define TIMEOUT 15000
 

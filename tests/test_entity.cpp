@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "ECS/Entity/Entity.hpp"
+#include "../src/"
 #include "ECS/Entity/EntityManager.hpp"
 
 TEST(EntityTest, ImplicitConversion) {

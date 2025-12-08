@@ -41,51 +41,14 @@ if(asio_ADDED)
     target_include_directories(asio INTERFACE ${CMAKE_BINARY_DIR}/_deps/asio-src/asio/include)
 endif()
 
-# Add logger subdirectory
-add_subdirectory(src/logger)
+# Make asio and spdlog available globally for all subdirectories
+set(COMMON_LIBS asio spdlog::spdlog)
 
-# Server sources
-set(SERVER_SOURCES
-    "src/main.cpp"
-    "src/server/Server.cpp"
-    "src/server/network/Network.cpp"
-    "src/server/session/Session.cpp"
-)
-
-# Create main server executable
-add_executable(r-type_server ${SERVER_SOURCES})
-
-# Include directories for the server
-target_include_directories(r-type_server PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/gameEngine
-    ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS
-)
-
-# Link logger library
-target_link_libraries(r-type_server PRIVATE logger asio)
-
-# Platform-specific network libraries
-if(WIN32)
-    target_link_libraries(r-type_server PRIVATE ws2_32)
-endif()
-
-# Test client for debugging
-set(TEST_CLIENT_SOURCES
-    "src/server/utils/test_client.cpp"
-)
-
-add_executable(test_client ${TEST_CLIENT_SOURCES})
-
-target_include_directories(test_client PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-)
-
-target_link_libraries(test_client PRIVATE asio)
-
-if(WIN32)
-    target_link_libraries(test_client PRIVATE ws2_32)
-endif()
+# Add subdirectories for libraries and executables
+add_subdirectory(src/engine)
+add_subdirectory(src/common)
+add_subdirectory(src/server)
+add_subdirectory(src/client)
 
 # Enable testing
 enable_testing()

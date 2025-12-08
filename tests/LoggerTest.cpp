@@ -2,7 +2,7 @@
 #include <spdlog/sinks/null_sink.h>
 #include <filesystem>
 #include <fstream>
-#include "logger/Logger.hpp"
+#include "../src/engine/include/engine/utils/Logger.hpp"
 
 namespace fs = std::filesystem;
 

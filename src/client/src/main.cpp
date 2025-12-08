@@ -1,8 +1,8 @@
-#include "client/core/Client.hpp"
+//#include "client/core/Client.hpp"
 #include <iostream>
 
 int main(int argc, char* argv[]) {
-    try {
+    /* try {
         client::core::Client client;
 
         if (!client.initialize()) {
@@ -32,5 +32,7 @@ int main(int argc, char* argv[]) {
     catch (const std::exception& e) {
         std::cerr << "Client error: " << e.what() << std::endl;
         return 1;
-    }
+    } */
+
+    printf("hello world");
 }
