@@ -14,7 +14,6 @@ class EntityManager;
 
 class Entity {
     public:
-    // conversion implicite vers size_t
         operator std::size_t() const {
             return this->_id;
         }
@@ -22,10 +21,8 @@ class Entity {
     private:
         std::size_t _id;
 
-        // constructeur privé : seul le EntityManager peut créer une entité
         explicit Entity(std::size_t id) : _id(id) {}
 
-        // friend du EntityManager
         friend class EntityManager;
 };
 

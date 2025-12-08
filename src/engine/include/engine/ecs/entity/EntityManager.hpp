@@ -40,7 +40,6 @@ class EntityManager {
 
         inline static std::size_t _componentTypeCounter;
 
-        // Méthode template pour obtenir l'ID unique d'un type
         template <class Component>
         static std::size_t getComponentTypeID() {
             static std::size_t typeId = _componentTypeCounter++;
@@ -73,7 +72,6 @@ class EntityManager {
             );
         }
 
-        // register_compoenent doit être absolument appelé avec le component en question
         template <class Component>
         ComponentManager<Component> const &getComponents() const {
             return std::any_cast<const ComponentManager<Component>&>(
@@ -91,15 +89,6 @@ class EntityManager {
         const std::optional<Component>& getComponent(Entity const& e) const {
             return getComponents<Component>()[e];
         }
-
-        // Usage de getComponent()
-        /*
-            auto& pos_opt = EntityManager.getComponent<Position>(entity);
-            if (pos_opt) {
-                Position& pos = *pos_opt;
-                // utiliser pos
-            }
-        */
 
 
         void setSignature(Entity const &e, Signature signature) {
@@ -122,7 +111,6 @@ class EntityManager {
                     this->_signatures.resize(id + 1);
             }
 
-            // reset la signature de l'entity (en gros ça met tout à 0)
             this->_signatures[id].reset();
 
             this->_aliveEntities.insert(id);
@@ -136,7 +124,7 @@ class EntityManager {
 
         void killEntity(Entity const &entity) {
             if (this->_aliveEntities.find(entity) == this->_aliveEntities.end())
-                return; // l'entity est déjà morte
+                return;
 
             this->_aliveEntities.erase(entity);
             this->_freeIds.push_back(entity);

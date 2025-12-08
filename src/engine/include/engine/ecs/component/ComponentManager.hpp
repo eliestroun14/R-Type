@@ -68,22 +68,21 @@ class ComponentManager {
             return this->_data.size();
         }
 
-        // sert à garantir que l’index demandé existe dans le vecteur avant d’y écrire
         void ensureSize(sizeType pos) {
             if (pos >= this->_data.size())
                 this->_data.resize(pos + 1);
         }
 
         referenceType insertAt (sizeType pos, Component const& c) {
-            ensureSize(pos); // pour agrandir
+            ensureSize(pos);
             this->_data[pos] = c;
-            return this->_data[pos]; // rajouter dans le vector
+            return this->_data[pos];
         }
 
         referenceType insertAt (sizeType pos, Component &&c) {
-            ensureSize(pos); // pour agrandir
+            ensureSize(pos);
             this->_data[pos] = std::move(c);
-            return this->_data[pos]; // rajouter dans le vector
+            return this->_data[pos];
         }
 
         template <class... Params>

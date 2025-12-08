@@ -18,11 +18,11 @@ public:
     System() = default;
     virtual ~System() = default;
 
-    virtual void onCreate() {}          // appelé à l'init globale des systèmes
-    virtual void onStartRunning() {}    // appelé au moment où le système commence à avoir des entités
-    virtual void onUpdate(float dt) {}  // appelé chaque frame si le système a des entités
-    virtual void onStopRunning() {}     // appelé quand le système n'a plus d'entités
-    virtual void onDestroy() {}         // appelé à la destruction globale des systèmes
+    virtual void onCreate() {}
+    virtual void onStartRunning() {}
+    virtual void onUpdate(float dt) {}
+    virtual void onStopRunning() {}
+    virtual void onDestroy() {}
 
     void addEntity(Entity e);
     void removeEntity(Entity const& e);

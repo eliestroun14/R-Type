@@ -18,7 +18,7 @@
 class Coordinator {
     public:
         // ==============================================================
-        //                          Initialisation
+        //                          Initialization
         // ==============================================================
 
         void init()
@@ -28,7 +28,7 @@ class Coordinator {
         }
 
         // ==============================================================
-        //                        Gestion des entités
+        //                              Entity
         // ==============================================================
 
         Entity createEntity(const std::string &entityName)
@@ -52,7 +52,7 @@ class Coordinator {
         }
 
         // ==============================================================
-        //                       Gestion des composants
+        //                           Components
         // ==============================================================
 
         template<class Component>
@@ -94,7 +94,7 @@ class Coordinator {
         }
 
         // ==============================================================
-        //                        Gestion des systèmes
+        //                              Systems
         // ==============================================================
 
         template<class System, class... Params>
