@@ -6,8 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "ECS/Entity/Entity.hpp"
-#include "ECS/Entity/EntityManager.hpp"
+#include "../src/engine/include/engine/ecs/entity/EntityManager.hpp"
 
 TEST(EntityTest, ImplicitConversion) {
     EntityManager em;

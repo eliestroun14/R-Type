@@ -8,7 +8,7 @@
 #ifndef SYSTEMMANAGER_HPP_
 #define SYSTEMMANAGER_HPP_
 
-#include "../include/engine/ecs/System.hpp"
+#include "System.hpp"
 #include <unordered_map>
 #include <typeindex>
 #include <memory>

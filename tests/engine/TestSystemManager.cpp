@@ -6,9 +6,9 @@
 */
 
 #include <gtest/gtest.h>
-#include "System/SystemManager.hpp"
-#include "System/System.hpp"
-#include "Entity/EntityManager.hpp"
+#include "../src/engine/include/engine/ecs/system/SystemManager.hpp"
+#include "../src/engine/include/engine/ecs/system/System.hpp"
+#include "../src/engine/include/engine/ecs/entity/EntityManager.hpp"
 
 class DummySystem : public System {
 public:

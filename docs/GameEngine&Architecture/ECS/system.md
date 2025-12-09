@@ -29,7 +29,7 @@ class System {
         bool isRunning() const noexcept { return _running; }
 
     protected:
-        std::list<Entity> _entities;
+        std::vector<Entity> _entities;
         bool _running { false };
 };
 ```
@@ -78,7 +78,7 @@ virtual void onUpdate(float dt) {}
 virtual void onStopRunning() {}
 ```
 
-**Called when the system loses its last entity**. This happens automatically when `removeEntity()` empties the entity list. Use this to deactivate resources or pause tracking that was started in `onStartRunning()`.
+**Called when the system loses its last entity**. This happens automatically when `removeEntity()` empties the entity vector. Use this to deactivate resources or pause tracking that was started in `onStartRunning()`.
 
 #### onDestroy()
 

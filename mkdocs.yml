@@ -94,6 +94,7 @@ nav:
       - Entity: GameEngine&Architecture/ECS/entity.md
       - Component Manager: GameEngine&Architecture/ECS/component-manager.md
       - System: GameEngine&Architecture/ECS/system.md
+      - Coordinator: GameEngine&Architecture/ECS/coordinator.md
 
   - Logger:
     - Overview: Logger/index.md
