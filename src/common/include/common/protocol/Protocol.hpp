@@ -5,18 +5,12 @@
 #include <string>
 #include <array>
 #include <vector>
+#include "Packet.hpp"
 
 namespace protocol {
 
-    // Packet Header
-    struct PacketHeader {
-        uint16_t    magic = 0x5254;                     // Protocol identifier 'RT' for R-Type
-        uint8_t     packet_type;                        // Packet type identifier
-        uint8_t     flags;                              // Control flags
-        uint32_t    sequence_number;                    // Monotonic sequence nuumber
-        uint32_t    timestamp;                          // Milisec since connection
-    };
-    // total size : 12 bytes
+    // Using PacketHeader from Packet.hpp
+    using PacketHeader = common::protocol::PacketHeader;
 
     //Packet Type
     enum class PacketTypes : uint8_t {
@@ -215,6 +209,9 @@ namespace protocol {
         // Add here if we need
     };
 
+    static constexpr uint8_t ENTITY_TYPE_MIN = static_cast<uint8_t>(EntityTypes::ENTITY_TYPE_PLAYER);
+    static constexpr uint8_t ENTITY_TYPE_MAX = static_cast<uint8_t>(EntityTypes::ENTITY_TYPE_BG_ELEMENT);
+
     // Server -> Client
     struct EntitySpawn {
         protocol::PacketHeader header;                 // type = 0x21 + FLAG_RELIABLE
@@ -227,7 +224,7 @@ namespace protocol {
         uint16_t               initial_velocity_x;     // Initial X velocity
         uint16_t               initial_velocity_y;     // Initial Y velocity
     };
-    // total size: 26 bytes
+    // total size: 27 bytes
 
     // Server -> Client
     struct EntityDestroy {
@@ -261,7 +258,7 @@ namespace protocol {
         int16_t        velocity_x;                     // Updated X velocity ( if flag set )
         int16_t        velocity_y;                     // Updated Y velocity ( if flag set )
     };
-    // Total size : 26 bytes
+    // Total size : 28 bytes
 
     enum class EntityUpdateFlags : uint8_t {
         // Bits 0-4

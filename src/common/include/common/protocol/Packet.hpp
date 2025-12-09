@@ -7,10 +7,11 @@ namespace common {
 namespace protocol {
 
 struct PacketHeader {
-    uint8_t type;
-    uint16_t length;
-    uint32_t sequence;
-    uint32_t timestamp;
+    uint16_t    magic = 0x5254;                     // Protocol identifier 'RT' for R-Type
+    uint8_t     packet_type;                        // Packet type identifier
+    uint8_t     flags;                              // Control flags
+    uint32_t    sequence_number;                    // Monotonic sequence nuumber
+    uint32_t    timestamp;                          // Milisec since connection
 };
 
 class Packet {
