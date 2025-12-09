@@ -28,7 +28,7 @@ RTypeClient::~RTypeClient()
 void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerName)
 {
     this->_server = std::make_shared<common::network::AsioSocket>(serverIp, port);
-    this->_gameEngine = std::make_shared<engine::GameEngine>();
+    //this->_gameEngine = std::make_shared<engine::GameEngine>();             // TODO
 
     this->_packetsReceived.clear();
     this->_packetsToSend.clear();
@@ -100,14 +100,14 @@ void RTypeClient::gameLoop()
             this->_packetsReceived.pop_front();
         }
 
-        this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> NetworkManager -> EntityManager
+        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> NetworkManager -> EntityManager
 
         // Poll inputs every tick
-        this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
-        this->_gameEngine->coordinator->processInputs();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+        //this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
+        //this->_gameEngine->coordinator->processInputs();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
 
         // Update game state every tick
-        this->_gameEngine->coordinator->update(deltaTime, currentTick);         // engine -> coordinator -> ecs (all systems update)
+        //this->_gameEngine->coordinator->update(deltaTime, currentTick);         // engine -> coordinator -> ecs (all systems update)
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
@@ -116,12 +116,12 @@ void RTypeClient::gameLoop()
         bool shouldSendInputs = (currentTick - lastInputSendTick) >= INPUT_SEND_TICK_INTERVAL;
 
         if (shouldSendHeartbeat || shouldSendInputs) {
-            this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and last heartbeat and time
-                outgoingPackets,
-                currentTick,
-                shouldSendHeartbeat,
-                shouldSendInputs
-            );
+            //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and last heartbeat and time
+            //    outgoingPackets,
+            //    currentTick,
+            //    shouldSendHeartbeat,
+            //    shouldSendInputs
+            //);
 
             for (const auto& packet : outgoingPackets) {
                 this->_packetsToSend.push_back(packet);

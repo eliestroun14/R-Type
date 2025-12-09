@@ -14,7 +14,7 @@
 #include <netinet/in.h>
 #include "../../../common/include/common/protocol/Protocol.hpp"
 #include "../../../common/include/common/network/sockets/AsioSocket.hpp"
-#include "../../../engine/include/engine/GameEngine.hpp"
+//#include "../../../engine/include/engine/GameEngine.hpp"                      // TODO
 #include <atomic>
 #include <deque>
 #include "../../../common/include/common/protocol/Packet.hpp"
@@ -51,7 +51,7 @@ class RTypeClient {
         std::string _playerName;
         std::atomic<bool> _isRunning;
 
-        std::shared_ptr<engine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us
+        //std::shared_ptr<engine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us TODO
 
         std::deque<common::protocol::Packet> _packetsReceived;
         std::deque<common::protocol::Packet> _packetsToSend;
