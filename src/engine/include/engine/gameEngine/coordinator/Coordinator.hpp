@@ -144,6 +144,11 @@ class Coordinator {
             return this->_renderManager->getActiveActions();
         }
 
+        bool isOpen()
+        {
+            return this->_renderManager->isOpen();
+        }
+
     private:
         std::unique_ptr<EntityManager> _entityManager;
         std::unique_ptr<SystemManager> _systemManager;
