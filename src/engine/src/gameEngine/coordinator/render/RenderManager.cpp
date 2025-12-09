@@ -122,3 +122,8 @@ void RenderManager::handleEvent(const sf::Event& event)
         if (event.mouseButton.button == sf::Mouse::Left)
             return; //TODO: add here action
 }
+
+std::map<GameAction, bool> RenderManager::getActiveActions()
+{
+    return this->_activeActions;
+}

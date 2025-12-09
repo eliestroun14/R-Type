@@ -47,6 +47,8 @@ class RenderManager {
 
         void handleEvent(const sf::Event& event);
 
+        std::map<GameAction, bool> getActiveActions();
+
     private:
         sf::RenderWindow _window;
 
