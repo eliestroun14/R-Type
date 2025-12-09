@@ -13,7 +13,7 @@
 #include <SFML/Graphics.hpp>
 #include <netinet/in.h>
 #include "../../../common/include/common/protocol/Protocol.hpp"
-#include "../../../common/include/common/AsioSocket.hpp"
+#include "../../../common/include/common/network/sockets/AsioSocket.hpp"
 #include "../../../engine/include/engine/GameEngine.hpp"
 #include <atomic>
 #include <deque>
@@ -47,7 +47,8 @@ class RTypeClient {
 
     private:
         std::shared_ptr<common::network::AsioSocket> _server;                   // relation with server , need to create a AsioSocket
-        uint32_t _selfId;
+        uint32_t _selfId;                                                       // assigned by server at connection (probably the socket id)
+        std::string _playerName;
         std::atomic<bool> _isRunning;
 
         std::shared_ptr<engine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us
