@@ -5,7 +5,7 @@
 ** System
 */
 
-#include "../../include/engine/ecs/system/System.hpp"
+#include "../../../../../include/engine/gameEngine/coordinator/ecs/system/System.hpp"
 #include <algorithm>
 
 void System::addEntity(Entity e)
