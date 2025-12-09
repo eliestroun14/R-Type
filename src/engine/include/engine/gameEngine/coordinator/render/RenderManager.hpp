@@ -10,13 +10,23 @@
 
 #include <SFML/Graphics.hpp>
 
-#define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT 1080
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
 #define FRAMERATE_LIMIT 60
 
+// can change on updates
 enum class GameAction {
-
-    
+    MOVE_LEFT,
+    MOVE_RIGHT,
+    MOVE_UP,
+    MOVE_DOWN,
+    SHOOT,
+    SWITCH_WEAPON,
+    USE_POWERUP,
+    SPECIAL,
+    OPTIONS,
+    EXIT,
+    UNKNOW
 };
 
 class RenderManager {
@@ -29,9 +39,22 @@ class RenderManager {
         void render();
 
         void processInput();
+        bool isActionActive(GameAction action) const;
+
+        sf::Vector2i getMousePosition() const;
+
+        bool isOpen() const;
 
     private:
         sf::RenderWindow _window;
+
+        // To know which key do what;
+        std::map<sf::Keyboard::Key, GameAction> _keyBindings;
+
+        // Which action is pressed at the moment
+        std::map<GameAction, bool> _activeActions;
+
+        sf::Vector2i _mousePos;
 };
 
 #endif /* !RENDERMANAGER_HPP_ */
