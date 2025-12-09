@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "ECS/Entity/EntityManager.hpp"
+#include "../src/engine/include/engine/ecs/entity/EntityManager.hpp"
 
 struct Position {
     float x, y;

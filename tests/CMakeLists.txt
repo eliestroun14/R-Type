@@ -7,13 +7,15 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # Create test executable for ECS
 add_executable(ecs_tests
-#    test_entity.cpp
-#    test_component_manager.cpp
-#    test_entity_manager.cpp
-#    test_game_engine.cpp
-#    test_debug.cpp
-#    test_system_manager.cpp
-    LoggerTest.cpp
+
+   engine/TestEntity.cpp
+   engine/TestComponentManager.cpp
+   engine/TestEntityManager.cpp
+   engine/TestCoordinator.cpp
+   engine/TestSystemManager.cpp
+   engine/LoggerTest.cpp
+
+   TestDebug.cpp
     Error_messages_test.cpp
 )
 
