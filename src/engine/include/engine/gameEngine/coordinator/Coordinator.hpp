@@ -139,6 +139,11 @@ class Coordinator {
             return this->_renderManager->isActionActive(action);
         }
 
+        std::map<GameAction, bool> getActiveActions()
+        {
+            return this->_renderManager->getActiveActions();
+        }
+
     private:
         std::unique_ptr<EntityManager> _entityManager;
         std::unique_ptr<SystemManager> _systemManager;
