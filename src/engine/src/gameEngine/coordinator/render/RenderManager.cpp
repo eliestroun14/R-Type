@@ -6,7 +6,6 @@
 */
 
 #include "../../../../include/engine/gameEngine/coordinator/render/RenderManager.hpp"
-#include "RenderManager.hpp"
 
 RenderManager::RenderManager()
 {

@@ -8,11 +8,11 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 # Create test executable for ECS
 add_executable(ecs_tests
 
-   engine/TestEntity.cpp
-   engine/TestComponentManager.cpp
-   engine/TestEntityManager.cpp
-   engine/TestCoordinator.cpp
-   engine/TestSystemManager.cpp
+   engine/gameEngine/coordinator/ecs/entity/TestEntity.cpp
+   engine/gameEngine/coordinator/ecs/entity/TestEntityManager.cpp
+   engine/gameEngine/coordinator/ecs/component/TestComponentManager.cpp
+   engine/gameEngine/coordinator/ecs/system/TestSystemManager.cpp
+   engine/gameEngine/coordinator/TestCoordinator.cpp
    engine/LoggerTest.cpp
 
    TestDebug.cpp
