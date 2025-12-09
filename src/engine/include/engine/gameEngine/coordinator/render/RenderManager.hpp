@@ -45,6 +45,8 @@ class RenderManager {
 
         bool isOpen() const;
 
+        void handleEvent(const sf::Event& event);
+
     private:
         sf::RenderWindow _window;
 

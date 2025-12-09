@@ -9,26 +9,6 @@
 
 RenderManager::RenderManager()
 {
-}
-
-RenderManager::~RenderManager()
-{
-}
-
-void RenderManager::init()
-{
-    // TODO: when project is ended, set fullscreen mod for the window
-
-    this->_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "R-Type", sf::Style::Close);
-    this->_window.setFramerateLimit(FRAMERATE_LIMIT);
-
-    auto desktop = sf::VideoMode::getDesktopMode();
-
-    // to center position. If window is in fullscreen, comment this part below
-    this->_window.setPosition(sf::Vector2i(
-        desktop.width / 2 - this->_window.getSize().x / 2,
-        desktop.height / 2 - this->_window.getSize().y / 2));
-
     this->_keyBindings[sf::Keyboard::Up] = GameAction::MOVE_UP;
     // this->_keyBindings[sf::Keyboard::Z] = GameAction::MOVE_UP; // to support ZQSD
 
@@ -61,6 +41,25 @@ void RenderManager::init()
     this->_activeActions[GameAction::EXIT] = false;
 }
 
+RenderManager::~RenderManager()
+{
+}
+
+void RenderManager::init()
+{
+    // TODO: when project is ended, set fullscreen mod for the window
+
+    this->_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "R-Type", sf::Style::Close);
+    this->_window.setFramerateLimit(FRAMERATE_LIMIT);
+
+    auto desktop = sf::VideoMode::getDesktopMode();
+
+    // to center position. If window is in fullscreen, comment this part below
+    this->_window.setPosition(sf::Vector2i(
+        desktop.width / 2 - this->_window.getSize().x / 2,
+        desktop.height / 2 - this->_window.getSize().y / 2));
+}
+
 void RenderManager::render()
 {
     if (!this->_window.isOpen())
@@ -79,26 +78,7 @@ void RenderManager::processInput()
     this->_mousePos = sf::Mouse::getPosition(this->_window);
 
     while(this->_window.pollEvent(event)) {
-        if (event.type == sf::Event::Closed)
-            this->_window.close();
-
-        if (event.type == sf::Event::KeyPressed
-            || event.type == sf::Event::KeyReleased) {
-            bool isPressed = (event.type == sf::Event::KeyPressed);
-
-            if (this->_keyBindings.count(event.key.code)) {
-                GameAction action = this->_keyBindings[event.key.code];
-                this->_activeActions[action] = isPressed;
-            }
-        }
-
-        if (event.type == sf::Event::MouseButtonPressed)
-            if (event.mouseButton.button == sf::Mouse::Left)
-                return; //TODO: add here action
-
-        if (event.type == sf::Event::MouseButtonPressed)
-            if (event.mouseButton.button == sf::Mouse::Left)
-                return; //TODO: add here action
+        handleEvent(event);
     }
 }
 
@@ -117,4 +97,28 @@ sf::Vector2i RenderManager::getMousePosition() const
 bool RenderManager::isOpen() const
 {
     return this->_window.isOpen();
+}
+
+void RenderManager::handleEvent(const sf::Event& event)
+{
+    if (event.type == sf::Event::Closed)
+        this->_window.close();
+
+    if (event.type == sf::Event::KeyPressed
+        || event.type == sf::Event::KeyReleased) {
+        bool isPressed = (event.type == sf::Event::KeyPressed);
+
+        if (this->_keyBindings.count(event.key.code)) {
+            GameAction action = this->_keyBindings[event.key.code];
+            this->_activeActions[action] = isPressed;
+        }
+    }
+
+    if (event.type == sf::Event::MouseButtonPressed)
+        if (event.mouseButton.button == sf::Mouse::Left)
+            return; //TODO: add here action
+
+    if (event.type == sf::Event::MouseButtonPressed)
+        if (event.mouseButton.button == sf::Mouse::Left)
+            return; //TODO: add here action
 }
