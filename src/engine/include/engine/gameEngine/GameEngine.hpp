@@ -8,27 +8,20 @@
 #ifndef GAMEENGINE_HPP_
 #define GAMEENGINE_HPP_
 
-#include <SFML/Graphics.hpp>
-#include <memory>
-#include "../ecs/Coordinator.hpp"
+#include "src/engine/include/engine/ecs/Coordinator.hpp"
+#include "src/server/include/server/network/NetworkType.hpp"
 
 class GameEngine {
     private:
-        sf::RenderWindow _window;
         std::unique_ptr<Coordinator> _coordinator;
-        // INetworkClient *_client;
-
-        bool _isRunning;
-
-
-        void processInput() {}
 
         void update(float dt) {}
+        void processInput(NetworkType type) {}
+        void render(NetworkType type) {}
 
     public:
-        // void init(INetworkClient *networkImpl) {}
-
-        void run() {}
+        void init() {}
+        void process(float dt, NetworkType type) {}
 };
 
 #endif /* !GAMEENGINE_HPP_ */
