@@ -9,6 +9,11 @@
 
 namespace protocol {
 
+    // ============================================================================
+    // NETWORK PROTOCOL STRUCTURES - No padding for exact size control
+    // ============================================================================
+    #pragma pack(push, 1)
+
     // Using PacketHeader from Packet.hpp
     using PacketHeader = common::protocol::PacketHeader;
 
@@ -907,6 +912,8 @@ namespace protocol {
         static constexpr uint16_t LIFETIME      = 0x2000;
         static constexpr uint16_t PARENT        = 0x4000;
     };
+
+    #pragma pack(pop)
 }
 
 #endif // PROTOCOL_HPP_
