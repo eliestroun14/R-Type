@@ -11,9 +11,9 @@
 #include <memory>
 #include <string>
 
-#include "system/SystemManager.hpp"
-#include "entity/EntityManager.hpp"
-#include "system/SystemManager.hpp"
+#include "./ecs/system/SystemManager.hpp"
+#include "./ecs/entity/EntityManager.hpp"
+#include "./ecs/system/SystemManager.hpp"
 
 class Coordinator {
     public:
