@@ -64,6 +64,13 @@ common::protocol::Packet NetworkManager::createPacket(protocol::PacketTypes type
 bool NetworkManager::assertClientConnect(const common::protocol::Packet &packet)
 {
     const auto &data = packet.data;
+
+    if (data.size() != 15) {
+        LOG_ERROR_CAT("NetworkManager" ,"assertEntitySpawn: size of payload != 14 is = %zu", data.size());
+        return false;
+    }
+
+
     const auto &header = packet.header;
     return false;
 }
@@ -127,11 +134,11 @@ bool NetworkManager::assertEntitySpawn(const common::protocol::Packet &packet)
     const auto &data = packet.data;
 
     if (data.size() != 15) {
-        LOG_ERROR_CAT("NetworkManager" ,"assertEntitySpawn: size of payload != 14 is = %zu", data.size());
+        LOG_ERROR_CAT("NetworkManager" ,"assertEntitySpawn: size of payload != 15 is = %zu", data.size());
         return false;
     }
 
-    // check if if id is diferent than 0
+    // check if id is different than 0
     uint32_t entity_id;
     std::memcpy(&entity_id, data.data(), sizeof(uint32_t));
     if (entity_id == 0) {
@@ -140,13 +147,15 @@ bool NetworkManager::assertEntitySpawn(const common::protocol::Packet &packet)
     }
 
     // check if entity_type exist
-    uint8_t entity_type = data[4];
+    uint8_t entity_type;
+    std::memcpy(&entity_type, data.data() + 4, sizeof(uint8_t));
     if (entity_type < protocol::ENTITY_TYPE_MIN || entity_type > protocol::ENTITY_TYPE_MAX) {
         LOG_ERROR_CAT("NetworkManager" ,"assertEntitySpawn: entity_type does not exist: 0x%02hhx", entity_type);
         return false;
     }
 
-    uint8_t initial_health = data[10];
+    uint8_t initial_health;
+    std::memcpy(&initial_health, data.data() + 10, sizeof(uint8_t));
     if (!(initial_health > 0)) {
         LOG_ERROR_CAT("NetworkManager" ,"assertEntitySpawn: initial_health <= 0: %hhu", initial_health);
         return false;
