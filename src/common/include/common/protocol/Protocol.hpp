@@ -245,9 +245,32 @@ namespace protocol {
     static constexpr uint8_t ENTITY_DESTROY_REASON_MIN = static_cast<uint8_t>(EntityDestroyReasons::DESTROY_KILLED_BY_PLAYER);
     static constexpr uint8_t ENTITY_DESTROY_REASON_MAX = static_cast<uint8_t>(EntityDestroyReasons::DESTROY_LEVEL_TRANSITION);
 
-    // ============================================================================
-    // GAME EVENTS (High-level gameplay events)
-    // ============================================================================
+    // Server -> Client
+    struct EntityUpdate {
+        PacketHeader    header;                         // type = 0 x23
+        uint32_t        entity_id;                      // Entity to update
+        uint8_t         update_flags;                   // Which fields are updated
+        uint16_t        pos_x;                          // Updated X position ( if flag set )
+        uint16_t        pos_y;                          // Updated Y position ( if flag set )
+        uint8_t         health;                         // Updated health ( if flag set )
+        uint8_t         shield;                         // Updated shield ( if flag set )
+        uint8_t         state_flags;                    // Updated state ( if flag set )
+        uint16_t        velocity_x;                     // Updated X velocity ( if flag set )
+        uint16_t        velocity_y;                     // Updated Y velocity ( if flag set )
+    };
+    // Total size : 28 bytes
+
+    enum class EntityUpdateFlags : uint8_t {
+        // Bits 0-4
+        UPDATE_POS            = 0x01,
+        UPDATE_HEALTH         = 0x04,
+        UPDATE_SHIELD         = 0x08,
+        UPDATE_STATE_FLAGS    = 0x10,
+        UPDATE_VELOCITY       = 0x20
+        // Bits 5-7 reserved for future use
+    };
+
+    static constexpr uint8_t ENTITY_UPDATE_FLAGS_MASK = 0x3F;  // Bits 0-5 valid, bits 6-7 reserved
 
     // Server -> Client
     struct PlayerHit {
