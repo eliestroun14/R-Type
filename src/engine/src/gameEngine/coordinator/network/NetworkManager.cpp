@@ -1706,11 +1706,11 @@ common::protocol::Packet NetworkManager::createPlayerInput(const std::vector<uin
 //                  WORLD_STATE (0x20-0x3F)
 // ==============================================================
 
-common::protocol::Packet NetworkManager::createWorldSnapshot(const std::vector<uint8_t> &args)
+/* common::protocol::Packet NetworkManager::createWorldSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_WORLD_SNAPSHOT));
     return packet;
-}
+} */
 
 common::protocol::Packet NetworkManager::createEntitySpawn(const std::vector<uint8_t> &args)
 {
@@ -1724,11 +1724,11 @@ common::protocol::Packet NetworkManager::createEntityDestroy(const std::vector<u
     return packet;
 }
 
-common::protocol::Packet NetworkManager::createEntityUpdate(const std::vector<uint8_t> &args)
+/* common::protocol::Packet NetworkManager::createEntityUpdate(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_UPDATE));
     return packet;
-}
+} */
 
 common::protocol::Packet NetworkManager::createTransformSnapshot(const std::vector<uint8_t> &args)
 {
