@@ -265,16 +265,16 @@ namespace protocol {
 
     // Server -> Client
     struct EntityUpdate {
-        PacketHeader   header;                         // type = 0 x23
-        uint32_t       entity_id;                      // Entity to update
-        uint8_t        update_flags;                   // Which fields are updated
-        int16_t        pos_x;                          // Updated X position ( if flag set )
-        int16_t        pos_y;                          // Updated Y position ( if flag set )
-        uint8_t        health;                         // Updated health ( if flag set )
-        uint8_t        shield;                         // Updated shield ( if flag set )
-        uint8_t        state_flags;                    // Updated state ( if flag set )
-        int16_t        velocity_x;                     // Updated X velocity ( if flag set )
-        int16_t        velocity_y;                     // Updated Y velocity ( if flag set )
+        PacketHeader    header;                         // type = 0 x23
+        uint32_t        entity_id;                      // Entity to update
+        uint8_t         update_flags;                   // Which fields are updated
+        uint16_t        pos_x;                          // Updated X position ( if flag set )
+        uint16_t        pos_y;                          // Updated Y position ( if flag set )
+        uint8_t         health;                         // Updated health ( if flag set )
+        uint8_t         shield;                         // Updated shield ( if flag set )
+        uint8_t         state_flags;                    // Updated state ( if flag set )
+        uint16_t        velocity_x;                     // Updated X velocity ( if flag set )
+        uint16_t        velocity_y;                     // Updated Y velocity ( if flag set )
     };
     // Total size : 28 bytes
 
