@@ -30,11 +30,11 @@ namespace protocol {
         //INPUT               = 0x10-0x1F 
         TYPE_PLAYER_INPUT = 0x10,
 
-        //WORLD_STATE         = 0x20-0x3F 
-        TYPE_WORLD_SNAPSHOT         = 0x20,
+        //WORLD_STATE         = 0x20-0x3F (Reserved for future use or legacy)
+        // TYPE_WORLD_SNAPSHOT      = 0x20,  // DEPRECATED: Use ECS Component Snapshots instead (0x24-0x2F)
         TYPE_ENTITY_SPAWN           = 0x21,
         TYPE_ENTITY_DESTROY         = 0x22,
-        TYPE_ENTITY_UPDATE          = 0x23,
+        // TYPE_ENTITY_UPDATE       = 0x23,  // DEPRECATED: Use Component-specific snapshots instead
 
         //GAME_EVENTS                 = 0x40-0x5F 
         TYPE_PLAYER_HIT             = 0x40,
@@ -190,27 +190,9 @@ namespace protocol {
 
     static constexpr uint16_t INPUT_FLAGS_MASK = 0x01FF;  // Bits 0-8 valid, bits 9-15 reserved
 
-    // Server -> Client
-    struct EntityState {
-        uint32_t   entity_id;                          // Unique entity identifier
-        uint8_t    entity_type;                        // Entity type
-        uint16_t   position_x;                         // X position
-        uint16_t   position_y;                         // Y position
-        uint16_t   velocity_x;                         // X velocity
-        uint16_t   velocity_y;                         // Y velocity
-        uint8_t    health;                             // Current health
-        uint8_t    state_flags;                        // State flags (e.g., alive, active)
-    };
-    // total size: 15 bytes
-
-    // Server -> Client
-    struct WorldSnapshot {
-        protocol::PacketHeader header;                // type = 0x20
-        uint32_t               world_tick;            // Server world tick number
-        uint16_t               entity_count;          // Number of entities in the snapshot
-        EntityState            entities[];            // Variable length array
-    };
-    // total size: 18 + (entity_count * 15) bytes
+    // ============================================================================
+    // ENTITY TYPES (Used in ECS component system)
+    // ============================================================================
 
     enum class EntityTypes : uint8_t {
         ENTITY_TYPE_PLAYER             = 0x01,
@@ -263,32 +245,9 @@ namespace protocol {
     static constexpr uint8_t ENTITY_DESTROY_REASON_MIN = static_cast<uint8_t>(EntityDestroyReasons::DESTROY_KILLED_BY_PLAYER);
     static constexpr uint8_t ENTITY_DESTROY_REASON_MAX = static_cast<uint8_t>(EntityDestroyReasons::DESTROY_LEVEL_TRANSITION);
 
-    // Server -> Client
-    struct EntityUpdate {
-        PacketHeader   header;                         // type = 0 x23
-        uint32_t       entity_id;                      // Entity to update
-        uint8_t        update_flags;                   // Which fields are updated
-        int16_t        pos_x;                          // Updated X position ( if flag set )
-        int16_t        pos_y;                          // Updated Y position ( if flag set )
-        uint8_t        health;                         // Updated health ( if flag set )
-        uint8_t        shield;                         // Updated shield ( if flag set )
-        uint8_t        state_flags;                    // Updated state ( if flag set )
-        int16_t        velocity_x;                     // Updated X velocity ( if flag set )
-        int16_t        velocity_y;                     // Updated Y velocity ( if flag set )
-    };
-    // Total size : 28 bytes
-
-    enum class EntityUpdateFlags : uint8_t {
-        // Bits 0-4
-        UPDATE_POS            = 0x01,
-        UPDATE_HEALTH         = 0x04,
-        UPDATE_SHIELD         = 0x08,
-        UPDATE_STATE_FLAGS    = 0x10,
-        UPDATE_VELOCITY       = 0x20
-        // Bits 5-7 reserved for future use
-    };
-
-    static constexpr uint8_t ENTITY_UPDATE_FLAGS_MASK = 0x3F;  // Bits 0-5 valid, bits 6-7 reserved
+    // ============================================================================
+    // GAME EVENTS (High-level gameplay events)
+    // ============================================================================
 
     // Server -> Client
     struct PlayerHit {
@@ -594,6 +553,19 @@ namespace protocol {
     // ============================================================================
     // COMPONENT SNAPSHOTS (0x24-0x2F)
     // ============================================================================
+
+    /**
+     * NOTE D'IMPLÉMENTATION :
+     * 
+     * Ces snapshots sont reçus au format sérializé (structure ci-dessous).
+     * Lors de la désérialisation par la socket au moment de recevoir le packet, les données du tableau 
+     * variable sont converties en std::vector<std::pair<uint32_t, ComponentXXX>>
+     * pour faciliter le traitement côté application.
+     * 
+     * Exemple pour TransformSnapshot :
+     * - Format réseau : header + world_tick + entity_count + [entity_id, ComponentTransform][]
+     * - Format après désérialisation : vector<pair<entity_id, ComponentTransform>>
+     */
 
     // Server -> Client: Snapshot of Transform components
     // Envoyé fréquemment (30-60 Hz) pour le mouvement

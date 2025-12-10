@@ -9,7 +9,7 @@
 #include <string>
 #include <csignal>
 #include <memory>
-#include "../include/server/core/Server.hpp"
+#include "../include/server/Server.hpp"
 
 // Global server pointer for signal handling
 std::unique_ptr<server::Server> g_server;
@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Afficher le banner
+    // Afficher la banner
     std::cout << R"(
     ____        ______
    / __ \      /_  __/_  ______  ___
@@ -109,10 +109,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // Lancer la boucle principale (bloquante)
     g_server->run();
 
-    // Nettoyage
     g_server.reset();
 
     std::cout << "[Main] Server shutdown complete" << std::endl;
