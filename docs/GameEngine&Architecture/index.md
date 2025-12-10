@@ -2,38 +2,67 @@
 
 ## Overview
 
-This section covers the core architecture and design of the R-Type game engine, including the Entity Component System (ECS) that powers the game logic.
+This section documents the core architecture behind the R-Type execution engine, centered around the `GameEngine` class used to coordinate runtime behavior, input flow, update cycles, and rendering depending on the network execution mode (SERVER, CLIENT, STANDALONE).
+
+`GameEngine` acts as a **runtime controller** that delegates all game-logic operations to an internal `Coordinator`. It does not directly manage entities or components that responsibility is delegated to the Coordinator.
 
 ## What You'll Find Here
 
 ### Game Engine
 
-Learn about the main `GameEngine` class that orchestrates the entire system, manages entities and components, and coordinates systems execution.
+Learn about the `GameEngine` class responsible for:
 
-- **Class Overview**: High-level orchestrator design
-- **Initialization**: Setup and configuration
-- **Core Responsibilities**: Entity management, system coordination
+- **Initialization**: Creating and preparing the Coordinator
+- **Frame Execution**: Processing input, updating logic, and rendering
+- **Network-Mode Adaptation**: Switching behavior depending on SERVER / CLIENT / STANDALONE modes
+- **Delegation Model**: Forwarding operations to the underlying Coordinator
 
-### ECS (Entity Component System)
+### Coordinator (Overview)
 
-Understand the ECS architecture that separates concerns and enables flexible, data-driven game logic.
+The Coordinator serves as the unified execution backend:
 
-- **What is an ECS**: Core concepts and benefits
-- **Entity**: The basic unit of game objects
-- **Component Manager**: How components are stored and managed
-- **System**: How systems process entities and components
+- **Systems Execution** (`updateSystems(dt)`)
+- **Input Handling** (`processInput()`)
+- **Rendering** (`render()`)
+
+The `GameEngine` does not implement logic; it **calls** the Coordinator, which contains the actual subsystems.
+
+This keeps the engine modular and easy to extend
+
+---
 
 ## Architecture Principles
 
-The R-Type game engine follows these key principles:
+This new engine layer follows several key architectural principles:
 
-1. **Separation of Concerns**: Logic, data, and rendering are cleanly separated
-2. **Data-Driven Design**: Behavior emerges from components rather than inheritance
-3. **System Coordination**: Systems execute in a controlled, predictable order
-4. **Thread-Safe Operations**: Safe for multithreaded game loops
+1. **Clear Delegation**
+   The `GameEngine` itself contains no game logic. All operations are delegated to the Coordinator, simplifying testing and reasoning.
+
+2. **Mode-Dependent Execution**
+   Rendering and input processing depend on the current network execution mode:
+   - `SERVER` ignores rendering and normally avoids client-side input
+   - `CLIENT` only renders and processes input
+   - `STANDALONE` runs full input → update → render flow
+
+3. **Minimal Responsibility**
+   The `GameEngine` only orchestrates:
+   - `processInput()`
+   - `update()`
+   - `render()`
+   - combined `process()` loop
+
+4. **Loop Safety**
+   Each call is isolated and predictable:
+   - No shared state leaks
+   - No implicit coupling between update phases
+
+5. **Replaceable Coordinator**
+   The Coordinator can be replaced or mocked for testing, allowing high-level validation of runtime behavior without needing full ECS execution.
+
+---
 
 ## Quick Navigation
 
-- Start with [What is an ECS](ECS/index.md) if you're new to entity component systems
-- Read [Game Engine Overview](GameEngine/index.md) to understand the main orchestrator
-- Explore individual ECS components to understand the architecture in detail
+- Read the updated [Game Engine Overview](GameEngine/index.md) to understand the runtime orchestration layer
+- Explore the [Coordinator Documentation](ECS/coordinator.md) for details about system execution, input handling, and rendering
+
