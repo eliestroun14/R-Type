@@ -2,7 +2,7 @@
 ** EPITECH PROJECT, 2025
 ** mirror_rtype
 ** File description:
-** NetworkManager processPacket Tests
+** PacketManager processPacket Tests
 **
 ** These tests focus on the processPacket() method behavior:
 ** - Magic number validation
@@ -10,13 +10,13 @@
 ** - Correct optional return behavior
 ** - Packet data preservation
 **
-** For detailed validation of individual packet types, see TestNetworkManagerAssert.cpp
+** For detailed validation of individual packet types, see TestPacketManagerAssert.cpp
 */
 
 #include <gtest/gtest.h>
 #include <cstring>
 #include <vector>
-#include "engine/gameEngine/coordinator/network/NetworkManager.hpp"
+#include "engine/gameEngine/coordinator/network/PacketManager.hpp"
 #include "common/protocol/Packet.hpp"
 #include "common/protocol/Protocol.hpp"
 
@@ -36,7 +36,7 @@ protected:
     }
 
     common::protocol::Packet packet;
-    NetworkManager nm;
+    PacketManager nm;
 
     void setPacketData(const std::vector<uint8_t>& data) {
         packet.data = data;

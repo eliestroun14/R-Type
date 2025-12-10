@@ -13,7 +13,7 @@
 #include <SFML/Graphics.hpp>
 #include <netinet/in.h>
 #include "../../../common/include/common/protocol/Protocol.hpp"
-#include "../../../common/include/common/network/sockets/AsioSocket.hpp"
+#include "network/ClientNetworkManager.hpp"
 //#include "../../../engine/include/engine/GameEngine.hpp"                      // TODO
 #include <atomic>
 #include <deque>
@@ -42,7 +42,6 @@ class RTypeClient {
 
         std::string getPlayerName() const { return _playerName; }
         uint32_t getSelfId() const { return _selfId; }
-        std::shared_ptr<common::network::AsioSocket> getServer() const { return _server; }
         std::atomic<bool>& isRunning() { return _isRunning; }
         std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
         std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
@@ -50,7 +49,7 @@ class RTypeClient {
         //std::shared_ptr<engine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
 
     private:
-        std::shared_ptr<common::network::AsioSocket> _server;                   // relation with server , need to create a AsioSocket
+        std::unique_ptr<client::network::ClientNetworkManager> _networkManager;
         uint32_t _selfId;                                                       // assigned by server at connection (probably the socket id)
         std::string _playerName;
         std::atomic<bool> _isRunning;
