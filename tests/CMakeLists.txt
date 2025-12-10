@@ -16,6 +16,7 @@ add_executable(ecs_tests
    engine/LoggerTest.cpp
    engine/coordinator/network/TestNetworkManagerAssert.cpp
    engine/coordinator/network/TestProcessPacket.cpp
+   engine/coordinator/network/TestNetworkManagerCreate.cpp
    common/TestPacket.cpp
 
    TestDebug.cpp
