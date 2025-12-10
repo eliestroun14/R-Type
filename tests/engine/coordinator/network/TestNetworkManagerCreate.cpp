@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <vector>
-#include "engine/gameEngine/coordinator/network/NetworkManager.hpp"
+#include "engine/gameEngine/coordinator/network/PacketManager.hpp"
 #include "common/protocol/Packet.hpp"
 #include "common/protocol/Protocol.hpp"
 #include "common/constants/defines.hpp"
@@ -107,7 +107,7 @@ TEST_F(CreateClientConnectTest, ValidClientConnect) {
     appendVector(payload, uint32ToBytes(12345)); // client_id
 
     auto args = createArgsBuffer(1, {0x01}, 100, 200, payload);
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.magic, 0x5254);
@@ -120,7 +120,7 @@ TEST_F(CreateClientConnectTest, ValidClientConnect) {
 
 TEST_F(CreateClientConnectTest, InvalidArgsSize) {
     auto args = createArgsBuffer(0, {}, 100, 200, std::vector<uint8_t>(5)); // Too small payload
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     EXPECT_FALSE(result.has_value());
 }
@@ -128,7 +128,7 @@ TEST_F(CreateClientConnectTest, InvalidArgsSize) {
 TEST_F(CreateClientConnectTest, MultipleFlags) {
     std::vector<uint8_t> payload(CLIENT_CONNECT_PAYLOAD_SIZE, 0);
     auto args = createArgsBuffer(3, {0x01, 0x02, 0x04}, 100, 200, payload);
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.flags, 0x01 | 0x02 | 0x04); // Combined flags
@@ -145,7 +145,7 @@ TEST_F(CreateServerAcceptTest, ValidServerAccept) {
     appendVector(payload, uint16ToBytes(60)); // server_tickrate
 
     auto args = createArgsBuffer(1, {0x01}, 101, 201, payload);
-    auto result = NetworkManager::createServerAccept(args);
+    auto result = PacketManager::createServerAccept(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_SERVER_ACCEPT));
@@ -154,7 +154,7 @@ TEST_F(CreateServerAcceptTest, ValidServerAccept) {
 
 TEST_F(CreateServerAcceptTest, InvalidArgsSize) {
     auto args = createArgsBuffer(0, {}, 101, 201, std::vector<uint8_t>(5)); // Too small
-    auto result = NetworkManager::createServerAccept(args);
+    auto result = PacketManager::createServerAccept(args);
 
     EXPECT_FALSE(result.has_value());
 }
@@ -170,7 +170,7 @@ TEST_F(CreateServerRejectTest, ValidServerReject) {
     payload.insert(payload.end(), 64 - reason.length(), 0); // Pad to 64 bytes
 
     auto args = createArgsBuffer(1, {0x01}, 102, 202, payload);
-    auto result = NetworkManager::createServerReject(args);
+    auto result = PacketManager::createServerReject(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_SERVER_REJECT));
@@ -186,7 +186,7 @@ TEST_F(CreateClientDisconnectTest, ValidClientDisconnect) {
     payload.push_back(0); // reason
 
     auto args = createArgsBuffer(1, {0x01}, 103, 203, payload);
-    auto result = NetworkManager::createClientDisconnect(args);
+    auto result = PacketManager::createClientDisconnect(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_CLIENT_DISCONNECT));
@@ -199,7 +199,7 @@ TEST_F(CreateHeartBeatTest, ValidHeartBeat) {
     std::vector<uint8_t> payload = uint32ToBytes(42); // player_id
 
     auto args = createArgsBuffer(1, {0x01}, 104, 204, payload);
-    auto result = NetworkManager::createHeartBeat(args);
+    auto result = PacketManager::createHeartBeat(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_HEARTBEAT));
@@ -220,7 +220,7 @@ TEST_F(CreatePlayerInputTest, ValidPlayerInput) {
     appendVector(payload, uint16ToBytes(200)); // aim_direction_y
 
     auto args = createArgsBuffer(1, {0x01}, 110, 210, payload);
-    auto result = NetworkManager::createPlayerInput(args);
+    auto result = PacketManager::createPlayerInput(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_PLAYER_INPUT));
@@ -245,7 +245,7 @@ TEST_F(CreateEntitySpawnTest, ValidEntitySpawn) {
     appendVector(payload, uint16ToBytes(20)); // initial_velocity_y
 
     auto args = createArgsBuffer(1, {0x01}, 120, 220, payload);
-    auto result = NetworkManager::createEntitySpawn(args);
+    auto result = PacketManager::createEntitySpawn(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_ENTITY_SPAWN));
@@ -262,7 +262,7 @@ TEST_F(CreateEntityDestroyTest, ValidEntityDestroy) {
     appendVector(payload, uint16ToBytes(400)); // final_position_y
 
     auto args = createArgsBuffer(1, {0x01}, 121, 221, payload);
-    auto result = NetworkManager::createEntityDestroy(args);
+    auto result = PacketManager::createEntityDestroy(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_ENTITY_DESTROY));
@@ -284,7 +284,7 @@ TEST_F(CreateTransformSnapshotTest, ValidTransformSnapshot) {
     appendVector(payload, uint16ToBytes(400)); // y
 
     auto args = createArgsBuffer(1, {0x01}, 130, 230, payload);
-    auto result = NetworkManager::createTransformSnapshot(args);
+    auto result = PacketManager::createTransformSnapshot(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_TRANSFORM_SNAPSHOT));
@@ -302,7 +302,7 @@ TEST_F(CreateVelocitySnapshotTest, ValidVelocitySnapshot) {
     appendVector(payload, uint16ToBytes(20)); // vy
 
     auto args = createArgsBuffer(1, {0x01}, 131, 231, payload);
-    auto result = NetworkManager::createVelocitySnapshot(args);
+    auto result = PacketManager::createVelocitySnapshot(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_VELOCITY_SNAPSHOT));
@@ -319,7 +319,7 @@ TEST_F(CreateHealthSnapshotTest, ValidHealthSnapshot) {
     payload.push_back(100); // health
 
     auto args = createArgsBuffer(1, {0x01}, 132, 232, payload);
-    auto result = NetworkManager::createHealthSnapshot(args);
+    auto result = PacketManager::createHealthSnapshot(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_HEALTH_SNAPSHOT));
@@ -343,7 +343,7 @@ TEST_F(CreatePlayerHitTest, ValidPlayerHit) {
     appendVector(payload, uint16ToBytes(400)); // hit_pos_y
 
     auto args = createArgsBuffer(1, {0x01}, 140, 240, payload);
-    auto result = NetworkManager::createPlayerHit(args);
+    auto result = PacketManager::createPlayerHit(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_PLAYER_HIT));
@@ -361,7 +361,7 @@ TEST_F(CreatePlayerDeathTest, ValidPlayerDeath) {
     appendVector(payload, uint16ToBytes(400)); // death_pos_y
 
     auto args = createArgsBuffer(1, {0x01}, 141, 241, payload);
-    auto result = NetworkManager::createPlayerDeath(args);
+    auto result = PacketManager::createPlayerDeath(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_PLAYER_DEATH));
@@ -378,7 +378,7 @@ TEST_F(CreateScoreUpdateTest, ValidScoreUpdate) {
     payload.push_back(0); // reason
 
     auto args = createArgsBuffer(1, {0x01}, 142, 242, payload);
-    auto result = NetworkManager::createScoreUpdate(args);
+    auto result = PacketManager::createScoreUpdate(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_SCORE_UPDATE));
@@ -395,7 +395,7 @@ TEST_F(CreatePowerupPickupTest, ValidPowerupPickup) {
     payload.push_back(0); // duration
 
     auto args = createArgsBuffer(1, {0x01}, 143, 243, payload);
-    auto result = NetworkManager::createPowerupPickup(args);
+    auto result = PacketManager::createPowerupPickup(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_POWER_PICKUP));
@@ -415,7 +415,7 @@ TEST_F(CreateWeaponFireTest, ValidWeaponFire) {
     payload.push_back(0); // weapon_type
 
     auto args = createArgsBuffer(1, {0x01}, 144, 244, payload);
-    auto result = NetworkManager::createWeaponFire(args);
+    auto result = PacketManager::createWeaponFire(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_WEAPON_FIRE));
@@ -436,7 +436,7 @@ TEST_F(CreateVisualEffectTest, ValidVisualEffect) {
     payload.push_back(0); // color_tint_b
 
     auto args = createArgsBuffer(1, {0x01}, 145, 245, payload);
-    auto result = NetworkManager::createVisualEffect(args);
+    auto result = PacketManager::createVisualEffect(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_VISUAL_EFFECT));
@@ -454,7 +454,7 @@ TEST_F(CreateAudioEffectTest, ValidAudioEffect) {
     payload.push_back(100); // pitch
 
     auto args = createArgsBuffer(1, {0x01}, 146, 246, payload);
-    auto result = NetworkManager::createAudioEffect(args);
+    auto result = PacketManager::createAudioEffect(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_AUDIO_EFFECT));
@@ -480,7 +480,7 @@ TEST_F(CreateParticleSpawnTest, ValidParticleSpawn) {
     payload.push_back(0); // color_end_b
 
     auto args = createArgsBuffer(1, {0x01}, 147, 247, payload);
-    auto result = NetworkManager::createParticleSpawn(args);
+    auto result = PacketManager::createParticleSpawn(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_PARTICLE_SPAWN));
@@ -505,7 +505,7 @@ TEST_F(CreateGameStartTest, ValidGameStart) {
     payload.push_back(1); // difficulty
 
     auto args = createArgsBuffer(1, {0x01}, 160, 260, payload);
-    auto result = NetworkManager::createGameStart(args);
+    auto result = PacketManager::createGameStart(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_GAME_START));
@@ -525,7 +525,7 @@ TEST_F(CreateGameEndTest, ValidGameEnd) {
     appendVector(payload, uint32ToBytes(300)); // play_time
 
     auto args = createArgsBuffer(1, {0x01}, 161, 261, payload);
-    auto result = NetworkManager::createGameEnd(args);
+    auto result = PacketManager::createGameEnd(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_GAME_END));
@@ -542,7 +542,7 @@ TEST_F(CreateLevelCompleteTest, ValidLevelComplete) {
     appendVector(payload, uint16ToBytes(120)); // completion_time
 
     auto args = createArgsBuffer(1, {0x01}, 162, 262, payload);
-    auto result = NetworkManager::createLevelComplete(args);
+    auto result = PacketManager::createLevelComplete(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_LEVEL_COMPLETE));
@@ -560,7 +560,7 @@ TEST_F(CreateLevelStartTest, ValidLevelStart) {
     appendVector(payload, uint16ToBytes(120)); // estimated_duration
 
     auto args = createArgsBuffer(1, {0x01}, 163, 263, payload);
-    auto result = NetworkManager::createLevelStart(args);
+    auto result = PacketManager::createLevelStart(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_LEVEL_START));
@@ -579,7 +579,7 @@ TEST_F(CreateForceStateTest, ValidForceState) {
     payload.push_back(1); // is_firing
 
     auto args = createArgsBuffer(1, {0x01}, 164, 264, payload);
-    auto result = NetworkManager::createForceState(args);
+    auto result = PacketManager::createForceState(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_FORCE_STATE));
@@ -599,7 +599,7 @@ TEST_F(CreateAIStateTest, ValidAIState) {
     appendVector(payload, uint16ToBytes(5000)); // state_timer
 
     auto args = createArgsBuffer(1, {0x01}, 165, 265, payload);
-    auto result = NetworkManager::createAIState(args);
+    auto result = PacketManager::createAIState(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_AI_STATE));
@@ -618,7 +618,7 @@ TEST_F(CreateAcknowledgmentTest, ValidAcknowledgment) {
     appendVector(payload, uint32ToBytes(1000)); // received_timestamp
 
     auto args = createArgsBuffer(1, {0x01}, 170, 270, payload);
-    auto result = NetworkManager::createAcknowledgment(args);
+    auto result = PacketManager::createAcknowledgment(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_ACK));
@@ -632,7 +632,7 @@ TEST_F(CreatePingTest, ValidPing) {
     appendVector(payload, uint32ToBytes(1234567890)); // client_timestamp
 
     auto args = createArgsBuffer(1, {0x01}, 171, 271, payload);
-    auto result = NetworkManager::createPing(args);
+    auto result = PacketManager::createPing(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_PING));
@@ -647,7 +647,7 @@ TEST_F(CreatePongTest, ValidPong) {
     appendVector(payload, uint32ToBytes(1234567890)); // server_timestamp
 
     auto args = createArgsBuffer(1, {0x01}, 172, 272, payload);
-    auto result = NetworkManager::createPong(args);
+    auto result = PacketManager::createPong(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_PONG));
@@ -666,7 +666,7 @@ TEST_F(CreateComponentRemoveTest, ValidComponentRemove) {
     payload.push_back(0); // component_type
 
     auto args = createArgsBuffer(1, {0x01}, 180, 280, payload);
-    auto result = NetworkManager::createComponentRemove(args);
+    auto result = PacketManager::createComponentRemove(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_COMPONENT_REMOVE));
@@ -689,7 +689,7 @@ TEST_F(CreateWeaponSnapshotTest, ValidWeaponSnapshot) {
     appendVector(payload, uint16ToBytes(5000)); // fire_rate
 
     auto args = createArgsBuffer(1, {0x01}, 150, 250, payload);
-    auto result = NetworkManager::createWeaponSnapshot(args);
+    auto result = PacketManager::createWeaponSnapshot(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_WEAPON_SNAPSHOT));
@@ -710,7 +710,7 @@ TEST_F(CreateAISnapshotTest, ValidAISnapshot) {
     appendVector(payload, uint16ToBytes(200)); // waypoint_y
 
     auto args = createArgsBuffer(1, {0x01}, 151, 251, payload);
-    auto result = NetworkManager::createAISnapshot(args);
+    auto result = PacketManager::createAISnapshot(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_AI_SNAPSHOT));
@@ -729,7 +729,7 @@ TEST_F(CreateAnimationSnapshotTest, ValidAnimationSnapshot) {
     appendVector(payload, uint16ToBytes(100)); // animation_speed
 
     auto args = createArgsBuffer(1, {0x01}, 152, 252, payload);
-    auto result = NetworkManager::createAnimationSnapshot(args);
+    auto result = PacketManager::createAnimationSnapshot(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_ANIMATION_SNAPSHOT));
@@ -746,7 +746,7 @@ TEST_F(CreateComponentAddTest, ValidComponentAdd) {
     appendVector(payload, uint16ToBytes(100)); // sample component data
 
     auto args = createArgsBuffer(1, {0x01}, 181, 281, payload);
-    auto result = NetworkManager::createComponentAdd(args);
+    auto result = PacketManager::createComponentAdd(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_COMPONENT_ADD));
@@ -765,7 +765,7 @@ TEST_F(CreateTransformSnapshotDeltaTest, ValidTransformSnapshotDelta) {
     appendVector(payload, uint16ToBytes(400)); // y
 
     auto args = createArgsBuffer(1, {0x01}, 153, 253, payload);
-    auto result = NetworkManager::createTransformSnapshotDelta(args);
+    auto result = PacketManager::createTransformSnapshotDelta(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA));
@@ -783,7 +783,7 @@ TEST_F(CreateHealthSnapshotDeltaTest, ValidHealthSnapshotDelta) {
     payload.push_back(100); // health
 
     auto args = createArgsBuffer(1, {0x01}, 154, 254, payload);
-    auto result = NetworkManager::createHealthSnapshotDelta(args);
+    auto result = PacketManager::createHealthSnapshotDelta(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA));
@@ -802,7 +802,7 @@ TEST_F(CreateEntityFullStateTest, ValidEntityFullState) {
     appendVector(payload, uint16ToBytes(100)); // sample component data
 
     auto args = createArgsBuffer(1, {0x01}, 155, 255, payload);
-    auto result = NetworkManager::createEntityFullState(args);
+    auto result = PacketManager::createEntityFullState(args);
 
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_ENTITY_FULL_STATE));
@@ -818,7 +818,7 @@ class CreateErrorHandlingTest : public NetworkManagerCreateTest {
 TEST_F(CreateErrorHandlingTest, InsufficientFlagsData) {
     // flags_count = 3 but only provide 1 flag byte
     auto args = createArgsBuffer(3, {0x01}, 100, 200, std::vector<uint8_t>(37));
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     EXPECT_FALSE(result.has_value());
 }
@@ -826,7 +826,7 @@ TEST_F(CreateErrorHandlingTest, InsufficientFlagsData) {
 TEST_F(CreateErrorHandlingTest, ZeroFlagsCount) {
     std::vector<uint8_t> payload(CLIENT_CONNECT_PAYLOAD_SIZE, 0);
     auto args = createArgsBuffer(0, {}, 100, 200, payload);
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     ASSERT_TRUE(result.has_value()); // Should work with no flags
 }
@@ -835,7 +835,7 @@ TEST_F(CreateErrorHandlingTest, MaxFlagsCount) {
     std::vector<uint8_t> flags(255, 0x01); // Max possible flags
     std::vector<uint8_t> payload(CLIENT_CONNECT_PAYLOAD_SIZE, 0);
     auto args = createArgsBuffer(255, flags, 100, 200, payload);
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     // With 255 flags, total size = 1 + 255 + 4 + 4 + 37 = 301 bytes
     // This should actually succeed since we have all the data
@@ -844,7 +844,7 @@ TEST_F(CreateErrorHandlingTest, MaxFlagsCount) {
 
 TEST_F(CreateErrorHandlingTest, OptionalReturnType) {
     auto args = createArgsBuffer(1, {0x01}, 100, 200, std::vector<uint8_t>(5)); // Too small
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result, std::nullopt);
@@ -853,7 +853,7 @@ TEST_F(CreateErrorHandlingTest, OptionalReturnType) {
 TEST_F(CreateErrorHandlingTest, ValidOptionalReturnType) {
     std::vector<uint8_t> payload(CLIENT_CONNECT_PAYLOAD_SIZE, 0);
     auto args = createArgsBuffer(1, {0x01}, 100, 200, payload);
-    auto result = NetworkManager::createClientConnect(args);
+    auto result = PacketManager::createClientConnect(args);
 
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result, std::nullopt);

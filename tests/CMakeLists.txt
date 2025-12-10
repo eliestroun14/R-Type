@@ -31,6 +31,8 @@ target_link_libraries(ecs_tests
     pthread
     engine
     common
+    client_lib
+    server_lib
     spdlog::spdlog
 
     sfml-graphics

@@ -65,7 +65,7 @@ std::optional<common::protocol::Packet> PacketManager::processPacket(const commo
     return std::nullopt;
 }
 
-common::protocol::Packet PacketManager::createPacket(protocol::PacketTypes type, const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPacket(protocol::PacketTypes type, const std::vector<uint8_t> &args)
 {
     // Find handler for this packet type
     for (const auto &handler : handlers) {
@@ -1683,7 +1683,7 @@ bool PacketManager::assertPong(const common::protocol::Packet &packet)
 //                  CONNECTION (0x01-0x0F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createClientConnect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createClientConnect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_CONNECT));
 
@@ -1760,7 +1760,7 @@ common::protocol::Packet PacketManager::createClientConnect(const std::vector<ui
     return packet;
 }
 
-common::protocol::Packet PacketManager::createServerAccept(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createServerAccept(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_ACCEPT));
 
@@ -1831,7 +1831,7 @@ common::protocol::Packet PacketManager::createServerAccept(const std::vector<uin
     return packet;
 }
 
-common::protocol::Packet PacketManager::createServerReject(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createServerReject(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_REJECT));
 
@@ -1884,7 +1884,7 @@ common::protocol::Packet PacketManager::createServerReject(const std::vector<uin
     return packet;
 }
 
-common::protocol::Packet PacketManager::createClientDisconnect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createClientDisconnect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_DISCONNECT));
 
@@ -1938,7 +1938,7 @@ common::protocol::Packet PacketManager::createClientDisconnect(const std::vector
     return packet;
 }
 
-common::protocol::Packet PacketManager::createHeartBeat(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createHeartBeat(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT));
 
@@ -1992,7 +1992,7 @@ common::protocol::Packet PacketManager::createHeartBeat(const std::vector<uint8_
 //                  INPUT (0x10-0x1F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createPlayerInput(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT));
 
@@ -2064,7 +2064,7 @@ common::protocol::Packet PacketManager::createPlayerInput(const std::vector<uint
     return packet;
 } */
 
-common::protocol::Packet PacketManager::createEntitySpawn(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN));
 
@@ -2139,7 +2139,7 @@ common::protocol::Packet PacketManager::createEntitySpawn(const std::vector<uint
     return packet;
 }
 
-common::protocol::Packet PacketManager::createEntityDestroy(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createEntityDestroy(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_DESTROY));
 
@@ -2206,7 +2206,7 @@ common::protocol::Packet PacketManager::createEntityDestroy(const std::vector<ui
     return packet;
 } */
 
-common::protocol::Packet PacketManager::createTransformSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createTransformSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT));
 
@@ -2250,7 +2250,7 @@ common::protocol::Packet PacketManager::createTransformSnapshot(const std::vecto
     return packet;
 }
 
-common::protocol::Packet PacketManager::createVelocitySnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createVelocitySnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT));
 
@@ -2293,7 +2293,7 @@ common::protocol::Packet PacketManager::createVelocitySnapshot(const std::vector
     return packet;
 }
 
-common::protocol::Packet PacketManager::createHealthSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createHealthSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT));
 
@@ -2336,7 +2336,7 @@ common::protocol::Packet PacketManager::createHealthSnapshot(const std::vector<u
     return packet;
 }
 
-common::protocol::Packet PacketManager::createWeaponSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createWeaponSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT));
 
@@ -2379,7 +2379,7 @@ common::protocol::Packet PacketManager::createWeaponSnapshot(const std::vector<u
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAISnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAISnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_SNAPSHOT));
 
@@ -2422,7 +2422,7 @@ common::protocol::Packet PacketManager::createAISnapshot(const std::vector<uint8
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAnimationSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAnimationSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT));
 
@@ -2465,7 +2465,7 @@ common::protocol::Packet PacketManager::createAnimationSnapshot(const std::vecto
     return packet;
 }
 
-common::protocol::Packet PacketManager::createComponentAdd(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createComponentAdd(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_ADD));
 
@@ -2508,7 +2508,7 @@ common::protocol::Packet PacketManager::createComponentAdd(const std::vector<uin
     return packet;
 }
 
-common::protocol::Packet PacketManager::createComponentRemove(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createComponentRemove(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_REMOVE));
 
@@ -2562,7 +2562,7 @@ common::protocol::Packet PacketManager::createComponentRemove(const std::vector<
     return packet;
 }
 
-common::protocol::Packet PacketManager::createTransformSnapshotDelta(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createTransformSnapshotDelta(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA));
 
@@ -2605,7 +2605,7 @@ common::protocol::Packet PacketManager::createTransformSnapshotDelta(const std::
     return packet;
 }
 
-common::protocol::Packet PacketManager::createHealthSnapshotDelta(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createHealthSnapshotDelta(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA));
 
@@ -2648,7 +2648,7 @@ common::protocol::Packet PacketManager::createHealthSnapshotDelta(const std::vec
     return packet;
 }
 
-common::protocol::Packet PacketManager::createEntityFullState(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createEntityFullState(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_FULL_STATE));
 
@@ -2695,7 +2695,7 @@ common::protocol::Packet PacketManager::createEntityFullState(const std::vector<
 //                  GAME_EVENTS (0x40-0x5F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createPlayerHit(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPlayerHit(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_HIT));
 
@@ -2766,7 +2766,7 @@ common::protocol::Packet PacketManager::createPlayerHit(const std::vector<uint8_
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPlayerDeath(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPlayerDeath(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_DEATH));
 
@@ -2832,7 +2832,7 @@ common::protocol::Packet PacketManager::createPlayerDeath(const std::vector<uint
     return packet;
 }
 
-common::protocol::Packet PacketManager::createScoreUpdate(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createScoreUpdate(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SCORE_UPDATE));
 
@@ -2894,7 +2894,7 @@ common::protocol::Packet PacketManager::createScoreUpdate(const std::vector<uint
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPowerupPickup(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPowerupPickup(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP));
 
@@ -2955,7 +2955,7 @@ common::protocol::Packet PacketManager::createPowerupPickup(const std::vector<ui
     return packet;
 }
 
-common::protocol::Packet PacketManager::createWeaponFire(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createWeaponFire(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_FIRE));
 
@@ -3029,7 +3029,7 @@ common::protocol::Packet PacketManager::createWeaponFire(const std::vector<uint8
     return packet;
 }
 
-common::protocol::Packet PacketManager::createVisualEffect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createVisualEffect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT));
 
@@ -3103,7 +3103,7 @@ common::protocol::Packet PacketManager::createVisualEffect(const std::vector<uin
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAudioEffect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAudioEffect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT));
 
@@ -3167,7 +3167,7 @@ common::protocol::Packet PacketManager::createAudioEffect(const std::vector<uint
     return packet;
 }
 
-common::protocol::Packet PacketManager::createParticleSpawn(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createParticleSpawn(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PARTICLE_SPAWN));
 
@@ -3260,7 +3260,7 @@ common::protocol::Packet PacketManager::createParticleSpawn(const std::vector<ui
 //                  GAME_CONTROL (0x60-0x6F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createGameStart(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createGameStart(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START));
 
@@ -3328,7 +3328,7 @@ common::protocol::Packet PacketManager::createGameStart(const std::vector<uint8_
     return packet;
 }
 
-common::protocol::Packet PacketManager::createGameEnd(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createGameEnd(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_END));
 
@@ -3391,7 +3391,7 @@ common::protocol::Packet PacketManager::createGameEnd(const std::vector<uint8_t>
     return packet;
 }
 
-common::protocol::Packet PacketManager::createLevelComplete(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createLevelComplete(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE));
 
@@ -3451,7 +3451,7 @@ common::protocol::Packet PacketManager::createLevelComplete(const std::vector<ui
     return packet;
 }
 
-common::protocol::Packet PacketManager::createLevelStart(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createLevelStart(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START));
 
@@ -3508,7 +3508,7 @@ common::protocol::Packet PacketManager::createLevelStart(const std::vector<uint8
     return packet;
 }
 
-common::protocol::Packet PacketManager::createForceState(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createForceState(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_FORCE_STATE));
 
@@ -3575,7 +3575,7 @@ common::protocol::Packet PacketManager::createForceState(const std::vector<uint8
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAIState(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAIState(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_STATE));
 
@@ -3651,7 +3651,7 @@ common::protocol::Packet PacketManager::createAIState(const std::vector<uint8_t>
 //                  PROTOCOL_CONTROL (0x70-0x7F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createAcknowledgment(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAcknowledgment(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ACK));
 
@@ -3705,7 +3705,7 @@ common::protocol::Packet PacketManager::createAcknowledgment(const std::vector<u
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPing(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPing(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PING));
 
@@ -3755,7 +3755,7 @@ common::protocol::Packet PacketManager::createPing(const std::vector<uint8_t> &a
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPong(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPong(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PONG));
 
