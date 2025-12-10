@@ -132,13 +132,17 @@ namespace protocol {
         // Add here if we need
     };
 
+    static constexpr uint8_t REJECT_CODE_MIN = static_cast<uint8_t>(RejectCodes::REJECT_SERVER_FULL);
+    static constexpr uint8_t REJECT_CODE_MAX = static_cast<uint8_t>(RejectCodes::REJECT_BANNED_CLIENT);
+    static constexpr uint8_t REJECT_CODE_GENERIC_ERROR = static_cast<uint8_t>(RejectCodes::REJECT_GENERIC_ERROR);
+
     // Client -> Server or Server -> Client
     struct ClientDisconnect {
         protocol::PacketHeader header;                 // type = 0x04 + FLAG_RELIABLE
         uint32_t               player_id;              // Unique player identifier
         uint8_t                reason;                 // Reason for disconnection
     };
-    // total size: 8 bytes
+    // total size: 17 bytes
 
     enum class DisconnectReasons : uint8_t {
         REASON_NORMAL_DISCONNECT            = 0x00,    // Client initiated disconnect
@@ -148,6 +152,10 @@ namespace protocol {
         REASON_GENERIC_ERROR                = 0xFF     // Generic error
         // Add here if we need
     };
+
+    static constexpr uint8_t DISCONNECT_REASON_MIN = static_cast<uint8_t>(DisconnectReasons::REASON_NORMAL_DISCONNECT);
+    static constexpr uint8_t DISCONNECT_REASON_MAX = static_cast<uint8_t>(DisconnectReasons::REASON_CLIENT_ERROR);
+    static constexpr uint8_t DISCONNECT_REASON_GENERIC_ERROR = static_cast<uint8_t>(DisconnectReasons::REASON_GENERIC_ERROR);
 
     // Client -> Server or Server -> Client
     struct HeartBeat {
@@ -180,6 +188,8 @@ namespace protocol {
         // Bits 9-15 reserved for future bonus actions
     };
 
+    static constexpr uint16_t INPUT_FLAGS_MASK = 0x01FF;  // Bits 0-8 valid, bits 9-15 reserved
+
     // Server -> Client
     struct EntityState {
         uint32_t   entity_id;                          // Unique entity identifier
@@ -191,7 +201,7 @@ namespace protocol {
         uint8_t    health;                             // Current health
         uint8_t    state_flags;                        // State flags (e.g., alive, active)
     };
-    // total size: 16 bytes
+    // total size: 15 bytes
 
     // Server -> Client
     struct WorldSnapshot {
@@ -200,7 +210,7 @@ namespace protocol {
         uint16_t               entity_count;          // Number of entities in the snapshot
         EntityState            entities[];            // Variable length array
     };
-    // total size: 18 + (entity_count * 16) bytes
+    // total size: 18 + (entity_count * 15) bytes
 
     enum class EntityTypes : uint8_t {
         ENTITY_TYPE_PLAYER             = 0x01,
@@ -250,6 +260,9 @@ namespace protocol {
         // Add here if we need
     };
 
+    static constexpr uint8_t ENTITY_DESTROY_REASON_MIN = static_cast<uint8_t>(EntityDestroyReasons::DESTROY_KILLED_BY_PLAYER);
+    static constexpr uint8_t ENTITY_DESTROY_REASON_MAX = static_cast<uint8_t>(EntityDestroyReasons::DESTROY_LEVEL_TRANSITION);
+
     // Server -> Client
     struct EntityUpdate {
         PacketHeader   header;                         // type = 0 x23
@@ -275,6 +288,8 @@ namespace protocol {
         // Bits 5-7 reserved for future use
     };
 
+    static constexpr uint8_t ENTITY_UPDATE_FLAGS_MASK = 0x3F;  // Bits 0-5 valid, bits 6-7 reserved
+
     // Server -> Client
     struct PlayerHit {
         PacketHeader   header;                          // type = 0x40, FLAG_RELIABLE
@@ -286,7 +301,7 @@ namespace protocol {
         int16_t        hit_pos_x;                       // Hit location X
         int16_t        hit_pos_y;                       // Hit location Y
     };
-    // Total size: 29 bytes
+    // Total size: 27 bytes
 
     // Server -> Client
     struct PlayerDeath {
@@ -297,7 +312,7 @@ namespace protocol {
         int16_t         death_pos_x;                    // Death location X
         int16_t         death_pos_y;                    // Death location Y
     };
-    // Total size: 30 bytes
+    // Total size: 28 bytes
 
     // Server -> Client
     struct ScoreUpdate {
@@ -350,7 +365,7 @@ namespace protocol {
         int16_t         direction_y;            // Direction vector Y (normalized*1000)
         uint8_t         weapon_type;            // Weapon type fired
     };
-    // Total size: 31 bytes
+    // Total size: 29 bytes
 
     enum class WeaponTypes : uint8_t {
         WEAPON_TYPE_BASIC          = 0x00,
@@ -371,7 +386,7 @@ namespace protocol {
         uint8_t         level_id;               // Starting level
         uint8_t         difficulty;             // Difficulty setting
     };
-    // Total size: 36 bytes
+    // Total size: 35 bytes
 
     enum class DifficultyLevels : uint8_t {
         DIFFICULTY_EASY        = 0x00,
@@ -406,7 +421,7 @@ namespace protocol {
         uint32_t        bonus_score;            // Completion bonus
         uint16_t        completion_time;        // Time taken (seconds)
     };
-    // Total size: 22 bytes
+    // Total size: 20 bytes
 
     // Server -> Client
     struct LevelStart {

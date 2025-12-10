@@ -13,8 +13,8 @@
 #include <map>
 #include <optional>
 #include <array>
-#include "../../../../../common/include/common/protocol/Protocol.hpp"
-#include "../../../../../common/include/common/protocol/Packet.hpp"
+#include "../../common/include/common/protocol/Protocol.hpp"
+#include "../../common/include/common/protocol/Packet.hpp"
 
 /**
  * @class NetworkManager
@@ -681,9 +681,56 @@ class NetworkManager {
          * To add new packet types, simply add a new entry to this array with
          * the corresponding assertion and creation functions.
          */
-        static constexpr std::array<PacketHandler, 2> handlers = {{
+        static constexpr std::array<PacketHandler, 38> handlers = {{
+            // CONNECTION (0x01-0x0F)
+            { protocol::PacketTypes::TYPE_CLIENT_CONNECT, &NetworkManager::assertClientConnect, &NetworkManager::createClientConnect },
+            { protocol::PacketTypes::TYPE_SERVER_ACCEPT, &NetworkManager::assertServerAccept, &NetworkManager::createServerAccept },
+            { protocol::PacketTypes::TYPE_SERVER_REJECT, &NetworkManager::assertServerReject, &NetworkManager::createServerReject },
+            { protocol::PacketTypes::TYPE_CLIENT_DISCONNECT, &NetworkManager::assertClientDisconnect, &NetworkManager::createClientDisconnect },
+            { protocol::PacketTypes::TYPE_HEARTBEAT, &NetworkManager::assertHeartBeat, &NetworkManager::createHeartBeat },
+
+            // INPUT (0x10-0x1F)
+            { protocol::PacketTypes::TYPE_PLAYER_INPUT, &NetworkManager::assertPlayerInput, &NetworkManager::createPlayerInput },
+
+            // WORLD_STATE (0x20-0x3F)
+            { protocol::PacketTypes::TYPE_WORLD_SNAPSHOT, &NetworkManager::assertWorldSnapshot, &NetworkManager::createWorldSnapshot },
             { protocol::PacketTypes::TYPE_ENTITY_SPAWN, &NetworkManager::assertEntitySpawn, &NetworkManager::createEntitySpawn },
-            { protocol::PacketTypes::TYPE_WORLD_SNAPSHOT, &NetworkManager::assertWorldSnapshot, &NetworkManager::createWorldSnapshot }
+            { protocol::PacketTypes::TYPE_ENTITY_DESTROY, &NetworkManager::assertEntityDestroy, &NetworkManager::createEntityDestroy },
+            { protocol::PacketTypes::TYPE_ENTITY_UPDATE, &NetworkManager::assertEntityUpdate, &NetworkManager::createEntityUpdate },
+            { protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT, &NetworkManager::assertTransformSnapshot, &NetworkManager::createTransformSnapshot },
+            { protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT, &NetworkManager::assertVelocitySnapshot, &NetworkManager::createVelocitySnapshot },
+            { protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT, &NetworkManager::assertHealthSnapshot, &NetworkManager::createHealthSnapshot },
+            { protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT, &NetworkManager::assertWeaponSnapshot, &NetworkManager::createWeaponSnapshot },
+            { protocol::PacketTypes::TYPE_AI_SNAPSHOT, &NetworkManager::assertAISnapshot, &NetworkManager::createAISnapshot },
+            { protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT, &NetworkManager::assertAnimationSnapshot, &NetworkManager::createAnimationSnapshot },
+            { protocol::PacketTypes::TYPE_COMPONENT_ADD, &NetworkManager::assertComponentAdd, &NetworkManager::createComponentAdd },
+            { protocol::PacketTypes::TYPE_COMPONENT_REMOVE, &NetworkManager::assertComponentRemove, &NetworkManager::createComponentRemove },
+            { protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA, &NetworkManager::assertTransformSnapshotDelta, &NetworkManager::createTransformSnapshotDelta },
+            { protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA, &NetworkManager::assertHealthSnapshotDelta, &NetworkManager::createHealthSnapshotDelta },
+            { protocol::PacketTypes::TYPE_ENTITY_FULL_STATE, &NetworkManager::assertEntityFullState, &NetworkManager::createEntityFullState },
+
+            // GAME_EVENTS (0x40-0x5F)
+            { protocol::PacketTypes::TYPE_PLAYER_HIT, &NetworkManager::assertPlayerHit, &NetworkManager::createPlayerHit },
+            { protocol::PacketTypes::TYPE_PLAYER_DEATH, &NetworkManager::assertPlayerDeath, &NetworkManager::createPlayerDeath },
+            { protocol::PacketTypes::TYPE_SCORE_UPDATE, &NetworkManager::assertScoreUpdate, &NetworkManager::createScoreUpdate },
+            { protocol::PacketTypes::TYPE_POWER_PICKUP, &NetworkManager::assertPowerupPickup, &NetworkManager::createPowerupPickup },
+            { protocol::PacketTypes::TYPE_WEAPON_FIRE, &NetworkManager::assertWeaponFire, &NetworkManager::createWeaponFire },
+            { protocol::PacketTypes::TYPE_VISUAL_EFFECT, &NetworkManager::assertVisualEffect, &NetworkManager::createVisualEffect },
+            { protocol::PacketTypes::TYPE_AUDIO_EFFECT, &NetworkManager::assertAudioEffect, &NetworkManager::createAudioEffect },
+            { protocol::PacketTypes::TYPE_PARTICLE_SPAWN, &NetworkManager::assertParticleSpawn, &NetworkManager::createParticleSpawn },
+
+            // GAME_CONTROL (0x60-0x6F)
+            { protocol::PacketTypes::TYPE_GAME_START, &NetworkManager::assertGameStart, &NetworkManager::createGameStart },
+            { protocol::PacketTypes::TYPE_GAME_END, &NetworkManager::assertGameEnd, &NetworkManager::createGameEnd },
+            { protocol::PacketTypes::TYPE_LEVEL_COMPLETE, &NetworkManager::assertLevelComplete, &NetworkManager::createLevelComplete },
+            { protocol::PacketTypes::TYPE_LEVEL_START, &NetworkManager::assertLevelStart, &NetworkManager::createLevelStart },
+            { protocol::PacketTypes::TYPE_FORCE_STATE, &NetworkManager::assertForceState, &NetworkManager::createForceState },
+            { protocol::PacketTypes::TYPE_AI_STATE, &NetworkManager::assertAIState, &NetworkManager::createAIState },
+
+            // PROTOCOL_CONTROL (0x70-0x7F)
+            { protocol::PacketTypes::TYPE_ACK, &NetworkManager::assertAcknowledgment, &NetworkManager::createAcknowledgment },
+            { protocol::PacketTypes::TYPE_PING, &NetworkManager::assertPing, &NetworkManager::createPing },
+            { protocol::PacketTypes::TYPE_PONG, &NetworkManager::assertPong, &NetworkManager::createPong }
         }};
 
         /**
