@@ -54,15 +54,16 @@ CPMAddPackage(
     NAME SFML
     GITHUB_REPOSITORY SFML/SFML
     GIT_TAG 2.6.1
-    OPTIONS 
-        "SFML_BUILD_EXAMPLES OFF"
-        "SFML_BUILD_DOC OFF"
-        "SFML_BUILD_TEST_SUITE OFF"
-        "SFML_BUILD_SHARED_LIBS OFF"
+    CMAKE_ARGS
+        "-DBUILD_SHARED_LIBS=OFF"
+        "-DSFML_BUILD_EXAMPLES=OFF"
+        "-DSFML_BUILD_DOC=OFF"
+        "-DSFML_BUILD_TEST_SUITE=OFF"
+        "-DSFML_USE_SYSTEM_DEPS=OFF"
 )
 
-# Ensure SFML modules are available
-find_package(SFML 2.6 COMPONENTS graphics window system REQUIRED)
+# SFML targets are: sfml-system, sfml-window, sfml-graphics, sfml-audio, sfml-network
+message(STATUS "SFML_ADDED: ${SFML_ADDED}")
 
 # Make asio and spdlog available globally for all subdirectories
 set(COMMON_LIBS asio spdlog::spdlog)
