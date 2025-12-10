@@ -54,8 +54,15 @@ CPMAddPackage(
     NAME SFML
     GITHUB_REPOSITORY SFML/SFML
     GIT_TAG 2.6.1
-    OPTIONS "SFML_BUILD_EXAMPLES OFF" "SFML_BUILD_DOC OFF" "SFML_BUILD_TEST_SUITE OFF"
+    OPTIONS 
+        "SFML_BUILD_EXAMPLES OFF"
+        "SFML_BUILD_DOC OFF"
+        "SFML_BUILD_TEST_SUITE OFF"
+        "SFML_BUILD_SHARED_LIBS OFF"
 )
+
+# Ensure SFML modules are available
+find_package(SFML 2.6 COMPONENTS graphics window system REQUIRED)
 
 # Make asio and spdlog available globally for all subdirectories
 set(COMMON_LIBS asio spdlog::spdlog)
