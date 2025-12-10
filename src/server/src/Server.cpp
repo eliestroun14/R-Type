@@ -18,7 +18,19 @@ Server::~Server() {
 }
 
 bool Server::init() {
-
+    try {
+        for (uint32_t i = 0; i < _config.maxPlayers; ++i) {
+            _clients[i] = std::make_shared<common::network::AsioSocket>();
+            if (!_clients[i]->bind(_config.port + i)) {
+                std::cerr << "[Server] Failed to bind socket for client " << i << " on port " << (_config.port + i) << std::endl;
+                return false;
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[Server] Exception during initialization: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
 }
 
 void Server::run() {
@@ -111,3 +123,21 @@ void Server::gameLoop() {
 }
 
 } // namespace server
+
+int main(int argc, char const *argv[])
+{
+    server::ServerConfig config;
+    config.port = argc > 1 ? static_cast<uint16_t>(std::stoi(argv[1])) : 4242;
+    config.maxPlayers = argc > 2 ? static_cast<uint32_t>(std::stoi(argv[2])) : 16;
+    config.tickRate = argc > 3 ? static_cast<uint32_t>(std::stoi(argv[3])) : 60;
+
+    server::Server server(config);
+    if (!server.init()) {
+        std::cerr << "[Server] Failed to initialize." << std::endl;
+        return 1;
+    }
+
+    server.run();
+
+    return 0;
+}
