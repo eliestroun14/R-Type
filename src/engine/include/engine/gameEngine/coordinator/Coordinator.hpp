@@ -139,7 +139,7 @@ class Coordinator {
             return this->_renderManager->isActionActive(action);
         }
 
-        std::map<GameAction, bool> getActiveActions()
+        std::map<GameAction, bool>& getActiveActions()
         {
             return this->_renderManager->getActiveActions();
         }

@@ -119,11 +119,11 @@ void RenderManager::handleEvent(const sf::Event& event)
             return; //TODO: add here action
 
     if (event.type == sf::Event::MouseButtonPressed)
-        if (event.mouseButton.button == sf::Mouse::Left)
+        if (event.mouseButton.button == sf::Mouse::Right)
             return; //TODO: add here action
 }
 
-std::map<GameAction, bool> RenderManager::getActiveActions()
+std::map<GameAction, bool>& RenderManager::getActiveActions()
 {
     return this->_activeActions;
 }
