@@ -16,6 +16,7 @@ add_executable(ecs_tests
    engine/LoggerTest.cpp
    engine/coordinator/network/TestPacketManagerAssert.cpp
    engine/coordinator/network/TestProcessPacket.cpp
+   engine/coordinator/network/TestNetworkManagerCreate.cpp
    engine/coordinator/network/TestNetworkManagers.cpp
    common/TestPacket.cpp
 
@@ -30,6 +31,8 @@ target_link_libraries(ecs_tests
     pthread
     engine
     common
+    client_lib
+    server_lib
     spdlog::spdlog
 
     sfml-graphics

@@ -6,7 +6,7 @@
 */
 
 #include "../../include/client/network/ClientNetworkManager.hpp"
-#include "../../../common/include/common/protocol/Protocol.hpp"
+#include "common/protocol/Protocol.hpp"
 #include <chrono>
 
 using namespace std::chrono_literals;

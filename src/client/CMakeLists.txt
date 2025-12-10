@@ -15,6 +15,20 @@ file(GLOB_RECURSE CLIENT_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
 )
 
+# Create client library
+add_library(client_lib STATIC ${CLIENT_SOURCES} ${CLIENT_HEADERS})
+
+target_include_directories(client_lib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Link libraries
+target_link_libraries(client_lib PUBLIC
+    engine
+    common
+    ${COMMON_LIBS}
+)
+
 # Create client executable
 add_executable(r-type-client ${CLIENT_SOURCES} ${CLIENT_HEADERS})
 

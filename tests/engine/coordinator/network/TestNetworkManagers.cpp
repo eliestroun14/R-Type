@@ -6,8 +6,8 @@
 */
 
 #include <gtest/gtest.h>
-#include "client/network/ClientNetworkManager.hpp"
-#include "server/network/ServerNetworkManager.hpp"
+#include "../../../../src/client/include/client/network/ClientNetworkManager.hpp"
+#include "../../../../src/server/include/server/network/ServerNetworkManager.hpp"
 #include "common/protocol/Protocol.hpp"
 #include "common/protocol/Packet.hpp"
 

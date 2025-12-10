@@ -7,6 +7,7 @@
 
 #include "../../../../include/engine/gameEngine/coordinator/network/PacketManager.hpp"
 #include "../../../../../common/include/common/protocol/Packet.hpp"
+#include "../../../../../common/include/common/constants/defines.hpp"
 #include <cstring>
 #include "../../../../../engine/include/engine/utils/Logger.hpp"
 
@@ -25,12 +26,33 @@ std::optional<common::protocol::Packet> PacketManager::processPacket(const commo
     const auto &header = packet.header;
 
     // Check magic number
-    if (header.magic != 0x5254)
+    if (header.magic != 0x5254) {
+        LOG_ERROR_CAT("NetworkManager", "processPacket: invalid magic number 0x%04hx", header.magic);
         return std::nullopt;
+    }
 
+    // Validate packet_type is a recognized type
     const auto packetType = static_cast<protocol::PacketTypes>(header.packet_type);
+    bool isValidType = false;
+    for (const auto &handler : handlers) {
+        if (handler.type == packetType) {
+            isValidType = true;
+            break;
+        }
+    }
+    if (!isValidType) {
+        LOG_ERROR_CAT("NetworkManager", "processPacket: unknown packet_type 0x%02hhx", header.packet_type);
+        return std::nullopt;
+    }
 
-    // Find handler for this packet type
+    // Validate flags - only bits 0-4 are valid (reserved bits 5-7 must be 0)
+    const uint8_t VALID_FLAGS_MASK = 0x1F;  // bits 0-4 valid
+    if ((header.flags & ~VALID_FLAGS_MASK) != 0) {
+        LOG_ERROR_CAT("NetworkManager", "processPacket: invalid flags 0x%02hhx (reserved bits set)", header.flags);
+        return std::nullopt;
+    }
+
+    // Find handler for this packet type and validate payload
     for (const auto &handler : handlers) {
         if (handler.type == packetType) {
             if (handler.assertFunc(packet)) {
@@ -43,7 +65,7 @@ std::optional<common::protocol::Packet> PacketManager::processPacket(const commo
     return std::nullopt;
 }
 
-common::protocol::Packet PacketManager::createPacket(protocol::PacketTypes type, const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPacket(protocol::PacketTypes type, const std::vector<uint8_t> &args)
 {
     // Find handler for this packet type
     for (const auto &handler : handlers) {
@@ -52,8 +74,7 @@ common::protocol::Packet PacketManager::createPacket(protocol::PacketTypes type,
         }
     }
 
-    // Return empty packet if type not found
-    return common::protocol::Packet();
+    return std::nullopt;
 }
 
 // ==============================================================
@@ -1662,33 +1683,308 @@ bool PacketManager::assertPong(const common::protocol::Packet &packet)
 //                  CONNECTION (0x01-0x0F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createClientConnect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createClientConnect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_CONNECT));
+
+    // Parse args structure:
+    // [0]: flags_count (uint8_t)
+    // [1..flags_count]: flag values (uint8_t each)
+    // [flags_count+1..flags_count+4]: sequence_number (uint32_t)
+    // [flags_count+5..flags_count+8]: timestamp (uint32_t)
+    // [flags_count+9]: protocol_version (1 byte)
+    // [flags_count+10..flags_count+41]: player_name (32 bytes)
+    // [flags_count+42..flags_count+45]: client_id (4 bytes, uint32_t)
+
+    if (args.size() < CLIENT_CONNECT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createClientConnect: args too small, minimum %d bytes needed (1 flags_count + %d seq + %d ts + %d payload), got %zu",
+                     CLIENT_CONNECT_MIN_ARGS_SIZE, HEADER_FIELD_SEQUENCE_NUMBER_SIZE, HEADER_FIELD_TIMESTAMP_SIZE, CLIENT_CONNECT_PAYLOAD_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    // Validate we have enough data for flags
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createClientConnect: not enough data for flags, expected %zu got %zu", offset + flags_count, args.size());
+        return std::nullopt;
+    }
+
+    // Parse flags and combine them
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + CLIENT_CONNECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createClientConnect: not enough data for header + payload, expected %zu got %zu",
+                     offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + CLIENT_CONNECT_PAYLOAD_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    // Parse sequence_number (uint32_t)
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    // Parse timestamp (uint32_t)
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    // Configure header
+    packet.header.magic = 0x5254;                    // 'RT'
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_CONNECT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    // Parse and populate packet.data
+    // Offset 0: protocol_version (1 byte) = PROTOCOL_VERSION
+    // Offset 1-32: player_name (32 bytes)
+    // Offset 33-36: client_id (4 bytes)
+    packet.data.resize(CLIENT_CONNECT_PAYLOAD_SIZE);
+
+    // protocol_version = PROTOCOL_VERSION (fixed)
+    packet.data[0] = PROTOCOL_VERSION;
+
+    // player_name
+    std::memcpy(packet.data.data() + CLIENT_CONNECT_PROTOCOL_VERSION_SIZE, args.data() + offset, CLIENT_CONNECT_PLAYER_NAME_SIZE);
+    offset += CLIENT_CONNECT_PLAYER_NAME_SIZE;
+
+    // client_id
+    std::memcpy(packet.data.data() + CLIENT_CONNECT_PROTOCOL_VERSION_SIZE + CLIENT_CONNECT_PLAYER_NAME_SIZE, args.data() + offset, CLIENT_CONNECT_CLIENT_ID_SIZE);
+    offset += CLIENT_CONNECT_CLIENT_ID_SIZE;
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createServerAccept(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createServerAccept(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_ACCEPT));
+
+    // Parse args structure:
+    // [0]: flags_count (uint8_t)
+    // [1..flags_count]: flag values (uint8_t each)
+    // [flags_count+1..flags_count+4]: sequence_number (uint32_t, little-endian)
+    // [flags_count+5..flags_count+8]: timestamp (uint32_t, little-endian)
+    // [flags_count+9..flags_count+12]: assigned_player_id (uint32_t, little-endian)
+    // [flags_count+13]: max_players (uint8_t)
+    // [flags_count+14..flags_count+17]: game_instance_id (uint32_t, little-endian)
+    // [flags_count+18..flags_count+19]: server_tickrate (uint16_t, little-endian)
+
+    if (args.size() < SERVER_ACCEPT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createServerAccept: args too small, minimum %d bytes needed, got %zu",
+                     SERVER_ACCEPT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createServerAccept: not enough data for flags, expected %zu got %zu", offset + flags_count, args.size());
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + SERVER_ACCEPT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createServerAccept: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_ACCEPT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(SERVER_ACCEPT_PAYLOAD_SIZE);
+
+    // assigned_player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, SERVER_ACCEPT_ASSIGNED_PLAYER_ID_SIZE);
+    offset += SERVER_ACCEPT_ASSIGNED_PLAYER_ID_SIZE;
+
+    // max_players (1 byte)
+    packet.data[4] = args[offset++];
+
+    // game_instance_id (4 bytes)
+    std::memcpy(packet.data.data() + 5, args.data() + offset, SERVER_ACCEPT_GAME_INSTANCE_ID_SIZE);
+    offset += SERVER_ACCEPT_GAME_INSTANCE_ID_SIZE;
+
+    // server_tickrate (2 bytes)
+    std::memcpy(packet.data.data() + 9, args.data() + offset, SERVER_ACCEPT_SERVER_TICKRATE_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createServerReject(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createServerReject(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_REJECT));
+
+    if (args.size() < SERVER_REJECT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createServerReject: args too small, minimum %d bytes needed, got %zu",
+                     SERVER_REJECT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createServerReject: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + SERVER_REJECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createServerReject: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_REJECT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(SERVER_REJECT_PAYLOAD_SIZE);
+
+    // reject_code (1 byte)
+    packet.data[0] = args[offset++];
+
+    // reason_message (64 bytes)
+    std::memcpy(packet.data.data() + 1, args.data() + offset, SERVER_REJECT_REASON_MESSAGE_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createClientDisconnect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createClientDisconnect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_DISCONNECT));
+
+    if (args.size() < CLIENT_DISCONNECT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: args too small, minimum %d bytes needed, got %zu",
+                     CLIENT_DISCONNECT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + CLIENT_DISCONNECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_DISCONNECT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(CLIENT_DISCONNECT_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, CLIENT_DISCONNECT_PLAYER_ID_SIZE);
+    offset += CLIENT_DISCONNECT_PLAYER_ID_SIZE;
+
+    // reason (1 byte)
+    packet.data[4] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createHeartBeat(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createHeartBeat(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT));
+
+    if (args.size() < HEARTBEAT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: args too small, minimum %d bytes needed, got %zu",
+                     HEARTBEAT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + HEARTBEAT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(HEARTBEAT_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, HEARTBEAT_PLAYER_ID_SIZE);
+
     return packet;
 }
 
@@ -1696,9 +1992,65 @@ common::protocol::Packet PacketManager::createHeartBeat(const std::vector<uint8_
 //                  INPUT (0x10-0x1F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createPlayerInput(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT));
+
+    if (args.size() < PLAYER_INPUT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: args too small, minimum %d bytes needed, got %zu",
+                     PLAYER_INPUT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_INPUT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PLAYER_INPUT_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PLAYER_INPUT_PLAYER_ID_SIZE);
+    offset += PLAYER_INPUT_PLAYER_ID_SIZE;
+
+    // input_state (2 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, PLAYER_INPUT_INPUT_STATE_SIZE);
+    offset += PLAYER_INPUT_INPUT_STATE_SIZE;
+
+    // aim_direction_x (2 bytes)
+    std::memcpy(packet.data.data() + 6, args.data() + offset, PLAYER_INPUT_AIM_DIRECTION_X_SIZE);
+    offset += PLAYER_INPUT_AIM_DIRECTION_X_SIZE;
+
+    // aim_direction_y (2 bytes)
+    std::memcpy(packet.data.data() + 8, args.data() + offset, PLAYER_INPUT_AIM_DIRECTION_Y_SIZE);
+
     return packet;
 }
 
@@ -1712,15 +2064,139 @@ common::protocol::Packet PacketManager::createPlayerInput(const std::vector<uint
     return packet;
 } */
 
-common::protocol::Packet PacketManager::createEntitySpawn(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN));
+
+    if (args.size() < ENTITY_SPAWN_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: args too small, minimum %d bytes needed, got %zu",
+                     ENTITY_SPAWN_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(ENTITY_SPAWN_PAYLOAD_SIZE);
+
+    // entity_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, ENTITY_SPAWN_ENTITY_ID_SIZE);
+    offset += ENTITY_SPAWN_ENTITY_ID_SIZE;
+
+    // entity_type (1 byte)
+    packet.data[4] = args[offset++];
+
+    // position_x (2 bytes)
+    std::memcpy(packet.data.data() + 5, args.data() + offset, ENTITY_SPAWN_POSITION_X_SIZE);
+    offset += ENTITY_SPAWN_POSITION_X_SIZE;
+
+    // position_y (2 bytes)
+    std::memcpy(packet.data.data() + 7, args.data() + offset, ENTITY_SPAWN_POSITION_Y_SIZE);
+    offset += ENTITY_SPAWN_POSITION_Y_SIZE;
+
+    // mob_variant (1 byte)
+    packet.data[9] = args[offset++];
+
+    // initial_health (1 byte)
+    packet.data[10] = args[offset++];
+
+    // initial_velocity_x (2 bytes)
+    std::memcpy(packet.data.data() + 11, args.data() + offset, ENTITY_SPAWN_INITIAL_VELOCITY_X_SIZE);
+    offset += ENTITY_SPAWN_INITIAL_VELOCITY_X_SIZE;
+
+    // initial_velocity_y (2 bytes)
+    std::memcpy(packet.data.data() + 13, args.data() + offset, ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createEntityDestroy(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createEntityDestroy(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_DESTROY));
+
+    if (args.size() < ENTITY_DESTROY_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: args too small, minimum %d bytes needed, got %zu",
+                     ENTITY_DESTROY_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_DESTROY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_DESTROY);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(ENTITY_DESTROY_PAYLOAD_SIZE);
+
+    // entity_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, ENTITY_DESTROY_ENTITY_ID_SIZE);
+    offset += ENTITY_DESTROY_ENTITY_ID_SIZE;
+
+    // destroy_reason (1 byte)
+    packet.data[4] = args[offset++];
+
+    // final_position_x (2 bytes)
+    std::memcpy(packet.data.data() + 5, args.data() + offset, ENTITY_DESTROY_FINAL_POSITION_X_SIZE);
+    offset += ENTITY_DESTROY_FINAL_POSITION_X_SIZE;
+
+    // final_position_y (2 bytes)
+    std::memcpy(packet.data.data() + 7, args.data() + offset, ENTITY_DESTROY_FINAL_POSITION_Y_SIZE);
+
     return packet;
 }
 
@@ -1730,69 +2206,488 @@ common::protocol::Packet PacketManager::createEntityDestroy(const std::vector<ui
     return packet;
 } */
 
-common::protocol::Packet PacketManager::createTransformSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createTransformSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + TRANSFORM_SNAPSHOT_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshot: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshot: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    // Copy remaining data (world_tick + entity_count + entity data)
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createVelocitySnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createVelocitySnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + VELOCITY_SNAPSHOT_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createVelocitySnapshot: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createVelocitySnapshot: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createHealthSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createHealthSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + HEALTH_SNAPSHOT_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshot: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshot: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createWeaponSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createWeaponSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + WEAPON_SNAPSHOT_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createWeaponSnapshot: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createWeaponSnapshot: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAISnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAISnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_SNAPSHOT));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + AI_SNAPSHOT_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAISnapshot: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createAISnapshot: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_SNAPSHOT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAnimationSnapshot(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAnimationSnapshot(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ANIMATION_SNAPSHOT_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAnimationSnapshot: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createAnimationSnapshot: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createComponentAdd(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createComponentAdd(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_ADD));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + COMPONENT_ADD_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createComponentAdd: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createComponentAdd: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_ADD);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createComponentRemove(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createComponentRemove(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_REMOVE));
+
+    if (args.size() < COMPONENT_REMOVE_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: args too small, minimum %d bytes needed, got %zu",
+                     COMPONENT_REMOVE_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + COMPONENT_REMOVE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_REMOVE);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(COMPONENT_REMOVE_PAYLOAD_SIZE);
+
+    // entity_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, COMPONENT_REMOVE_ENTITY_ID_SIZE);
+    offset += COMPONENT_REMOVE_ENTITY_ID_SIZE;
+
+    // component_type (1 byte)
+    packet.data[4] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createTransformSnapshotDelta(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createTransformSnapshotDelta(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + TRANSFORM_SNAPSHOT_DELTA_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshotDelta: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshotDelta: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createHealthSnapshotDelta(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createHealthSnapshotDelta(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + HEALTH_SNAPSHOT_DELTA_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshotDelta: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshotDelta: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createEntityFullState(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createEntityFullState(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_FULL_STATE));
+
+    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_FULL_STATE_BASE_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntityFullState: args too small");
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createEntityFullState: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_FULL_STATE);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    size_t remaining = args.size() - offset;
+    packet.data.resize(remaining);
+    std::memcpy(packet.data.data(), args.data() + offset, remaining);
+
     return packet;
 }
 
@@ -1800,51 +2695,564 @@ common::protocol::Packet PacketManager::createEntityFullState(const std::vector<
 //                  GAME_EVENTS (0x40-0x5F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createPlayerHit(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPlayerHit(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_HIT));
+
+    if (args.size() < PLAYER_HIT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerHit: args too small, minimum %d bytes needed, got %zu",
+                     PLAYER_HIT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerHit: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_HIT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerHit: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_HIT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PLAYER_HIT_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PLAYER_HIT_PLAYER_ID_SIZE);
+    offset += PLAYER_HIT_PLAYER_ID_SIZE;
+
+    // attacker_id (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, PLAYER_HIT_ATTACKER_ID_SIZE);
+    offset += PLAYER_HIT_ATTACKER_ID_SIZE;
+
+    // damage (1 byte)
+    packet.data[8] = args[offset++];
+
+    // remaining_health (1 byte)
+    packet.data[9] = args[offset++];
+
+    // remaining_shield (1 byte)
+    packet.data[10] = args[offset++];
+
+    // hit_pos_x (2 bytes)
+    std::memcpy(packet.data.data() + 11, args.data() + offset, PLAYER_HIT_HIT_POS_X_SIZE);
+    offset += PLAYER_HIT_HIT_POS_X_SIZE;
+
+    // hit_pos_y (2 bytes)
+    std::memcpy(packet.data.data() + 13, args.data() + offset, PLAYER_HIT_HIT_POS_Y_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPlayerDeath(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPlayerDeath(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_DEATH));
+
+    if (args.size() < PLAYER_DEATH_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: args too small, minimum %d bytes needed, got %zu",
+                     PLAYER_DEATH_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_DEATH_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_DEATH);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PLAYER_DEATH_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PLAYER_DEATH_PLAYER_ID_SIZE);
+    offset += PLAYER_DEATH_PLAYER_ID_SIZE;
+
+    // killer_id (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, PLAYER_DEATH_KILLER_ID_SIZE);
+    offset += PLAYER_DEATH_KILLER_ID_SIZE;
+
+    // score_before_death (4 bytes)
+    std::memcpy(packet.data.data() + 8, args.data() + offset, PLAYER_DEATH_SCORE_BEFORE_DEATH_SIZE);
+    offset += PLAYER_DEATH_SCORE_BEFORE_DEATH_SIZE;
+
+    // death_pos_x (2 bytes)
+    std::memcpy(packet.data.data() + 12, args.data() + offset, PLAYER_DEATH_DEATH_POS_X_SIZE);
+    offset += PLAYER_DEATH_DEATH_POS_X_SIZE;
+
+    // death_pos_y (2 bytes)
+    std::memcpy(packet.data.data() + 14, args.data() + offset, PLAYER_DEATH_DEATH_POS_Y_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createScoreUpdate(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createScoreUpdate(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SCORE_UPDATE));
+
+    if (args.size() < SCORE_UPDATE_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: args too small, minimum %d bytes needed, got %zu",
+                     SCORE_UPDATE_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + SCORE_UPDATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_SCORE_UPDATE);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(SCORE_UPDATE_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, SCORE_UPDATE_PLAYER_ID_SIZE);
+    offset += SCORE_UPDATE_PLAYER_ID_SIZE;
+
+    // new_score (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, SCORE_UPDATE_NEW_SCORE_SIZE);
+    offset += SCORE_UPDATE_NEW_SCORE_SIZE;
+
+    // score_delta (2 bytes)
+    std::memcpy(packet.data.data() + 8, args.data() + offset, SCORE_UPDATE_SCORE_DELTA_SIZE);
+    offset += SCORE_UPDATE_SCORE_DELTA_SIZE;
+
+    // reason (1 byte)
+    packet.data[10] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPowerupPickup(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPowerupPickup(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP));
+
+    if (args.size() < POWER_PICKUP_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: args too small, minimum %d bytes needed, got %zu",
+                     POWER_PICKUP_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + POWER_PICKUP_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(POWER_PICKUP_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, POWER_PICKUP_PLAYER_ID_SIZE);
+    offset += POWER_PICKUP_PLAYER_ID_SIZE;
+
+    // powerup_id (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, POWER_PICKUP_POWERUP_ID_SIZE);
+    offset += POWER_PICKUP_POWERUP_ID_SIZE;
+
+    // powerup_type (1 byte)
+    packet.data[8] = args[offset++];
+
+    // duration (1 byte)
+    packet.data[9] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createWeaponFire(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createWeaponFire(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_FIRE));
+
+    if (args.size() < WEAPON_FIRE_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: args too small, minimum %d bytes needed, got %zu",
+                     WEAPON_FIRE_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + WEAPON_FIRE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_FIRE);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(WEAPON_FIRE_PAYLOAD_SIZE);
+
+    // shooter_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, WEAPON_FIRE_SHOOTER_ID_SIZE);
+    offset += WEAPON_FIRE_SHOOTER_ID_SIZE;
+
+    // projectile_id (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, WEAPON_FIRE_PROJECTILE_ID_SIZE);
+    offset += WEAPON_FIRE_PROJECTILE_ID_SIZE;
+
+    // origin_x (2 bytes)
+    std::memcpy(packet.data.data() + 8, args.data() + offset, WEAPON_FIRE_ORIGIN_X_SIZE);
+    offset += WEAPON_FIRE_ORIGIN_X_SIZE;
+
+    // origin_y (2 bytes)
+    std::memcpy(packet.data.data() + 10, args.data() + offset, WEAPON_FIRE_ORIGIN_Y_SIZE);
+    offset += WEAPON_FIRE_ORIGIN_Y_SIZE;
+
+    // direction_x (2 bytes)
+    std::memcpy(packet.data.data() + 12, args.data() + offset, WEAPON_FIRE_DIRECTION_X_SIZE);
+    offset += WEAPON_FIRE_DIRECTION_X_SIZE;
+
+    // direction_y (2 bytes)
+    std::memcpy(packet.data.data() + 14, args.data() + offset, WEAPON_FIRE_DIRECTION_Y_SIZE);
+    offset += WEAPON_FIRE_DIRECTION_Y_SIZE;
+
+    // weapon_type (1 byte)
+    packet.data[16] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createVisualEffect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createVisualEffect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT));
+
+    if (args.size() < VISUAL_EFFECT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createVisualEffect: args too small, minimum %d bytes needed, got %zu",
+                     VISUAL_EFFECT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createVisualEffect: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + VISUAL_EFFECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createVisualEffect: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(VISUAL_EFFECT_PAYLOAD_SIZE);
+
+    // effect_type (1 byte)
+    packet.data[0] = args[offset++];
+
+    // pos_x (2 bytes)
+    std::memcpy(packet.data.data() + 1, args.data() + offset, VISUAL_EFFECT_POS_X_SIZE);
+    offset += VISUAL_EFFECT_POS_X_SIZE;
+
+    // pos_y (2 bytes)
+    std::memcpy(packet.data.data() + 3, args.data() + offset, VISUAL_EFFECT_POS_Y_SIZE);
+    offset += VISUAL_EFFECT_POS_Y_SIZE;
+
+    // duration_ms (2 bytes)
+    std::memcpy(packet.data.data() + 5, args.data() + offset, VISUAL_EFFECT_DURATION_MS_SIZE);
+    offset += VISUAL_EFFECT_DURATION_MS_SIZE;
+
+    // scale (1 byte)
+    packet.data[7] = args[offset++];
+
+    // color_tint_r (1 byte)
+    packet.data[8] = args[offset++];
+
+    // color_tint_g (1 byte)
+    packet.data[9] = args[offset++];
+
+    // color_tint_b (1 byte)
+    packet.data[10] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAudioEffect(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAudioEffect(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT));
+
+    if (args.size() < AUDIO_EFFECT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAudioEffect: args too small, minimum %d bytes needed, got %zu",
+                     AUDIO_EFFECT_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createAudioEffect: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + AUDIO_EFFECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAudioEffect: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(AUDIO_EFFECT_PAYLOAD_SIZE);
+
+    // effect_type (1 byte)
+    packet.data[0] = args[offset++];
+
+    // pos_x (2 bytes)
+    std::memcpy(packet.data.data() + 1, args.data() + offset, AUDIO_EFFECT_POS_X_SIZE);
+    offset += AUDIO_EFFECT_POS_X_SIZE;
+
+    // pos_y (2 bytes)
+    std::memcpy(packet.data.data() + 3, args.data() + offset, AUDIO_EFFECT_POS_Y_SIZE);
+    offset += AUDIO_EFFECT_POS_Y_SIZE;
+
+    // volume (1 byte)
+    packet.data[5] = args[offset++];
+
+    // pitch (1 byte)
+    packet.data[6] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createParticleSpawn(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createParticleSpawn(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PARTICLE_SPAWN));
+
+    if (args.size() < PARTICLE_SPAWN_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: args too small, minimum %d bytes needed, got %zu",
+                     PARTICLE_SPAWN_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PARTICLE_SPAWN_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PARTICLE_SPAWN);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PARTICLE_SPAWN_PAYLOAD_SIZE);
+
+    size_t packet_offset = 0;
+
+    // particle_system_id (2 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, PARTICLE_SPAWN_PARTICLE_SYSTEM_ID_SIZE);
+    packet_offset += PARTICLE_SPAWN_PARTICLE_SYSTEM_ID_SIZE;
+    offset += PARTICLE_SPAWN_PARTICLE_SYSTEM_ID_SIZE;
+
+    // pos_x (2 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, PARTICLE_SPAWN_POS_X_SIZE);
+    packet_offset += PARTICLE_SPAWN_POS_X_SIZE;
+    offset += PARTICLE_SPAWN_POS_X_SIZE;
+
+    // pos_y (2 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, PARTICLE_SPAWN_POS_Y_SIZE);
+    packet_offset += PARTICLE_SPAWN_POS_Y_SIZE;
+    offset += PARTICLE_SPAWN_POS_Y_SIZE;
+
+    // velocity_x (2 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, PARTICLE_SPAWN_VELOCITY_X_SIZE);
+    packet_offset += PARTICLE_SPAWN_VELOCITY_X_SIZE;
+    offset += PARTICLE_SPAWN_VELOCITY_X_SIZE;
+
+    // velocity_y (2 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, PARTICLE_SPAWN_VELOCITY_Y_SIZE);
+    packet_offset += PARTICLE_SPAWN_VELOCITY_Y_SIZE;
+    offset += PARTICLE_SPAWN_VELOCITY_Y_SIZE;
+
+    // particle_count (2 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, PARTICLE_SPAWN_PARTICLE_COUNT_SIZE);
+    packet_offset += PARTICLE_SPAWN_PARTICLE_COUNT_SIZE;
+    offset += PARTICLE_SPAWN_PARTICLE_COUNT_SIZE;
+
+    // lifetime_ms (2 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, PARTICLE_SPAWN_LIFETIME_MS_SIZE);
+    packet_offset += PARTICLE_SPAWN_LIFETIME_MS_SIZE;
+    offset += PARTICLE_SPAWN_LIFETIME_MS_SIZE;
+
+    // color_start_r, color_start_g, color_start_b, color_end_r, color_end_g, color_end_b (6 bytes)
+    for (int i = 0; i < 6; ++i) {
+        packet.data[packet_offset++] = args[offset++];
+    }
+
     return packet;
 }
 
@@ -1852,39 +3260,390 @@ common::protocol::Packet PacketManager::createParticleSpawn(const std::vector<ui
 //                  GAME_CONTROL (0x60-0x6F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createGameStart(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createGameStart(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START));
+
+    if (args.size() < GAME_START_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createGameStart: args too small, minimum %d bytes needed, got %zu",
+                     GAME_START_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createGameStart: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + GAME_START_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createGameStart: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(GAME_START_PAYLOAD_SIZE);
+
+    size_t packet_offset = 0;
+
+    // game_instance_id (4 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, GAME_START_GAME_INSTANCE_ID_SIZE);
+    packet_offset += GAME_START_GAME_INSTANCE_ID_SIZE;
+    offset += GAME_START_GAME_INSTANCE_ID_SIZE;
+
+    // player_count (1 byte)
+    packet.data[packet_offset++] = args[offset++];
+
+    // player_ids (16 bytes / 4 x uint32_t)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, GAME_START_PLAYER_IDS_SIZE);
+    packet_offset += GAME_START_PLAYER_IDS_SIZE;
+    offset += GAME_START_PLAYER_IDS_SIZE;
+
+    // level_id (1 byte)
+    packet.data[packet_offset++] = args[offset++];
+
+    // difficulty (1 byte)
+    packet.data[packet_offset] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createGameEnd(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createGameEnd(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_END));
+
+    if (args.size() < GAME_END_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createGameEnd: args too small, minimum %d bytes needed, got %zu",
+                     GAME_END_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createGameEnd: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + GAME_END_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createGameEnd: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_END);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(GAME_END_PAYLOAD_SIZE);
+
+    size_t packet_offset = 0;
+
+    // end_reason (1 byte)
+    packet.data[packet_offset++] = args[offset++];
+
+    // final_scores (16 bytes / 4 x uint32_t)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, GAME_END_FINAL_SCORES_SIZE);
+    packet_offset += GAME_END_FINAL_SCORES_SIZE;
+    offset += GAME_END_FINAL_SCORES_SIZE;
+
+    // winner_id (1 byte)
+    packet.data[packet_offset++] = args[offset++];
+
+    // play_time (4 bytes)
+    std::memcpy(packet.data.data() + packet_offset, args.data() + offset, GAME_END_PLAY_TIME_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createLevelComplete(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createLevelComplete(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE));
+
+    if (args.size() < LEVEL_COMPLETE_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createLevelComplete: args too small, minimum %d bytes needed, got %zu",
+                     LEVEL_COMPLETE_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createLevelComplete: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + LEVEL_COMPLETE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createLevelComplete: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(LEVEL_COMPLETE_PAYLOAD_SIZE);
+
+    // completed_level (1 byte)
+    packet.data[0] = args[offset++];
+
+    // next_level (1 byte)
+    packet.data[1] = args[offset++];
+
+    // bonus_score (4 bytes)
+    std::memcpy(packet.data.data() + 2, args.data() + offset, LEVEL_COMPLETE_BONUS_SCORE_SIZE);
+    offset += LEVEL_COMPLETE_BONUS_SCORE_SIZE;
+
+    // completion_time (2 bytes)
+    std::memcpy(packet.data.data() + 6, args.data() + offset, LEVEL_COMPLETE_COMPLETION_TIME_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createLevelStart(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createLevelStart(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START));
+
+    if (args.size() < LEVEL_START_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createLevelStart: args too small, minimum %d bytes needed, got %zu",
+                     LEVEL_START_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createLevelStart: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + LEVEL_START_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createLevelStart: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(LEVEL_START_PAYLOAD_SIZE);
+
+    // level_id (1 byte)
+    packet.data[0] = args[offset++];
+
+    // level_name (32 bytes)
+    std::memcpy(packet.data.data() + 1, args.data() + offset, LEVEL_START_LEVEL_NAME_SIZE);
+    offset += LEVEL_START_LEVEL_NAME_SIZE;
+
+    // estimated_duration (2 bytes)
+    std::memcpy(packet.data.data() + 33, args.data() + offset, LEVEL_START_ESTIMATED_DURATION_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createForceState(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createForceState(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_FORCE_STATE));
+
+    if (args.size() < FORCE_STATE_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createForceState: args too small, minimum %d bytes needed, got %zu",
+                     FORCE_STATE_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createForceState: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + FORCE_STATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createForceState: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_FORCE_STATE);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(FORCE_STATE_PAYLOAD_SIZE);
+
+    // force_entity_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, FORCE_STATE_FORCE_ENTITY_ID_SIZE);
+    offset += FORCE_STATE_FORCE_ENTITY_ID_SIZE;
+
+    // parent_ship_id (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, FORCE_STATE_PARENT_SHIP_ID_SIZE);
+    offset += FORCE_STATE_PARENT_SHIP_ID_SIZE;
+
+    // attachment_point (1 byte)
+    packet.data[8] = args[offset++];
+
+    // power_level (1 byte)
+    packet.data[9] = args[offset++];
+
+    // charge_percentage (1 byte)
+    packet.data[10] = args[offset++];
+
+    // is_firing (1 byte)
+    packet.data[11] = args[offset];
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createAIState(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAIState(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_STATE));
+
+    if (args.size() < AI_STATE_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAIState: args too small, minimum %d bytes needed, got %zu",
+                     AI_STATE_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createAIState: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + AI_STATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAIState: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_STATE);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(AI_STATE_PAYLOAD_SIZE);
+
+    // entity_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, AI_STATE_ENTITY_ID_SIZE);
+    offset += AI_STATE_ENTITY_ID_SIZE;
+
+    // current_state (1 byte)
+    packet.data[4] = args[offset++];
+
+    // behavior_type (1 byte)
+    packet.data[5] = args[offset++];
+
+    // target_entity_id (4 bytes)
+    std::memcpy(packet.data.data() + 6, args.data() + offset, AI_STATE_TARGET_ENTITY_ID_SIZE);
+    offset += AI_STATE_TARGET_ENTITY_ID_SIZE;
+
+    // waypoint_x (2 bytes)
+    std::memcpy(packet.data.data() + 10, args.data() + offset, AI_STATE_WAYPOINT_X_SIZE);
+    offset += AI_STATE_WAYPOINT_X_SIZE;
+
+    // waypoint_y (2 bytes)
+    std::memcpy(packet.data.data() + 12, args.data() + offset, AI_STATE_WAYPOINT_Y_SIZE);
+    offset += AI_STATE_WAYPOINT_Y_SIZE;
+
+    // state_timer (2 bytes)
+    std::memcpy(packet.data.data() + 14, args.data() + offset, AI_STATE_STATE_TIMER_SIZE);
+
     return packet;
 }
 
@@ -1892,21 +3651,160 @@ common::protocol::Packet PacketManager::createAIState(const std::vector<uint8_t>
 //                  PROTOCOL_CONTROL (0x70-0x7F)
 // ==============================================================
 
-common::protocol::Packet PacketManager::createAcknowledgment(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createAcknowledgment(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ACK));
+
+    if (args.size() < ACK_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: args too small, minimum %d bytes needed, got %zu",
+                     ACK_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ACK_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_ACK);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(ACK_PAYLOAD_SIZE);
+
+    // acked_sequence (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, ACK_ACKED_SEQUENCE_SIZE);
+    offset += ACK_ACKED_SEQUENCE_SIZE;
+
+    // received_timestamp (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, ACK_RECEIVED_TIMESTAMP_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPing(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPing(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PING));
+
+    if (args.size() < PING_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPing: args too small, minimum %d bytes needed, got %zu",
+                     PING_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPing: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PING_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPing: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PING);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PING_PAYLOAD_SIZE);
+
+    // client_timestamp (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PING_CLIENT_TIMESTAMP_SIZE);
+
     return packet;
 }
 
-common::protocol::Packet PacketManager::createPong(const std::vector<uint8_t> &args)
+std::optional<common::protocol::Packet> PacketManager::createPong(const std::vector<uint8_t> &args)
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PONG));
+
+    if (args.size() < PONG_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPong: args too small, minimum %d bytes needed, got %zu",
+                     PONG_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPong: not enough data for flags");
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PONG_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPong: not enough data for header + payload");
+        return std::nullopt;
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PONG);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PONG_PAYLOAD_SIZE);
+
+    // client_timestamp (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PONG_CLIENT_TIMESTAMP_SIZE);
+    offset += PONG_CLIENT_TIMESTAMP_SIZE;
+
+    // server_timestamp (4 bytes)
+    std::memcpy(packet.data.data() + 4, args.data() + offset, PONG_SERVER_TIMESTAMP_SIZE);
+
     return packet;
 }
-
