@@ -692,10 +692,10 @@ class NetworkManager {
             { protocol::PacketTypes::TYPE_PLAYER_INPUT, &NetworkManager::assertPlayerInput, &NetworkManager::createPlayerInput },
 
             // WORLD_STATE (0x20-0x3F)
-            { protocol::PacketTypes::TYPE_WORLD_SNAPSHOT, &NetworkManager::assertWorldSnapshot, &NetworkManager::createWorldSnapshot },
+            //{ protocol::PacketTypes::TYPE_WORLD_SNAPSHOT, &NetworkManager::assertWorldSnapshot, &NetworkManager::createWorldSnapshot },
             { protocol::PacketTypes::TYPE_ENTITY_SPAWN, &NetworkManager::assertEntitySpawn, &NetworkManager::createEntitySpawn },
             { protocol::PacketTypes::TYPE_ENTITY_DESTROY, &NetworkManager::assertEntityDestroy, &NetworkManager::createEntityDestroy },
-            { protocol::PacketTypes::TYPE_ENTITY_UPDATE, &NetworkManager::assertEntityUpdate, &NetworkManager::createEntityUpdate },
+            //{ protocol::PacketTypes::TYPE_ENTITY_UPDATE, &NetworkManager::assertEntityUpdate, &NetworkManager::createEntityUpdate },
             { protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT, &NetworkManager::assertTransformSnapshot, &NetworkManager::createTransformSnapshot },
             { protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT, &NetworkManager::assertVelocitySnapshot, &NetworkManager::createVelocitySnapshot },
             { protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT, &NetworkManager::assertHealthSnapshot, &NetworkManager::createHealthSnapshot },

@@ -2151,11 +2151,11 @@ TEST_F(FindHandlerTest, FindHandlerPlayerInput) {
     EXPECT_NE(handler, nullptr);
 }
 
-TEST_F(FindHandlerTest, FindHandlerWorldSnapshot) {
+/* TEST_F(FindHandlerTest, FindHandlerWorldSnapshot) {
     auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_WORLD_SNAPSHOT);
     EXPECT_NE(handler, nullptr);
 }
-
+ */
 TEST_F(FindHandlerTest, FindHandlerEntitySpawn) {
     auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_SPAWN);
     EXPECT_NE(handler, nullptr);
@@ -2166,11 +2166,11 @@ TEST_F(FindHandlerTest, FindHandlerEntityDestroy) {
     EXPECT_NE(handler, nullptr);
 }
 
-TEST_F(FindHandlerTest, FindHandlerEntityUpdate) {
+/* TEST_F(FindHandlerTest, FindHandlerEntityUpdate) {
     auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_UPDATE);
     EXPECT_NE(handler, nullptr);
 }
-
+ */
 TEST_F(FindHandlerTest, FindHandlerPlayerHit) {
     auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PLAYER_HIT);
     EXPECT_NE(handler, nullptr);
