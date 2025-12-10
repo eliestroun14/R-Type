@@ -12,6 +12,7 @@
 #include "common/protocol/Packet.hpp"
 #include "common/constants/defines.hpp"
 #include "engine/gameEngine/GameEngine.hpp"
+#include "server/network/ServerNetworkManager.hpp"
 
 
 namespace server {

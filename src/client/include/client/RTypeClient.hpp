@@ -12,13 +12,13 @@
 #include <sys/socket.h>
 #include <SFML/Graphics.hpp>
 #include <netinet/in.h>
-#include "../../../common/include/common/protocol/Protocol.hpp"
+#include "common/protocol/Protocol.hpp"
 #include "network/ClientNetworkManager.hpp"
 //#include "../../../engine/include/engine/GameEngine.hpp"                      // TODO
 #include <atomic>
 #include <deque>
-#include "../../../common/include/common/protocol/Packet.hpp"
-#include "../../../common/include/common/constants/defines.hpp"
+#include "common/protocol/Packet.hpp"
+#include "common/constants/defines.hpp"
 
 
 

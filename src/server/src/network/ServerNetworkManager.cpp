@@ -6,7 +6,7 @@
 */
 
 #include "../../include/server/network/ServerNetworkManager.hpp"
-#include "../../../common/include/common/protocol/Protocol.hpp"
+#include "common/protocol/Protocol.hpp"
 #include <algorithm>
 #include <chrono>
 #include <iostream>
