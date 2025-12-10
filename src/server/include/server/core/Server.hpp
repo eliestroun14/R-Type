@@ -5,13 +5,13 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-#include "../../../../common/include/common/protocol/Protocol.hpp"
-#include "../network/ServerNetworkManager.hpp"
+#include "common/protocol/Protocol.hpp"
+#include "common/network/sockets/AsioSocket.hpp"
 #include <atomic>
 #include <deque>
-#include "../../../common/include/common/protocol/Packet.hpp"
-#include "../../../common/include/common/constants/defines.hpp"
-#include "src/engine/include/engine/gameEngine/GameEngine.hpp"
+#include "common/protocol/Packet.hpp"
+#include "common/constants/defines.hpp"
+#include "engine/gameEngine/GameEngine.hpp"
 
 
 namespace server {
