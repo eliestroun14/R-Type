@@ -14,8 +14,9 @@ add_executable(ecs_tests
    engine/gameEngine/coordinator/TestCoordinator.cpp
 
    engine/LoggerTest.cpp
-   engine/coordinator/network/TestNetworkManagerAssert.cpp
+   engine/coordinator/network/TestPacketManagerAssert.cpp
    engine/coordinator/network/TestProcessPacket.cpp
+   engine/coordinator/network/TestNetworkManagers.cpp
    common/TestPacket.cpp
 
    TestDebug.cpp

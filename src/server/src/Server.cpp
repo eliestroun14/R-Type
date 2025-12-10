@@ -7,7 +7,7 @@ namespace server {
 Server::Server(const ServerConfig& config)
     : _config(config)
     , _isRunning(false)
-    , _clients()
+    , _networkManager(std::make_unique<server::network::ServerNetworkManager>(_config.port, _config.maxPlayers))
     , _packetsReceived()
     , _packetsToSend()
 {
@@ -18,23 +18,12 @@ Server::~Server() {
 }
 
 bool Server::init() {
-    try {
-        for (uint32_t i = 0; i < _config.maxPlayers; ++i) {
-            _clients[i] = std::make_shared<common::network::AsioSocket>();
-            if (!_clients[i]->bind(_config.port + i)) {
-                std::cerr << "[Server] Failed to bind socket for client " << i << " on port " << (_config.port + i) << std::endl;
-                return false;
-            }
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "[Server] Exception during initialization: " << e.what() << std::endl;
-        return false;
-    }
     return true;
 }
 
 void Server::run() {
     _isRunning = true;
+    _networkManager->start();
 
     std::thread networkThread(&Server::networkLoop, this);
 
@@ -47,26 +36,23 @@ void Server::run() {
 
 void Server::stop() {
     _isRunning = false;
+    if (_networkManager) {
+        _networkManager->stop();
+    }
 }
 
 void Server::networkLoop() {
 
     while (_isRunning) {
 
-        for (auto& client : _clients) {
-            common::protocol::Packet in;
-            if (client->receive(in)) {
-                _packetsReceived.push_back(in);
-            }
+        auto packets = _networkManager->fetchIncoming();
+        for (const auto& entry : packets) {
+            _packetsReceived.push_back(entry.packet);
         }
 
-        for (auto& client : _clients) {
-            common::protocol::Packet out;
-            while (!_packetsToSend.empty()) {
-                out = _packetsToSend.front();
-                client->send(out);
-                _packetsToSend.pop_front();
-            }
+        while (!_packetsToSend.empty()) {
+            _networkManager->queueOutgoing(_packetsToSend.front());
+            _packetsToSend.pop_front();
         }
     }
 }
@@ -100,7 +86,7 @@ void Server::gameLoop() {
             this->_packetsReceived.pop_front();
         }
 
-        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> NetworkManager -> EntityManager
+        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
 
         // Update game state every tick
         //this->_gameEngine->coordinator->update(deltaTime, currentTick);         // engine -> coordinator -> ecs (all systems update)
