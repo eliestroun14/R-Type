@@ -27,20 +27,21 @@ RTypeClient::~RTypeClient()
 
 void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerName)
 {
-    this->_server = std::make_shared<common::network::AsioSocket>(serverIp, port);
+    _networkManager = std::make_unique<client::network::ClientNetworkManager>(serverIp, port);
     //this->_gameEngine = std::make_shared<engine::GameEngine>();             // TODO
 
-    this->_packetsReceived.clear();
-    this->_packetsToSend.clear();
+    _packetsReceived.clear();
+    _packetsToSend.clear();
 
-    this->_playerName = playerName;
-    this->_isRunning = false;
+    _playerName = playerName;
+    _isRunning = false;
     // Additional initialization code can be added here
 }
 
 void RTypeClient::run()
 {
     _isRunning = true;
+    _networkManager->start();
 
     std::thread networkThread(&RTypeClient::networkLoop, this);
 
@@ -53,23 +54,25 @@ void RTypeClient::run()
 void RTypeClient::stop()
 {
     _isRunning = false;
+    if (_networkManager) {
+        _networkManager->stop();
+    }
 }
 
 void RTypeClient::networkLoop()
 {
     while (_isRunning) {
-        common::protocol::Packet rawPacket;
-        if (this->_server->receive(rawPacket)) {                                // polling receive from server handled by the AsioSocket class TODO
-            this->_packetsReceived.push_back(rawPacket);
+        auto packets = _networkManager->fetchIncoming();
+        for (const auto& entry : packets) {
+            _packetsReceived.push_back(entry.packet);
         }
 
-        
-        common::protocol::Packet out;
-        while (!this->_packetsToSend.empty()) {
-            out = this->_packetsToSend.front();
-            this->_server->send(out);
-            this->_packetsToSend.pop_front();
+        while (!_packetsToSend.empty()) {
+            _networkManager->queueOutgoing(_packetsToSend.front());
+            _packetsToSend.pop_front();
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -100,7 +103,7 @@ void RTypeClient::gameLoop()
             this->_packetsReceived.pop_front();
         }
 
-        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> NetworkManager -> EntityManager
+        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
 
         // Poll inputs every tick
         //this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)

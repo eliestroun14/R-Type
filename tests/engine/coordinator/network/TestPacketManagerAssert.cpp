@@ -2,13 +2,13 @@
 ** EPITECH PROJECT, 2025
 ** mirror_rtype
 ** File description:
-** NetworkManager Assert Functions Tests
+** PacketManager Assert Functions Tests
 */
 
 #include <gtest/gtest.h>
 #include <cstring>
 #include <vector>
-#include "engine/gameEngine/coordinator/network/NetworkManager.hpp"
+#include "engine/gameEngine/coordinator/network/PacketManager.hpp"
 #include "common/protocol/Packet.hpp"
 #include "common/protocol/Protocol.hpp"
 
@@ -18,7 +18,7 @@ using namespace protocol;
 // Test Fixtures
 // ============================================================================
 
-class NetworkManagerAssertTest : public ::testing::Test {
+class PacketManagerAssertTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Initialize packet with default header
@@ -29,7 +29,7 @@ protected:
     }
 
     common::protocol::Packet packet;
-    NetworkManager nm;
+    PacketManager nm;
 
     /**
      * Helper function to set data with exact size
@@ -85,7 +85,7 @@ protected:
 // assertClientConnect Tests (0x01)
 // ============================================================================
 
-class AssertClientConnectTest : public NetworkManagerAssertTest {
+class AssertClientConnectTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertClientConnectTest, ValidClientConnect) {
@@ -95,14 +95,14 @@ TEST_F(AssertClientConnectTest, ValidClientConnect) {
     setUint32At(buffer, 33, 42); // client_id = 42
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertClientConnect(packet));
+    EXPECT_TRUE(PacketManager::assertClientConnect(packet));
 }
 
 TEST_F(AssertClientConnectTest, InvalidPayloadSize) {
     auto buffer = createBuffer(36); // Wrong size
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertClientConnect(packet));
+    EXPECT_FALSE(PacketManager::assertClientConnect(packet));
 }
 
 TEST_F(AssertClientConnectTest, InvalidProtocolVersion) {
@@ -112,7 +112,7 @@ TEST_F(AssertClientConnectTest, InvalidProtocolVersion) {
     setUint32At(buffer, 33, 42);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertClientConnect(packet));
+    EXPECT_FALSE(PacketManager::assertClientConnect(packet));
 }
 
 TEST_F(AssertClientConnectTest, EmptyPlayerName) {
@@ -122,7 +122,7 @@ TEST_F(AssertClientConnectTest, EmptyPlayerName) {
     setUint32At(buffer, 33, 42);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertClientConnect(packet));
+    EXPECT_FALSE(PacketManager::assertClientConnect(packet));
 }
 
 TEST_F(AssertClientConnectTest, ZeroClientId) {
@@ -132,7 +132,7 @@ TEST_F(AssertClientConnectTest, ZeroClientId) {
     setUint32At(buffer, 33, 0); // client_id = 0 (invalid)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertClientConnect(packet));
+    EXPECT_FALSE(PacketManager::assertClientConnect(packet));
 }
 
 TEST_F(AssertClientConnectTest, PlayerNameMaxLength) {
@@ -143,14 +143,14 @@ TEST_F(AssertClientConnectTest, PlayerNameMaxLength) {
     setUint32At(buffer, 33, 123);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertClientConnect(packet));
+    EXPECT_TRUE(PacketManager::assertClientConnect(packet));
 }
 
 // ============================================================================
 // assertServerAccept Tests (0x02)
 // ============================================================================
 
-class AssertServerAcceptTest : public NetworkManagerAssertTest {
+class AssertServerAcceptTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertServerAcceptTest, ValidServerAccept) {
@@ -161,14 +161,14 @@ TEST_F(AssertServerAcceptTest, ValidServerAccept) {
     setUint16At(buffer, 9, 60); // server_tickrate
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertServerAccept(packet));
+    EXPECT_TRUE(PacketManager::assertServerAccept(packet));
 }
 
 TEST_F(AssertServerAcceptTest, InvalidPayloadSize) {
     auto buffer = createBuffer(10); // Wrong size
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertServerAccept(packet));
+    EXPECT_FALSE(PacketManager::assertServerAccept(packet));
 }
 
 TEST_F(AssertServerAcceptTest, ZeroAssignedPlayerId) {
@@ -178,7 +178,7 @@ TEST_F(AssertServerAcceptTest, ZeroAssignedPlayerId) {
     setUint32At(buffer, 5, 999);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertServerAccept(packet));
+    EXPECT_FALSE(PacketManager::assertServerAccept(packet));
 }
 
 TEST_F(AssertServerAcceptTest, MaxPlayersZero) {
@@ -188,7 +188,7 @@ TEST_F(AssertServerAcceptTest, MaxPlayersZero) {
     setUint32At(buffer, 5, 999);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertServerAccept(packet));
+    EXPECT_FALSE(PacketManager::assertServerAccept(packet));
 }
 
 TEST_F(AssertServerAcceptTest, MaxPlayersAboveLimit) {
@@ -198,7 +198,7 @@ TEST_F(AssertServerAcceptTest, MaxPlayersAboveLimit) {
     setUint32At(buffer, 5, 999);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertServerAccept(packet));
+    EXPECT_FALSE(PacketManager::assertServerAccept(packet));
 }
 
 TEST_F(AssertServerAcceptTest, ZeroGameInstanceId) {
@@ -208,7 +208,7 @@ TEST_F(AssertServerAcceptTest, ZeroGameInstanceId) {
     setUint32At(buffer, 5, 0); // game_instance_id = 0 (invalid)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertServerAccept(packet));
+    EXPECT_FALSE(PacketManager::assertServerAccept(packet));
 }
 
 TEST_F(AssertServerAcceptTest, ValidMaxPlayersRange) {
@@ -219,7 +219,7 @@ TEST_F(AssertServerAcceptTest, ValidMaxPlayersRange) {
         setUint32At(buffer, 5, 999);
         setPacketData(buffer);
 
-        EXPECT_TRUE(NetworkManager::assertServerAccept(packet))
+        EXPECT_TRUE(PacketManager::assertServerAccept(packet))
             << "max_players = " << (int)maxPlayers << " should be valid";
     }
 }
@@ -228,7 +228,7 @@ TEST_F(AssertServerAcceptTest, ValidMaxPlayersRange) {
 // assertServerReject Tests (0x03)
 // ============================================================================
 
-class AssertServerRejectTest : public NetworkManagerAssertTest {
+class AssertServerRejectTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertServerRejectTest, ValidServerReject) {
@@ -237,14 +237,14 @@ TEST_F(AssertServerRejectTest, ValidServerReject) {
     setStringAt(buffer, 1, "Connection rejected", 63);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertServerReject(packet));
+    EXPECT_TRUE(PacketManager::assertServerReject(packet));
 }
 
 TEST_F(AssertServerRejectTest, InvalidPayloadSize) {
     auto buffer = createBuffer(64); // Wrong size
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertServerReject(packet));
+    EXPECT_FALSE(PacketManager::assertServerReject(packet));
 }
 
 TEST_F(AssertServerRejectTest, EmptyReasonMessage) {
@@ -253,7 +253,7 @@ TEST_F(AssertServerRejectTest, EmptyReasonMessage) {
     // reason_message is empty (all zeros)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertServerReject(packet));
+    EXPECT_FALSE(PacketManager::assertServerReject(packet));
 }
 
 TEST_F(AssertServerRejectTest, GenericErrorCode) {
@@ -262,7 +262,7 @@ TEST_F(AssertServerRejectTest, GenericErrorCode) {
     setStringAt(buffer, 1, "Generic error", 63);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertServerReject(packet));
+    EXPECT_TRUE(PacketManager::assertServerReject(packet));
 }
 
 TEST_F(AssertServerRejectTest, MaxLengthReason) {
@@ -272,14 +272,14 @@ TEST_F(AssertServerRejectTest, MaxLengthReason) {
     setStringAt(buffer, 1, longReason, 63);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertServerReject(packet));
+    EXPECT_TRUE(PacketManager::assertServerReject(packet));
 }
 
 // ============================================================================
 // assertClientDisconnect Tests (0x04)
 // ============================================================================
 
-class AssertClientDisconnectTest : public NetworkManagerAssertTest {
+class AssertClientDisconnectTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertClientDisconnectTest, ValidClientDisconnect) {
@@ -289,7 +289,7 @@ TEST_F(AssertClientDisconnectTest, ValidClientDisconnect) {
     packet.header.flags = 0x01; // FLAG_RELIABLE
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertClientDisconnect(packet));
+    EXPECT_TRUE(PacketManager::assertClientDisconnect(packet));
 }
 
 TEST_F(AssertClientDisconnectTest, InvalidPayloadSize) {
@@ -297,7 +297,7 @@ TEST_F(AssertClientDisconnectTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertClientDisconnect(packet));
+    EXPECT_FALSE(PacketManager::assertClientDisconnect(packet));
 }
 
 TEST_F(AssertClientDisconnectTest, ZeroPlayerId) {
@@ -307,7 +307,7 @@ TEST_F(AssertClientDisconnectTest, ZeroPlayerId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertClientDisconnect(packet));
+    EXPECT_FALSE(PacketManager::assertClientDisconnect(packet));
 }
 
 TEST_F(AssertClientDisconnectTest, MissingReliableFlag) {
@@ -317,7 +317,7 @@ TEST_F(AssertClientDisconnectTest, MissingReliableFlag) {
     packet.header.flags = 0x00; // No FLAG_RELIABLE
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertClientDisconnect(packet));
+    EXPECT_FALSE(PacketManager::assertClientDisconnect(packet));
 }
 
 TEST_F(AssertClientDisconnectTest, GenericErrorReason) {
@@ -327,14 +327,14 @@ TEST_F(AssertClientDisconnectTest, GenericErrorReason) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertClientDisconnect(packet));
+    EXPECT_TRUE(PacketManager::assertClientDisconnect(packet));
 }
 
 // ============================================================================
 // assertHeartBeat Tests (0x05)
 // ============================================================================
 
-class AssertHeartBeatTest : public NetworkManagerAssertTest {
+class AssertHeartBeatTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertHeartBeatTest, ValidHeartBeat) {
@@ -342,14 +342,14 @@ TEST_F(AssertHeartBeatTest, ValidHeartBeat) {
     setUint32At(buffer, 0, 123); // player_id
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertHeartBeat(packet));
+    EXPECT_TRUE(PacketManager::assertHeartBeat(packet));
 }
 
 TEST_F(AssertHeartBeatTest, InvalidPayloadSize) {
     auto buffer = createBuffer(3); // Wrong size
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHeartBeat(packet));
+    EXPECT_FALSE(PacketManager::assertHeartBeat(packet));
 }
 
 TEST_F(AssertHeartBeatTest, ZeroPlayerId) {
@@ -357,14 +357,14 @@ TEST_F(AssertHeartBeatTest, ZeroPlayerId) {
     setUint32At(buffer, 0, 0); // player_id = 0 (invalid)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHeartBeat(packet));
+    EXPECT_FALSE(PacketManager::assertHeartBeat(packet));
 }
 
 // ============================================================================
 // assertPlayerInput Tests (0x10)
 // ============================================================================
 
-class AssertPlayerInputTest : public NetworkManagerAssertTest {
+class AssertPlayerInputTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertPlayerInputTest, ValidPlayerInput) {
@@ -376,14 +376,14 @@ TEST_F(AssertPlayerInputTest, ValidPlayerInput) {
     setUint16At(buffer, 10, 0); // padding/reserved
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPlayerInput(packet));
+    EXPECT_TRUE(PacketManager::assertPlayerInput(packet));
 }
 
 TEST_F(AssertPlayerInputTest, InvalidPayloadSize) {
     auto buffer = createBuffer(11); // Wrong size
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerInput(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerInput(packet));
 }
 
 TEST_F(AssertPlayerInputTest, ZeroPlayerId) {
@@ -392,7 +392,7 @@ TEST_F(AssertPlayerInputTest, ZeroPlayerId) {
     setUint16At(buffer, 4, 0x0F);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerInput(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerInput(packet));
 }
 
 TEST_F(AssertPlayerInputTest, InvalidInputState) {
@@ -401,7 +401,7 @@ TEST_F(AssertPlayerInputTest, InvalidInputState) {
     setUint16At(buffer, 4, 0x200); // Invalid bits set (bit 9 outside mask)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerInput(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerInput(packet));
 }
 
 TEST_F(AssertPlayerInputTest, ValidInputStateMask) {
@@ -411,7 +411,7 @@ TEST_F(AssertPlayerInputTest, ValidInputStateMask) {
     setUint16At(buffer, 4, 0x1FF);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPlayerInput(packet));
+    EXPECT_TRUE(PacketManager::assertPlayerInput(packet));
 }
 
 TEST_F(AssertPlayerInputTest, ZeroInputState) {
@@ -420,14 +420,14 @@ TEST_F(AssertPlayerInputTest, ZeroInputState) {
     setUint16At(buffer, 4, 0x00); // No input
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPlayerInput(packet));
+    EXPECT_TRUE(PacketManager::assertPlayerInput(packet));
 }
 
 // ============================================================================
 // assertWorldSnapshot Tests (0x20)
 // ============================================================================
 
-class AssertWorldSnapshotTest : public NetworkManagerAssertTest {
+class AssertWorldSnapshotTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertWorldSnapshotTest, EmptyWorldSnapshot) {
@@ -436,14 +436,14 @@ TEST_F(AssertWorldSnapshotTest, EmptyWorldSnapshot) {
     setUint16At(buffer, 4, 0); // entity_count = 0
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertWorldSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertWorldSnapshot(packet));
 }
 
 TEST_F(AssertWorldSnapshotTest, InvalidPayloadSize) {
     auto buffer = createBuffer(5); // Less than 6 bytes
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWorldSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertWorldSnapshot(packet));
 }
 
 TEST_F(AssertWorldSnapshotTest, MismatchedEntityCount) {
@@ -452,7 +452,7 @@ TEST_F(AssertWorldSnapshotTest, MismatchedEntityCount) {
     setUint16At(buffer, 4, 2); // entity_count = 2 (but only 1 entity space)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWorldSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertWorldSnapshot(packet));
 }
 
 TEST_F(AssertWorldSnapshotTest, OneValidEntity) {
@@ -471,14 +471,14 @@ TEST_F(AssertWorldSnapshotTest, OneValidEntity) {
     setUint8At(buffer, 20, 0x00); // state_flags
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertWorldSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertWorldSnapshot(packet));
 }
 
 // ============================================================================
 // assertEntitySpawn Tests (0x21)
 // ============================================================================
 
-class AssertEntitySpawnTest : public NetworkManagerAssertTest {
+class AssertEntitySpawnTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertEntitySpawnTest, ValidEntitySpawn) {
@@ -494,7 +494,7 @@ TEST_F(AssertEntitySpawnTest, ValidEntitySpawn) {
     packet.header.flags = 0x01; // FLAG_RELIABLE
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertEntitySpawn(packet));
+    EXPECT_TRUE(PacketManager::assertEntitySpawn(packet));
 }
 
 TEST_F(AssertEntitySpawnTest, InvalidPayloadSize) {
@@ -502,7 +502,7 @@ TEST_F(AssertEntitySpawnTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntitySpawn(packet));
+    EXPECT_FALSE(PacketManager::assertEntitySpawn(packet));
 }
 
 TEST_F(AssertEntitySpawnTest, ZeroEntityId) {
@@ -513,7 +513,7 @@ TEST_F(AssertEntitySpawnTest, ZeroEntityId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntitySpawn(packet));
+    EXPECT_FALSE(PacketManager::assertEntitySpawn(packet));
 }
 
 TEST_F(AssertEntitySpawnTest, InvalidEntityType) {
@@ -524,7 +524,7 @@ TEST_F(AssertEntitySpawnTest, InvalidEntityType) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntitySpawn(packet));
+    EXPECT_FALSE(PacketManager::assertEntitySpawn(packet));
 }
 
 TEST_F(AssertEntitySpawnTest, ZeroHealth) {
@@ -539,7 +539,7 @@ TEST_F(AssertEntitySpawnTest, ZeroHealth) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntitySpawn(packet));
+    EXPECT_FALSE(PacketManager::assertEntitySpawn(packet));
 }
 
 TEST_F(AssertEntitySpawnTest, MissingReliableFlag) {
@@ -550,14 +550,14 @@ TEST_F(AssertEntitySpawnTest, MissingReliableFlag) {
     packet.header.flags = 0x00; // No FLAG_RELIABLE
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntitySpawn(packet));
+    EXPECT_FALSE(PacketManager::assertEntitySpawn(packet));
 }
 
 // ============================================================================
 // assertEntityDestroy Tests (0x22)
 // ============================================================================
 
-class AssertEntityDestroyTest : public NetworkManagerAssertTest {
+class AssertEntityDestroyTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertEntityDestroyTest, ValidEntityDestroy) {
@@ -569,7 +569,7 @@ TEST_F(AssertEntityDestroyTest, ValidEntityDestroy) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertEntityDestroy(packet));
+    EXPECT_TRUE(PacketManager::assertEntityDestroy(packet));
 }
 
 TEST_F(AssertEntityDestroyTest, InvalidPayloadSize) {
@@ -577,7 +577,7 @@ TEST_F(AssertEntityDestroyTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityDestroy(packet));
+    EXPECT_FALSE(PacketManager::assertEntityDestroy(packet));
 }
 
 TEST_F(AssertEntityDestroyTest, ZeroEntityId) {
@@ -587,7 +587,7 @@ TEST_F(AssertEntityDestroyTest, ZeroEntityId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityDestroy(packet));
+    EXPECT_FALSE(PacketManager::assertEntityDestroy(packet));
 }
 
 TEST_F(AssertEntityDestroyTest, InvalidDestroyReason) {
@@ -597,7 +597,7 @@ TEST_F(AssertEntityDestroyTest, InvalidDestroyReason) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityDestroy(packet));
+    EXPECT_FALSE(PacketManager::assertEntityDestroy(packet));
 }
 
 TEST_F(AssertEntityDestroyTest, MissingReliableFlag) {
@@ -607,14 +607,14 @@ TEST_F(AssertEntityDestroyTest, MissingReliableFlag) {
     packet.header.flags = 0x00; // No FLAG_RELIABLE
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityDestroy(packet));
+    EXPECT_FALSE(PacketManager::assertEntityDestroy(packet));
 }
 
 // ============================================================================
 // assertEntityUpdate Tests (0x23)
 // ============================================================================
 
-class AssertEntityUpdateTest : public NetworkManagerAssertTest {
+class AssertEntityUpdateTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertEntityUpdateTest, ValidEntityUpdate) {
@@ -630,14 +630,14 @@ TEST_F(AssertEntityUpdateTest, ValidEntityUpdate) {
     setInt16At(buffer, 14, -5); // velocity_y
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertEntityUpdate(packet));
+    EXPECT_TRUE(PacketManager::assertEntityUpdate(packet));
 }
 
 TEST_F(AssertEntityUpdateTest, InvalidPayloadSize) {
     auto buffer = createBuffer(15); // Wrong size
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityUpdate(packet));
+    EXPECT_FALSE(PacketManager::assertEntityUpdate(packet));
 }
 
 TEST_F(AssertEntityUpdateTest, ZeroEntityId) {
@@ -646,7 +646,7 @@ TEST_F(AssertEntityUpdateTest, ZeroEntityId) {
     setUint8At(buffer, 4, 0x01);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityUpdate(packet));
+    EXPECT_FALSE(PacketManager::assertEntityUpdate(packet));
 }
 
 TEST_F(AssertEntityUpdateTest, InvalidUpdateFlags) {
@@ -655,7 +655,7 @@ TEST_F(AssertEntityUpdateTest, InvalidUpdateFlags) {
     setUint8At(buffer, 4, 0xFF); // Invalid bits (ENTITY_UPDATE_FLAGS_MASK is typically 0x3F)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityUpdate(packet));
+    EXPECT_FALSE(PacketManager::assertEntityUpdate(packet));
 }
 
 TEST_F(AssertEntityUpdateTest, NoUpdateFlags) {
@@ -664,14 +664,14 @@ TEST_F(AssertEntityUpdateTest, NoUpdateFlags) {
     setUint8At(buffer, 4, 0x00); // No flags set
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertEntityUpdate(packet));
+    EXPECT_TRUE(PacketManager::assertEntityUpdate(packet));
 }
 
 // ============================================================================
 // assertTransformSnapshot Tests (0x24)
 // ============================================================================
 
-class AssertTransformSnapshotTest : public NetworkManagerAssertTest {
+class AssertTransformSnapshotTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertTransformSnapshotTest, EmptyTransformSnapshot) {
@@ -680,14 +680,14 @@ TEST_F(AssertTransformSnapshotTest, EmptyTransformSnapshot) {
     setUint16At(buffer, 4, 0); // entity_count = 0
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertTransformSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertTransformSnapshot(packet));
 }
 
 TEST_F(AssertTransformSnapshotTest, InvalidPayloadSize) {
     auto buffer = createBuffer(5); // Less than 6 bytes
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertTransformSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertTransformSnapshot(packet));
 }
 
 TEST_F(AssertTransformSnapshotTest, InvalidDataSize) {
@@ -697,7 +697,7 @@ TEST_F(AssertTransformSnapshotTest, InvalidDataSize) {
     setUint16At(buffer, 4, 0);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertTransformSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertTransformSnapshot(packet));
 }
 
 TEST_F(AssertTransformSnapshotTest, OneEntity) {
@@ -706,7 +706,7 @@ TEST_F(AssertTransformSnapshotTest, OneEntity) {
     setUint16At(buffer, 4, 1); // entity_count = 1
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertTransformSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertTransformSnapshot(packet));
 }
 
 TEST_F(AssertTransformSnapshotTest, ManyEntities) {
@@ -715,7 +715,7 @@ TEST_F(AssertTransformSnapshotTest, ManyEntities) {
     setUint16At(buffer, 4, 10); // entity_count = 10
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertTransformSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertTransformSnapshot(packet));
 }
 
 TEST_F(AssertTransformSnapshotTest, SizeMismatch) {
@@ -724,14 +724,14 @@ TEST_F(AssertTransformSnapshotTest, SizeMismatch) {
     setUint16At(buffer, 4, 2); // entity_count = 2 (but only space for 1)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertTransformSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertTransformSnapshot(packet));
 }
 
 // ============================================================================
 // assertVelocitySnapshot Tests (0x25)
 // ============================================================================
 
-class AssertVelocitySnapshotTest : public NetworkManagerAssertTest {
+class AssertVelocitySnapshotTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertVelocitySnapshotTest, EmptyVelocitySnapshot) {
@@ -740,14 +740,14 @@ TEST_F(AssertVelocitySnapshotTest, EmptyVelocitySnapshot) {
     setUint16At(buffer, 4, 0); // entity_count = 0
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertVelocitySnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertVelocitySnapshot(packet));
 }
 
 TEST_F(AssertVelocitySnapshotTest, InvalidPayloadSize) {
     auto buffer = createBuffer(5); // Less than 6 bytes
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVelocitySnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertVelocitySnapshot(packet));
 }
 
 TEST_F(AssertVelocitySnapshotTest, OneEntity) {
@@ -763,7 +763,7 @@ TEST_F(AssertVelocitySnapshotTest, OneEntity) {
     setInt16At(buffer, 16, 1); // acceleration_y
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertVelocitySnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertVelocitySnapshot(packet));
 }
 
 TEST_F(AssertVelocitySnapshotTest, EntityWithZeroId) {
@@ -777,7 +777,7 @@ TEST_F(AssertVelocitySnapshotTest, EntityWithZeroId) {
     setInt16At(buffer, 12, -30);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVelocitySnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertVelocitySnapshot(packet));
 }
 
 TEST_F(AssertVelocitySnapshotTest, ManyEntities) {
@@ -792,7 +792,7 @@ TEST_F(AssertVelocitySnapshotTest, ManyEntities) {
     }
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertVelocitySnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertVelocitySnapshot(packet));
 }
 
 TEST_F(AssertVelocitySnapshotTest, InvalidDataSize) {
@@ -801,14 +801,14 @@ TEST_F(AssertVelocitySnapshotTest, InvalidDataSize) {
     setUint16At(buffer, 4, 0);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVelocitySnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertVelocitySnapshot(packet));
 }
 
 // ============================================================================
 // assertHealthSnapshot Tests (0x26)
 // ============================================================================
 
-class AssertHealthSnapshotTest : public NetworkManagerAssertTest {
+class AssertHealthSnapshotTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertHealthSnapshotTest, EmptyHealthSnapshot) {
@@ -817,14 +817,14 @@ TEST_F(AssertHealthSnapshotTest, EmptyHealthSnapshot) {
     setUint16At(buffer, 4, 0); // entity_count = 0
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertHealthSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertHealthSnapshot(packet));
 }
 
 TEST_F(AssertHealthSnapshotTest, InvalidPayloadSize) {
     auto buffer = createBuffer(5); // Less than 6 bytes
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHealthSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertHealthSnapshot(packet));
 }
 
 TEST_F(AssertHealthSnapshotTest, OneEntity) {
@@ -840,7 +840,7 @@ TEST_F(AssertHealthSnapshotTest, OneEntity) {
     setUint8At(buffer, 13, 100); // max_shield
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertHealthSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertHealthSnapshot(packet));
 }
 
 TEST_F(AssertHealthSnapshotTest, EntityWithZeroId) {
@@ -852,7 +852,7 @@ TEST_F(AssertHealthSnapshotTest, EntityWithZeroId) {
     setUint8At(buffer, 10, 75);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHealthSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertHealthSnapshot(packet));
 }
 
 TEST_F(AssertHealthSnapshotTest, ManyEntities) {
@@ -870,7 +870,7 @@ TEST_F(AssertHealthSnapshotTest, ManyEntities) {
     }
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertHealthSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertHealthSnapshot(packet));
 }
 
 TEST_F(AssertHealthSnapshotTest, InvalidDataSize) {
@@ -879,7 +879,7 @@ TEST_F(AssertHealthSnapshotTest, InvalidDataSize) {
     setUint16At(buffer, 4, 0);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHealthSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertHealthSnapshot(packet));
 }
 
 TEST_F(AssertHealthSnapshotTest, SizeMismatch) {
@@ -888,14 +888,14 @@ TEST_F(AssertHealthSnapshotTest, SizeMismatch) {
     setUint16At(buffer, 4, 2); // entity_count = 2 (but only space for 1)
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHealthSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertHealthSnapshot(packet));
 }
 
 // ============================================================================
 // assertWeaponSnapshot Tests (0x27)
 // ============================================================================
 
-class AssertWeaponSnapshotTest : public NetworkManagerAssertTest {
+class AssertWeaponSnapshotTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertWeaponSnapshotTest, EmptyWeaponSnapshot) {
@@ -904,14 +904,14 @@ TEST_F(AssertWeaponSnapshotTest, EmptyWeaponSnapshot) {
     setUint16At(buffer, 4, 0);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertWeaponSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertWeaponSnapshot(packet));
 }
 
 TEST_F(AssertWeaponSnapshotTest, InvalidPayloadSize) {
     auto buffer = createBuffer(5);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWeaponSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertWeaponSnapshot(packet));
 }
 
 TEST_F(AssertWeaponSnapshotTest, SizeMismatch) {
@@ -920,7 +920,7 @@ TEST_F(AssertWeaponSnapshotTest, SizeMismatch) {
     setUint16At(buffer, 4, 2); // Claims 2 entities but only space for 1
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWeaponSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertWeaponSnapshot(packet));
 }
 
 TEST_F(AssertWeaponSnapshotTest, OneEntity) {
@@ -929,14 +929,14 @@ TEST_F(AssertWeaponSnapshotTest, OneEntity) {
     setUint16At(buffer, 4, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertWeaponSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertWeaponSnapshot(packet));
 }
 
 // ============================================================================
 // assertAISnapshot Tests (0x28)
 // ============================================================================
 
-class AssertAISnapshotTest : public NetworkManagerAssertTest {
+class AssertAISnapshotTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertAISnapshotTest, EmptyAISnapshot) {
@@ -945,14 +945,14 @@ TEST_F(AssertAISnapshotTest, EmptyAISnapshot) {
     setUint16At(buffer, 4, 0);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAISnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertAISnapshot(packet));
 }
 
 TEST_F(AssertAISnapshotTest, InvalidPayloadSize) {
     auto buffer = createBuffer(5);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAISnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertAISnapshot(packet));
 }
 
 TEST_F(AssertAISnapshotTest, SizeMismatch) {
@@ -961,7 +961,7 @@ TEST_F(AssertAISnapshotTest, SizeMismatch) {
     setUint16At(buffer, 4, 2);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAISnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertAISnapshot(packet));
 }
 
 TEST_F(AssertAISnapshotTest, OneEntity) {
@@ -970,14 +970,14 @@ TEST_F(AssertAISnapshotTest, OneEntity) {
     setUint16At(buffer, 4, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAISnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertAISnapshot(packet));
 }
 
 // ============================================================================
 // assertAnimationSnapshot Tests (0x29)
 // ============================================================================
 
-class AssertAnimationSnapshotTest : public NetworkManagerAssertTest {
+class AssertAnimationSnapshotTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertAnimationSnapshotTest, EmptyAnimationSnapshot) {
@@ -986,14 +986,14 @@ TEST_F(AssertAnimationSnapshotTest, EmptyAnimationSnapshot) {
     setUint16At(buffer, 4, 0);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAnimationSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertAnimationSnapshot(packet));
 }
 
 TEST_F(AssertAnimationSnapshotTest, InvalidPayloadSize) {
     auto buffer = createBuffer(5);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAnimationSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertAnimationSnapshot(packet));
 }
 
 TEST_F(AssertAnimationSnapshotTest, SizeMismatch) {
@@ -1002,7 +1002,7 @@ TEST_F(AssertAnimationSnapshotTest, SizeMismatch) {
     setUint16At(buffer, 4, 2);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAnimationSnapshot(packet));
+    EXPECT_FALSE(PacketManager::assertAnimationSnapshot(packet));
 }
 
 TEST_F(AssertAnimationSnapshotTest, OneEntity) {
@@ -1011,14 +1011,14 @@ TEST_F(AssertAnimationSnapshotTest, OneEntity) {
     setUint16At(buffer, 4, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAnimationSnapshot(packet));
+    EXPECT_TRUE(PacketManager::assertAnimationSnapshot(packet));
 }
 
 // ============================================================================
 // assertComponentAdd Tests (0x2A)
 // ============================================================================
 
-class AssertComponentAddTest : public NetworkManagerAssertTest {
+class AssertComponentAddTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertComponentAddTest, ValidComponentAdd) {
@@ -1029,7 +1029,7 @@ TEST_F(AssertComponentAddTest, ValidComponentAdd) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertComponentAdd(packet));
+    EXPECT_TRUE(PacketManager::assertComponentAdd(packet));
 }
 
 TEST_F(AssertComponentAddTest, InvalidPayloadSize) {
@@ -1037,7 +1037,7 @@ TEST_F(AssertComponentAddTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentAdd(packet));
+    EXPECT_FALSE(PacketManager::assertComponentAdd(packet));
 }
 
 TEST_F(AssertComponentAddTest, ZeroEntityId) {
@@ -1048,7 +1048,7 @@ TEST_F(AssertComponentAddTest, ZeroEntityId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentAdd(packet));
+    EXPECT_FALSE(PacketManager::assertComponentAdd(packet));
 }
 
 TEST_F(AssertComponentAddTest, InvalidComponentType) {
@@ -1059,7 +1059,7 @@ TEST_F(AssertComponentAddTest, InvalidComponentType) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentAdd(packet));
+    EXPECT_FALSE(PacketManager::assertComponentAdd(packet));
 }
 
 TEST_F(AssertComponentAddTest, MissingReliableFlag) {
@@ -1070,14 +1070,14 @@ TEST_F(AssertComponentAddTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentAdd(packet));
+    EXPECT_FALSE(PacketManager::assertComponentAdd(packet));
 }
 
 // ============================================================================
 // assertComponentRemove Tests (0x2B)
 // ============================================================================
 
-class AssertComponentRemoveTest : public NetworkManagerAssertTest {
+class AssertComponentRemoveTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertComponentRemoveTest, ValidComponentRemove) {
@@ -1087,7 +1087,7 @@ TEST_F(AssertComponentRemoveTest, ValidComponentRemove) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertComponentRemove(packet));
+    EXPECT_TRUE(PacketManager::assertComponentRemove(packet));
 }
 
 TEST_F(AssertComponentRemoveTest, InvalidPayloadSize) {
@@ -1095,7 +1095,7 @@ TEST_F(AssertComponentRemoveTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentRemove(packet));
+    EXPECT_FALSE(PacketManager::assertComponentRemove(packet));
 }
 
 TEST_F(AssertComponentRemoveTest, ZeroEntityId) {
@@ -1105,7 +1105,7 @@ TEST_F(AssertComponentRemoveTest, ZeroEntityId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentRemove(packet));
+    EXPECT_FALSE(PacketManager::assertComponentRemove(packet));
 }
 
 TEST_F(AssertComponentRemoveTest, InvalidComponentType) {
@@ -1115,7 +1115,7 @@ TEST_F(AssertComponentRemoveTest, InvalidComponentType) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentRemove(packet));
+    EXPECT_FALSE(PacketManager::assertComponentRemove(packet));
 }
 
 TEST_F(AssertComponentRemoveTest, MissingReliableFlag) {
@@ -1125,14 +1125,14 @@ TEST_F(AssertComponentRemoveTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertComponentRemove(packet));
+    EXPECT_FALSE(PacketManager::assertComponentRemove(packet));
 }
 
 // ============================================================================
 // assertTransformSnapshotDelta Tests (0x2C)
 // ============================================================================
 
-class AssertTransformSnapshotDeltaTest : public NetworkManagerAssertTest {
+class AssertTransformSnapshotDeltaTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertTransformSnapshotDeltaTest, ValidTransformSnapshotDelta) {
@@ -1142,14 +1142,14 @@ TEST_F(AssertTransformSnapshotDeltaTest, ValidTransformSnapshotDelta) {
     setUint16At(buffer, 8, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertTransformSnapshotDelta(packet));
+    EXPECT_TRUE(PacketManager::assertTransformSnapshotDelta(packet));
 }
 
 TEST_F(AssertTransformSnapshotDeltaTest, InvalidPayloadSize) {
     auto buffer = createBuffer(9);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertTransformSnapshotDelta(packet));
+    EXPECT_FALSE(PacketManager::assertTransformSnapshotDelta(packet));
 }
 
 TEST_F(AssertTransformSnapshotDeltaTest, BaseTick_NotLessThanWorldTick) {
@@ -1159,7 +1159,7 @@ TEST_F(AssertTransformSnapshotDeltaTest, BaseTick_NotLessThanWorldTick) {
     setUint16At(buffer, 8, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertTransformSnapshotDelta(packet));
+    EXPECT_FALSE(PacketManager::assertTransformSnapshotDelta(packet));
 }
 
 TEST_F(AssertTransformSnapshotDeltaTest, BaseTick_GreaterThanWorldTick) {
@@ -1169,7 +1169,7 @@ TEST_F(AssertTransformSnapshotDeltaTest, BaseTick_GreaterThanWorldTick) {
     setUint16At(buffer, 8, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertTransformSnapshotDelta(packet));
+    EXPECT_FALSE(PacketManager::assertTransformSnapshotDelta(packet));
 }
 
 TEST_F(AssertTransformSnapshotDeltaTest, SizeMismatch) {
@@ -1179,14 +1179,14 @@ TEST_F(AssertTransformSnapshotDeltaTest, SizeMismatch) {
     setUint16At(buffer, 8, 2);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertTransformSnapshotDelta(packet));
+    EXPECT_FALSE(PacketManager::assertTransformSnapshotDelta(packet));
 }
 
 // ============================================================================
 // assertHealthSnapshotDelta Tests (0x2D)
 // ============================================================================
 
-class AssertHealthSnapshotDeltaTest : public NetworkManagerAssertTest {
+class AssertHealthSnapshotDeltaTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertHealthSnapshotDeltaTest, ValidHealthSnapshotDelta) {
@@ -1196,14 +1196,14 @@ TEST_F(AssertHealthSnapshotDeltaTest, ValidHealthSnapshotDelta) {
     setUint16At(buffer, 8, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertHealthSnapshotDelta(packet));
+    EXPECT_TRUE(PacketManager::assertHealthSnapshotDelta(packet));
 }
 
 TEST_F(AssertHealthSnapshotDeltaTest, InvalidPayloadSize) {
     auto buffer = createBuffer(9);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHealthSnapshotDelta(packet));
+    EXPECT_FALSE(PacketManager::assertHealthSnapshotDelta(packet));
 }
 
 TEST_F(AssertHealthSnapshotDeltaTest, BaseTick_NotLessThanWorldTick) {
@@ -1213,7 +1213,7 @@ TEST_F(AssertHealthSnapshotDeltaTest, BaseTick_NotLessThanWorldTick) {
     setUint16At(buffer, 8, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHealthSnapshotDelta(packet));
+    EXPECT_FALSE(PacketManager::assertHealthSnapshotDelta(packet));
 }
 
 TEST_F(AssertHealthSnapshotDeltaTest, SizeMismatch) {
@@ -1223,14 +1223,14 @@ TEST_F(AssertHealthSnapshotDeltaTest, SizeMismatch) {
     setUint16At(buffer, 8, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertHealthSnapshotDelta(packet));
+    EXPECT_FALSE(PacketManager::assertHealthSnapshotDelta(packet));
 }
 
 // ============================================================================
 // assertEntityFullState Tests (0x2E)
 // ============================================================================
 
-class AssertEntityFullStateTest : public NetworkManagerAssertTest {
+class AssertEntityFullStateTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertEntityFullStateTest, ValidEntityFullState) {
@@ -1241,7 +1241,7 @@ TEST_F(AssertEntityFullStateTest, ValidEntityFullState) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertEntityFullState(packet));
+    EXPECT_TRUE(PacketManager::assertEntityFullState(packet));
 }
 
 TEST_F(AssertEntityFullStateTest, InvalidPayloadSize) {
@@ -1249,7 +1249,7 @@ TEST_F(AssertEntityFullStateTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityFullState(packet));
+    EXPECT_FALSE(PacketManager::assertEntityFullState(packet));
 }
 
 TEST_F(AssertEntityFullStateTest, ZeroEntityId) {
@@ -1260,7 +1260,7 @@ TEST_F(AssertEntityFullStateTest, ZeroEntityId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityFullState(packet));
+    EXPECT_FALSE(PacketManager::assertEntityFullState(packet));
 }
 
 TEST_F(AssertEntityFullStateTest, InvalidEntityType) {
@@ -1271,7 +1271,7 @@ TEST_F(AssertEntityFullStateTest, InvalidEntityType) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityFullState(packet));
+    EXPECT_FALSE(PacketManager::assertEntityFullState(packet));
 }
 
 TEST_F(AssertEntityFullStateTest, ZeroComponentCount) {
@@ -1282,7 +1282,7 @@ TEST_F(AssertEntityFullStateTest, ZeroComponentCount) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityFullState(packet));
+    EXPECT_FALSE(PacketManager::assertEntityFullState(packet));
 }
 
 TEST_F(AssertEntityFullStateTest, ComponentCountAboveLimit) {
@@ -1293,7 +1293,7 @@ TEST_F(AssertEntityFullStateTest, ComponentCountAboveLimit) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityFullState(packet));
+    EXPECT_FALSE(PacketManager::assertEntityFullState(packet));
 }
 
 TEST_F(AssertEntityFullStateTest, MissingReliableFlag) {
@@ -1304,14 +1304,14 @@ TEST_F(AssertEntityFullStateTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertEntityFullState(packet));
+    EXPECT_FALSE(PacketManager::assertEntityFullState(packet));
 }
 
 // ============================================================================
 // assertPlayerHit Tests (0x40)
 // ============================================================================
 
-class AssertPlayerHitTest : public NetworkManagerAssertTest {
+class AssertPlayerHitTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertPlayerHitTest, ValidPlayerHit) {
@@ -1324,7 +1324,7 @@ TEST_F(AssertPlayerHitTest, ValidPlayerHit) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPlayerHit(packet));
+    EXPECT_TRUE(PacketManager::assertPlayerHit(packet));
 }
 
 TEST_F(AssertPlayerHitTest, InvalidPayloadSize) {
@@ -1332,7 +1332,7 @@ TEST_F(AssertPlayerHitTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerHit(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerHit(packet));
 }
 
 TEST_F(AssertPlayerHitTest, ZeroPlayerId) {
@@ -1343,7 +1343,7 @@ TEST_F(AssertPlayerHitTest, ZeroPlayerId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerHit(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerHit(packet));
 }
 
 TEST_F(AssertPlayerHitTest, ZeroAttackerId) {
@@ -1354,7 +1354,7 @@ TEST_F(AssertPlayerHitTest, ZeroAttackerId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerHit(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerHit(packet));
 }
 
 TEST_F(AssertPlayerHitTest, ZeroDamage) {
@@ -1365,7 +1365,7 @@ TEST_F(AssertPlayerHitTest, ZeroDamage) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerHit(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerHit(packet));
 }
 
 TEST_F(AssertPlayerHitTest, MissingReliableFlag) {
@@ -1376,14 +1376,14 @@ TEST_F(AssertPlayerHitTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerHit(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerHit(packet));
 }
 
 // ============================================================================
 // assertPlayerDeath Tests (0x41)
 // ============================================================================
 
-class AssertPlayerDeathTest : public NetworkManagerAssertTest {
+class AssertPlayerDeathTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertPlayerDeathTest, ValidPlayerDeath) {
@@ -1394,7 +1394,7 @@ TEST_F(AssertPlayerDeathTest, ValidPlayerDeath) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPlayerDeath(packet));
+    EXPECT_TRUE(PacketManager::assertPlayerDeath(packet));
 }
 
 TEST_F(AssertPlayerDeathTest, InvalidPayloadSize) {
@@ -1402,7 +1402,7 @@ TEST_F(AssertPlayerDeathTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerDeath(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerDeath(packet));
 }
 
 TEST_F(AssertPlayerDeathTest, ZeroPlayerId) {
@@ -1413,7 +1413,7 @@ TEST_F(AssertPlayerDeathTest, ZeroPlayerId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerDeath(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerDeath(packet));
 }
 
 TEST_F(AssertPlayerDeathTest, ZeroKillerId) {
@@ -1424,7 +1424,7 @@ TEST_F(AssertPlayerDeathTest, ZeroKillerId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerDeath(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerDeath(packet));
 }
 
 TEST_F(AssertPlayerDeathTest, MissingReliableFlag) {
@@ -1435,14 +1435,14 @@ TEST_F(AssertPlayerDeathTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPlayerDeath(packet));
+    EXPECT_FALSE(PacketManager::assertPlayerDeath(packet));
 }
 
 // ============================================================================
 // assertScoreUpdate Tests (0x42)
 // ============================================================================
 
-class AssertScoreUpdateTest : public NetworkManagerAssertTest {
+class AssertScoreUpdateTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertScoreUpdateTest, ValidScoreUpdate) {
@@ -1453,14 +1453,14 @@ TEST_F(AssertScoreUpdateTest, ValidScoreUpdate) {
     setUint8At(buffer, 10, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertScoreUpdate(packet));
+    EXPECT_TRUE(PacketManager::assertScoreUpdate(packet));
 }
 
 TEST_F(AssertScoreUpdateTest, InvalidPayloadSize) {
     auto buffer = createBuffer(10);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertScoreUpdate(packet));
+    EXPECT_FALSE(PacketManager::assertScoreUpdate(packet));
 }
 
 TEST_F(AssertScoreUpdateTest, ZeroPlayerId) {
@@ -1471,7 +1471,7 @@ TEST_F(AssertScoreUpdateTest, ZeroPlayerId) {
     setUint8At(buffer, 10, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertScoreUpdate(packet));
+    EXPECT_FALSE(PacketManager::assertScoreUpdate(packet));
 }
 
 TEST_F(AssertScoreUpdateTest, ZeroScoreDelta) {
@@ -1482,7 +1482,7 @@ TEST_F(AssertScoreUpdateTest, ZeroScoreDelta) {
     setUint8At(buffer, 10, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertScoreUpdate(packet));
+    EXPECT_FALSE(PacketManager::assertScoreUpdate(packet));
 }
 
 TEST_F(AssertScoreUpdateTest, InvalidReason) {
@@ -1493,7 +1493,7 @@ TEST_F(AssertScoreUpdateTest, InvalidReason) {
     setUint8At(buffer, 10, 6); // > 5
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertScoreUpdate(packet));
+    EXPECT_FALSE(PacketManager::assertScoreUpdate(packet));
 }
 
 TEST_F(AssertScoreUpdateTest, NegativeScoreDelta) {
@@ -1504,14 +1504,14 @@ TEST_F(AssertScoreUpdateTest, NegativeScoreDelta) {
     setUint8At(buffer, 10, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertScoreUpdate(packet));
+    EXPECT_TRUE(PacketManager::assertScoreUpdate(packet));
 }
 
 // ============================================================================
 // assertPowerupPickup Tests (0x43)
 // ============================================================================
 
-class AssertPowerupPickupTest : public NetworkManagerAssertTest {
+class AssertPowerupPickupTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertPowerupPickupTest, ValidPowerupPickup) {
@@ -1523,7 +1523,7 @@ TEST_F(AssertPowerupPickupTest, ValidPowerupPickup) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPowerupPickup(packet));
+    EXPECT_TRUE(PacketManager::assertPowerupPickup(packet));
 }
 
 TEST_F(AssertPowerupPickupTest, InvalidPayloadSize) {
@@ -1531,7 +1531,7 @@ TEST_F(AssertPowerupPickupTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPowerupPickup(packet));
+    EXPECT_FALSE(PacketManager::assertPowerupPickup(packet));
 }
 
 TEST_F(AssertPowerupPickupTest, ZeroPlayerId) {
@@ -1542,7 +1542,7 @@ TEST_F(AssertPowerupPickupTest, ZeroPlayerId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPowerupPickup(packet));
+    EXPECT_FALSE(PacketManager::assertPowerupPickup(packet));
 }
 
 TEST_F(AssertPowerupPickupTest, ZeroPowerupId) {
@@ -1553,7 +1553,7 @@ TEST_F(AssertPowerupPickupTest, ZeroPowerupId) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPowerupPickup(packet));
+    EXPECT_FALSE(PacketManager::assertPowerupPickup(packet));
 }
 
 TEST_F(AssertPowerupPickupTest, InvalidPowerupType) {
@@ -1564,7 +1564,7 @@ TEST_F(AssertPowerupPickupTest, InvalidPowerupType) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPowerupPickup(packet));
+    EXPECT_FALSE(PacketManager::assertPowerupPickup(packet));
 }
 
 TEST_F(AssertPowerupPickupTest, MissingReliableFlag) {
@@ -1575,14 +1575,14 @@ TEST_F(AssertPowerupPickupTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPowerupPickup(packet));
+    EXPECT_FALSE(PacketManager::assertPowerupPickup(packet));
 }
 
 // ============================================================================
 // assertWeaponFire Tests (0x44)
 // ============================================================================
 
-class AssertWeaponFireTest : public NetworkManagerAssertTest {
+class AssertWeaponFireTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertWeaponFireTest, ValidWeaponFire) {
@@ -1596,14 +1596,14 @@ TEST_F(AssertWeaponFireTest, ValidWeaponFire) {
     setUint8At(buffer, 16, 1);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertWeaponFire(packet));
+    EXPECT_TRUE(PacketManager::assertWeaponFire(packet));
 }
 
 TEST_F(AssertWeaponFireTest, InvalidPayloadSize) {
     auto buffer = createBuffer(18);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWeaponFire(packet));
+    EXPECT_FALSE(PacketManager::assertWeaponFire(packet));
 }
 
 TEST_F(AssertWeaponFireTest, ZeroShooterId) {
@@ -1613,7 +1613,7 @@ TEST_F(AssertWeaponFireTest, ZeroShooterId) {
     setUint8At(buffer, 16, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWeaponFire(packet));
+    EXPECT_FALSE(PacketManager::assertWeaponFire(packet));
 }
 
 TEST_F(AssertWeaponFireTest, ZeroProjectileId) {
@@ -1623,7 +1623,7 @@ TEST_F(AssertWeaponFireTest, ZeroProjectileId) {
     setUint8At(buffer, 16, 1);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWeaponFire(packet));
+    EXPECT_FALSE(PacketManager::assertWeaponFire(packet));
 }
 
 TEST_F(AssertWeaponFireTest, InvalidWeaponType) {
@@ -1633,14 +1633,14 @@ TEST_F(AssertWeaponFireTest, InvalidWeaponType) {
     setUint8At(buffer, 16, 6); // > 5
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertWeaponFire(packet));
+    EXPECT_FALSE(PacketManager::assertWeaponFire(packet));
 }
 
 // ============================================================================
 // assertVisualEffect Tests (0x45)
 // ============================================================================
 
-class AssertVisualEffectTest : public NetworkManagerAssertTest {
+class AssertVisualEffectTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertVisualEffectTest, ValidVisualEffect) {
@@ -1655,14 +1655,14 @@ TEST_F(AssertVisualEffectTest, ValidVisualEffect) {
     setUint8At(buffer, 10, 64);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertVisualEffect(packet));
+    EXPECT_TRUE(PacketManager::assertVisualEffect(packet));
 }
 
 TEST_F(AssertVisualEffectTest, InvalidPayloadSize) {
     auto buffer = createBuffer(13);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVisualEffect(packet));
+    EXPECT_FALSE(PacketManager::assertVisualEffect(packet));
 }
 
 TEST_F(AssertVisualEffectTest, InvalidEffectType) {
@@ -1672,7 +1672,7 @@ TEST_F(AssertVisualEffectTest, InvalidEffectType) {
     setUint8At(buffer, 7, 100);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVisualEffect(packet));
+    EXPECT_FALSE(PacketManager::assertVisualEffect(packet));
 }
 
 TEST_F(AssertVisualEffectTest, ZeroDuration) {
@@ -1682,7 +1682,7 @@ TEST_F(AssertVisualEffectTest, ZeroDuration) {
     setUint8At(buffer, 7, 100);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVisualEffect(packet));
+    EXPECT_FALSE(PacketManager::assertVisualEffect(packet));
 }
 
 TEST_F(AssertVisualEffectTest, DurationTooLong) {
@@ -1692,7 +1692,7 @@ TEST_F(AssertVisualEffectTest, DurationTooLong) {
     setUint8At(buffer, 7, 100);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVisualEffect(packet));
+    EXPECT_FALSE(PacketManager::assertVisualEffect(packet));
 }
 
 TEST_F(AssertVisualEffectTest, ZeroScale) {
@@ -1702,14 +1702,14 @@ TEST_F(AssertVisualEffectTest, ZeroScale) {
     setUint8At(buffer, 7, 0);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertVisualEffect(packet));
+    EXPECT_FALSE(PacketManager::assertVisualEffect(packet));
 }
 
 // ============================================================================
 // assertAudioEffect Tests (0x46)
 // ============================================================================
 
-class AssertAudioEffectTest : public NetworkManagerAssertTest {
+class AssertAudioEffectTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertAudioEffectTest, ValidAudioEffect) {
@@ -1721,14 +1721,14 @@ TEST_F(AssertAudioEffectTest, ValidAudioEffect) {
     setUint8At(buffer, 6, 100);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_TRUE(PacketManager::assertAudioEffect(packet));
 }
 
 TEST_F(AssertAudioEffectTest, InvalidPayloadSize) {
     auto buffer = createBuffer(6);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_FALSE(PacketManager::assertAudioEffect(packet));
 }
 
 TEST_F(AssertAudioEffectTest, InvalidEffectType) {
@@ -1737,7 +1737,7 @@ TEST_F(AssertAudioEffectTest, InvalidEffectType) {
     setUint8At(buffer, 6, 100);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_FALSE(PacketManager::assertAudioEffect(packet));
 }
 
 TEST_F(AssertAudioEffectTest, PitchTooLow) {
@@ -1746,7 +1746,7 @@ TEST_F(AssertAudioEffectTest, PitchTooLow) {
     setUint8At(buffer, 6, 49); // < 50
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_FALSE(PacketManager::assertAudioEffect(packet));
 }
 
 TEST_F(AssertAudioEffectTest, PitchTooHigh) {
@@ -1755,7 +1755,7 @@ TEST_F(AssertAudioEffectTest, PitchTooHigh) {
     setUint8At(buffer, 6, 201); // > 200
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_FALSE(PacketManager::assertAudioEffect(packet));
 }
 
 TEST_F(AssertAudioEffectTest, ValidPitchRange) {
@@ -1763,33 +1763,33 @@ TEST_F(AssertAudioEffectTest, ValidPitchRange) {
     setUint8At(buffer, 0, 3);
     setUint8At(buffer, 6, 50);
     setPacketData(buffer);
-    EXPECT_TRUE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_TRUE(PacketManager::assertAudioEffect(packet));
 
     buffer = createBuffer(7);
     setUint8At(buffer, 0, 3);
     setUint8At(buffer, 6, 200);
     setPacketData(buffer);
-    EXPECT_TRUE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_TRUE(PacketManager::assertAudioEffect(packet));
 
     buffer = createBuffer(7);
     setUint8At(buffer, 0, 3);
     setUint8At(buffer, 6, 125);
     setPacketData(buffer);
-    EXPECT_TRUE(NetworkManager::assertAudioEffect(packet));
+    EXPECT_TRUE(PacketManager::assertAudioEffect(packet));
 }
 
 // ============================================================================
 // assertParticleSpawn Tests (0x47)
 // ============================================================================
 
-class AssertParticleSpawnTest : public NetworkManagerAssertTest {
+class AssertParticleSpawnTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertParticleSpawnTest, InvalidPayloadSize) {
     auto buffer = createBuffer(25);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertParticleSpawn(packet));
+    EXPECT_FALSE(PacketManager::assertParticleSpawn(packet));
 }
 
 TEST_F(AssertParticleSpawnTest, ZeroParticleCount) {
@@ -1802,7 +1802,7 @@ TEST_F(AssertParticleSpawnTest, ZeroParticleCount) {
     setUint16At(buffer, 10, 0);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertParticleSpawn(packet));
+    EXPECT_FALSE(PacketManager::assertParticleSpawn(packet));
 }
 
 TEST_F(AssertParticleSpawnTest, ValidParticleSpawn) {
@@ -1822,14 +1822,14 @@ TEST_F(AssertParticleSpawnTest, ValidParticleSpawn) {
     setUint8At(buffer, 19, 50);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertParticleSpawn(packet));
+    EXPECT_TRUE(PacketManager::assertParticleSpawn(packet));
 }
 
 // ============================================================================
 // assertGameStart Tests (0x60)
 // ============================================================================
 
-class AssertGameStartTest : public NetworkManagerAssertTest {
+class AssertGameStartTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertGameStartTest, ValidGameStart) {
@@ -1839,7 +1839,7 @@ TEST_F(AssertGameStartTest, ValidGameStart) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertGameStart(packet));
+    EXPECT_TRUE(PacketManager::assertGameStart(packet));
 }
 
 TEST_F(AssertGameStartTest, InvalidPayloadSize) {
@@ -1847,7 +1847,7 @@ TEST_F(AssertGameStartTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertGameStart(packet));
+    EXPECT_FALSE(PacketManager::assertGameStart(packet));
 }
 
 TEST_F(AssertGameStartTest, MissingReliableFlag) {
@@ -1856,14 +1856,14 @@ TEST_F(AssertGameStartTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertGameStart(packet));
+    EXPECT_FALSE(PacketManager::assertGameStart(packet));
 }
 
 // ============================================================================
 // assertGameEnd Tests (0x61)
 // ============================================================================
 
-class AssertGameEndTest : public NetworkManagerAssertTest {
+class AssertGameEndTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertGameEndTest, ValidGameEnd) {
@@ -1872,7 +1872,7 @@ TEST_F(AssertGameEndTest, ValidGameEnd) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertGameEnd(packet));
+    EXPECT_TRUE(PacketManager::assertGameEnd(packet));
 }
 
 TEST_F(AssertGameEndTest, InvalidPayloadSize) {
@@ -1880,7 +1880,7 @@ TEST_F(AssertGameEndTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertGameEnd(packet));
+    EXPECT_FALSE(PacketManager::assertGameEnd(packet));
 }
 
 TEST_F(AssertGameEndTest, MissingReliableFlag) {
@@ -1889,14 +1889,14 @@ TEST_F(AssertGameEndTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertGameEnd(packet));
+    EXPECT_FALSE(PacketManager::assertGameEnd(packet));
 }
 
 // ============================================================================
 // assertLevelComplete Tests (0x62)
 // ============================================================================
 
-class AssertLevelCompleteTest : public NetworkManagerAssertTest {
+class AssertLevelCompleteTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertLevelCompleteTest, ValidLevelComplete) {
@@ -1906,7 +1906,7 @@ TEST_F(AssertLevelCompleteTest, ValidLevelComplete) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertLevelComplete(packet));
+    EXPECT_TRUE(PacketManager::assertLevelComplete(packet));
 }
 
 TEST_F(AssertLevelCompleteTest, InvalidPayloadSize) {
@@ -1914,7 +1914,7 @@ TEST_F(AssertLevelCompleteTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertLevelComplete(packet));
+    EXPECT_FALSE(PacketManager::assertLevelComplete(packet));
 }
 
 TEST_F(AssertLevelCompleteTest, MissingReliableFlag) {
@@ -1923,14 +1923,14 @@ TEST_F(AssertLevelCompleteTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertLevelComplete(packet));
+    EXPECT_FALSE(PacketManager::assertLevelComplete(packet));
 }
 
 // ============================================================================
 // assertLevelStart Tests (0x63)
 // ============================================================================
 
-class AssertLevelStartTest : public NetworkManagerAssertTest {
+class AssertLevelStartTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertLevelStartTest, ValidLevelStart) {
@@ -1941,7 +1941,7 @@ TEST_F(AssertLevelStartTest, ValidLevelStart) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertLevelStart(packet));
+    EXPECT_TRUE(PacketManager::assertLevelStart(packet));
 }
 
 TEST_F(AssertLevelStartTest, InvalidPayloadSize) {
@@ -1949,7 +1949,7 @@ TEST_F(AssertLevelStartTest, InvalidPayloadSize) {
     packet.header.flags = 0x01;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertLevelStart(packet));
+    EXPECT_FALSE(PacketManager::assertLevelStart(packet));
 }
 
 TEST_F(AssertLevelStartTest, MissingReliableFlag) {
@@ -1959,14 +1959,14 @@ TEST_F(AssertLevelStartTest, MissingReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertLevelStart(packet));
+    EXPECT_FALSE(PacketManager::assertLevelStart(packet));
 }
 
 // ============================================================================
 // assertForceState Tests (0x64)
 // ============================================================================
 
-class AssertForceStateTest : public NetworkManagerAssertTest {
+class AssertForceStateTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertForceStateTest, ValidForceState) {
@@ -1979,14 +1979,14 @@ TEST_F(AssertForceStateTest, ValidForceState) {
     setUint8At(buffer, 11, 0); // is_firing
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertForceState(packet));
+    EXPECT_TRUE(PacketManager::assertForceState(packet));
 }
 
 TEST_F(AssertForceStateTest, InvalidPayloadSize) {
     auto buffer = createBuffer(11);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertForceState(packet));
+    EXPECT_FALSE(PacketManager::assertForceState(packet));
 }
 
 TEST_F(AssertForceStateTest, ValidWithoutReliableFlag) {
@@ -2000,14 +2000,14 @@ TEST_F(AssertForceStateTest, ValidWithoutReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertForceState(packet));
+    EXPECT_TRUE(PacketManager::assertForceState(packet));
 }
 
 // ============================================================================
 // assertAIState Tests (0x65)
 // ============================================================================
 
-class AssertAIStateTest : public NetworkManagerAssertTest {
+class AssertAIStateTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertAIStateTest, ValidAIState) {
@@ -2021,14 +2021,14 @@ TEST_F(AssertAIStateTest, ValidAIState) {
     setUint16At(buffer, 14, 1000); // state_timer
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAIState(packet));
+    EXPECT_TRUE(PacketManager::assertAIState(packet));
 }
 
 TEST_F(AssertAIStateTest, InvalidPayloadSize) {
     auto buffer = createBuffer(17);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAIState(packet));
+    EXPECT_FALSE(PacketManager::assertAIState(packet));
 }
 
 TEST_F(AssertAIStateTest, ValidWithoutReliableFlag) {
@@ -2043,14 +2043,14 @@ TEST_F(AssertAIStateTest, ValidWithoutReliableFlag) {
     packet.header.flags = 0x00;
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAIState(packet));
+    EXPECT_TRUE(PacketManager::assertAIState(packet));
 }
 
 // ============================================================================
 // assertAcknowledgment Tests (0x70)
 // ============================================================================
 
-class AssertAcknowledgmentTest : public NetworkManagerAssertTest {
+class AssertAcknowledgmentTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertAcknowledgmentTest, ValidAcknowledgment) {
@@ -2059,21 +2059,21 @@ TEST_F(AssertAcknowledgmentTest, ValidAcknowledgment) {
     setUint32At(buffer, 4, 100);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertAcknowledgment(packet));
+    EXPECT_TRUE(PacketManager::assertAcknowledgment(packet));
 }
 
 TEST_F(AssertAcknowledgmentTest, InvalidPayloadSize) {
     auto buffer = createBuffer(7);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertAcknowledgment(packet));
+    EXPECT_FALSE(PacketManager::assertAcknowledgment(packet));
 }
 
 // ============================================================================
 // assertPing Tests (0x71)
 // ============================================================================
 
-class AssertPingTest : public NetworkManagerAssertTest {
+class AssertPingTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertPingTest, ValidPing) {
@@ -2081,21 +2081,21 @@ TEST_F(AssertPingTest, ValidPing) {
     setUint32At(buffer, 0, 12345);
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPing(packet));
+    EXPECT_TRUE(PacketManager::assertPing(packet));
 }
 
 TEST_F(AssertPingTest, InvalidPayloadSize) {
     auto buffer = createBuffer(3);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPing(packet));
+    EXPECT_FALSE(PacketManager::assertPing(packet));
 }
 
 // ============================================================================
 // assertPong Tests (0x72)
 // ============================================================================
 
-class AssertPongTest : public NetworkManagerAssertTest {
+class AssertPongTest : public PacketManagerAssertTest {
 };
 
 TEST_F(AssertPongTest, ValidPong) {
@@ -2104,14 +2104,14 @@ TEST_F(AssertPongTest, ValidPong) {
     setUint32At(buffer, 4, 12345); // server_timestamp
     setPacketData(buffer);
 
-    EXPECT_TRUE(NetworkManager::assertPong(packet));
+    EXPECT_TRUE(PacketManager::assertPong(packet));
 }
 
 TEST_F(AssertPongTest, InvalidPayloadSize) {
     auto buffer = createBuffer(7);
     setPacketData(buffer);
 
-    EXPECT_FALSE(NetworkManager::assertPong(packet));
+    EXPECT_FALSE(PacketManager::assertPong(packet));
 }
 
 // Test FindHandler
@@ -2122,195 +2122,185 @@ protected:
 };
 
 TEST_F(FindHandlerTest, FindHandlerClientConnect) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_CLIENT_CONNECT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_CLIENT_CONNECT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerServerAccept) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_SERVER_ACCEPT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_SERVER_ACCEPT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerServerReject) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_SERVER_REJECT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_SERVER_REJECT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerClientDisconnect) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_CLIENT_DISCONNECT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_CLIENT_DISCONNECT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerHeartbeat) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_HEARTBEAT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_HEARTBEAT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerPlayerInput) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PLAYER_INPUT);
-    EXPECT_NE(handler, nullptr);
-}
-
-TEST_F(FindHandlerTest, FindHandlerWorldSnapshot) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_WORLD_SNAPSHOT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PLAYER_INPUT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerEntitySpawn) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_SPAWN);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_SPAWN);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerEntityDestroy) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_DESTROY);
-    EXPECT_NE(handler, nullptr);
-}
-
-TEST_F(FindHandlerTest, FindHandlerEntityUpdate) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_UPDATE);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_DESTROY);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerPlayerHit) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PLAYER_HIT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PLAYER_HIT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerPlayerDeath) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PLAYER_DEATH);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PLAYER_DEATH);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerScoreUpdate) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_SCORE_UPDATE);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_SCORE_UPDATE);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerPowerPickup) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_POWER_PICKUP);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_POWER_PICKUP);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerWeaponFire) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_WEAPON_FIRE);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_WEAPON_FIRE);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerGameStart) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_GAME_START);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_GAME_START);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerGameEnd) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_GAME_END);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_GAME_END);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerLevelComplete) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_LEVEL_COMPLETE);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_LEVEL_COMPLETE);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerLevelStart) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_LEVEL_START);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_LEVEL_START);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerAck) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ACK);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_ACK);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerPing) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PING);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PING);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerPong) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PONG);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PONG);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerTransformSnapshot) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerVelocitySnapshot) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerHealthSnapshot) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerWeaponSnapshot) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerAISnapshot) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_AI_SNAPSHOT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_AI_SNAPSHOT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerAnimationSnapshot) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerComponentAdd) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_COMPONENT_ADD);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_COMPONENT_ADD);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerComponentRemove) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_COMPONENT_REMOVE);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_COMPONENT_REMOVE);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerTransformSnapshotDelta) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerHealthSnapshotDelta) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerEntityFullState) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_FULL_STATE);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_ENTITY_FULL_STATE);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerVisualEffect) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_VISUAL_EFFECT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_VISUAL_EFFECT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerAudioEffect) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_AUDIO_EFFECT);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_AUDIO_EFFECT);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerParticleSpawn) {
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PARTICLE_SPAWN);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PARTICLE_SPAWN);
     EXPECT_NE(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerInvalidType) {
     // Try with an invalid type that doesn't exist
-    auto handler = NetworkManager::findHandler(static_cast<protocol::PacketTypes>(0xFF));
+    auto handler = PacketManager::findHandler(static_cast<protocol::PacketTypes>(0xFF));
     EXPECT_EQ(handler, nullptr);
 }
 
 TEST_F(FindHandlerTest, FindHandlerMultipleCalls) {
     // Call findHandler multiple times and verify consistency
-    auto handler1 = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PING);
-    auto handler2 = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PING);
+    auto handler1 = PacketManager::findHandler(protocol::PacketTypes::TYPE_PING);
+    auto handler2 = PacketManager::findHandler(protocol::PacketTypes::TYPE_PING);
     
     EXPECT_NE(handler1, nullptr);
     EXPECT_NE(handler2, nullptr);
@@ -2319,8 +2309,8 @@ TEST_F(FindHandlerTest, FindHandlerMultipleCalls) {
 
 TEST_F(FindHandlerTest, FindHandlerDifferentTypes) {
     // Verify that different types return different handlers
-    auto ping_handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PING);
-    auto pong_handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PONG);
+    auto ping_handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PING);
+    auto pong_handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PONG);
     
     EXPECT_NE(ping_handler, nullptr);
     EXPECT_NE(pong_handler, nullptr);
@@ -2328,7 +2318,7 @@ TEST_F(FindHandlerTest, FindHandlerDifferentTypes) {
 
 TEST_F(FindHandlerTest, FindHandlerValidateFunctions) {
     // Ensure handlers have valid function pointers
-    auto handler = NetworkManager::findHandler(protocol::PacketTypes::TYPE_PING);
+    auto handler = PacketManager::findHandler(protocol::PacketTypes::TYPE_PING);
     
     EXPECT_NE(handler, nullptr);
     EXPECT_NE(handler->assertFunc, nullptr);

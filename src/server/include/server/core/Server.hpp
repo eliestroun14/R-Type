@@ -6,7 +6,7 @@
 #include <thread>
 #include <chrono>
 #include "../../../../common/include/common/protocol/Protocol.hpp"
-#include "../../../common/include/common/network/sockets/AsioSocket.hpp"
+#include "../network/ServerNetworkManager.hpp"
 #include <atomic>
 #include <deque>
 #include "../../../common/include/common/protocol/Packet.hpp"
@@ -64,7 +64,7 @@ namespace server {
         // Configuration
         ServerConfig _config;
 
-        std::array<std::shared_ptr<common::network::AsioSocket>, MAX_PLAYERS> _clients;
+        std::unique_ptr<server::network::ServerNetworkManager> _networkManager;
 
         // State
         std::atomic<bool> _isRunning;
