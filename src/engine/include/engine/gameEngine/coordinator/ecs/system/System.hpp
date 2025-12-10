@@ -8,13 +8,12 @@
 #ifndef SYSTEM_HPP_
 #define SYSTEM_HPP_
 
-#include "../entity/Entity.hpp"
 #include <vector>
+#include <algorithm>
+
 
 class System {
 public:
-    using entity_type = Entity;
-
     System() = default;
     virtual ~System() = default;
 
@@ -24,15 +23,21 @@ public:
     virtual void onStopRunning() {}
     virtual void onDestroy() {}
 
-    void addEntity(Entity e);
-    void removeEntity(Entity const& e);
-
-    bool empty() const noexcept { return _entities.empty(); }
     bool isRunning() const noexcept { return _running; }
 
+    size_t entityCount() const noexcept { return _entities.size(); }
+
+    bool hasEntity(size_t id) const noexcept {
+        return std::find(_entities.begin(), _entities.end(), id) != _entities.end();
+    }
+
+    friend class SystemManager;
+
 protected:
-    std::vector<Entity> _entities;
+    std::vector<size_t> _entities;
     bool _running { false };
+
 };
+
 
 #endif /* !SYSTEM_HPP_ */
