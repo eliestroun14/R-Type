@@ -13,8 +13,8 @@
 #include <map>
 #include <optional>
 #include <array>
-#include "../../../../../common/include/common/protocol/Protocol.hpp"
-#include "../../../../../common/include/common/protocol/Packet.hpp"
+#include "../../common/include/common/protocol/Protocol.hpp"
+#include "../../common/include/common/protocol/Packet.hpp"
 
 /**
  * @class NetworkManager
