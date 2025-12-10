@@ -55,11 +55,10 @@ class NetworkManager {
          */
         common::protocol::Packet createPacket(protocol::PacketTypes type, const std::vector<uint8_t> &args = {});
 
-    private:
-
         // ==============================================================
         //                  Assertion Functions (Validation)
         // ==============================================================
+        // These are public static methods to allow testing of packet validation logic
 
         // ==============================================================
         //                  CONNECTION (0x01-0x0F)
@@ -351,7 +350,7 @@ class NetworkManager {
          */
         static bool assertPong(const common::protocol::Packet &packet);
 
-
+    private:
 
         // ==============================================================
         //                  Creation Functions
@@ -733,6 +732,7 @@ class NetworkManager {
             { protocol::PacketTypes::TYPE_PONG, &NetworkManager::assertPong, &NetworkManager::createPong }
         }};
 
+    public:
         /**
          * @brief Find a packet handler by type
          * @param type The packet type to find
