@@ -1,0 +1,27 @@
+/*
+** EPITECH PROJECT, 2025
+** R-Type
+** File description:
+** defines
+*/
+
+#ifndef DEFINES_HPP_
+#define DEFINES_HPP_
+
+#define TIMEOUT 15000
+#define HEARTBEAT_INTERVAL 5000
+#define TICK_RATE 16
+
+#define HEARTBEAT_TICK_INTERVAL 300
+#define INPUT_SEND_TICK_INTERVAL 2
+
+#define MAX_PLAYERS 32
+
+enum NetworkType {
+    NETWORK_TYPE_UNDEFINED = 0,
+    NETWORK_TYPE_CLIENT,
+    NETWORK_TYPE_SERVER,
+    NETWORK_TYPE_STANDALONE
+};
+
+#endif /* !DEFINES_HPP_ */

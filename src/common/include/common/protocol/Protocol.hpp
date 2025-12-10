@@ -30,11 +30,11 @@ namespace protocol {
         //INPUT               = 0x10-0x1F 
         TYPE_PLAYER_INPUT = 0x10,
 
-        //WORLD_STATE         = 0x20-0x3F 
-        TYPE_WORLD_SNAPSHOT         = 0x20,
+        //WORLD_STATE         = 0x20-0x3F (Reserved for future use or legacy)
+        // TYPE_WORLD_SNAPSHOT      = 0x20,  // DEPRECATED: Use ECS Component Snapshots instead (0x24-0x2F)
         TYPE_ENTITY_SPAWN           = 0x21,
         TYPE_ENTITY_DESTROY         = 0x22,
-        TYPE_ENTITY_UPDATE          = 0x23,
+        // TYPE_ENTITY_UPDATE       = 0x23,  // DEPRECATED: Use Component-specific snapshots instead
 
         //GAME_EVENTS                 = 0x40-0x5F 
         TYPE_PLAYER_HIT             = 0x40,
@@ -190,27 +190,9 @@ namespace protocol {
 
     static constexpr uint16_t INPUT_FLAGS_MASK = 0x01FF;  // Bits 0-8 valid, bits 9-15 reserved
 
-    // Server -> Client
-    struct EntityState {
-        uint32_t   entity_id;                          // Unique entity identifier
-        uint8_t    entity_type;                        // Entity type
-        uint16_t   position_x;                         // X position
-        uint16_t   position_y;                         // Y position
-        uint16_t   velocity_x;                         // X velocity
-        uint16_t   velocity_y;                         // Y velocity
-        uint8_t    health;                             // Current health
-        uint8_t    state_flags;                        // State flags (e.g., alive, active)
-    };
-    // total size: 15 bytes
-
-    // Server -> Client
-    struct WorldSnapshot {
-        protocol::PacketHeader header;                // type = 0x20
-        uint32_t               world_tick;            // Server world tick number
-        uint16_t               entity_count;          // Number of entities in the snapshot
-        EntityState            entities[];            // Variable length array
-    };
-    // total size: 18 + (entity_count * 15) bytes
+    // ============================================================================
+    // ENTITY TYPES (Used in ECS component system)
+    // ============================================================================
 
     enum class EntityTypes : uint8_t {
         ENTITY_TYPE_PLAYER             = 0x01,
@@ -594,6 +576,19 @@ namespace protocol {
     // ============================================================================
     // COMPONENT SNAPSHOTS (0x24-0x2F)
     // ============================================================================
+
+    /**
+     * NOTE D'IMPLÉMENTATION :
+     * 
+     * Ces snapshots sont reçus au format sérializé (structure ci-dessous).
+     * Lors de la désérialisation par la socket au moment de recevoir le packet, les données du tableau 
+     * variable sont converties en std::vector<std::pair<uint32_t, ComponentXXX>>
+     * pour faciliter le traitement côté application.
+     * 
+     * Exemple pour TransformSnapshot :
+     * - Format réseau : header + world_tick + entity_count + [entity_id, ComponentTransform][]
+     * - Format après désérialisation : vector<pair<entity_id, ComponentTransform>>
+     */
 
     // Server -> Client: Snapshot of Transform components
     // Envoyé fréquemment (30-60 Hz) pour le mouvement

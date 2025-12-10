@@ -18,14 +18,9 @@
 #include <atomic>
 #include <deque>
 #include "../../../common/include/common/protocol/Packet.hpp"
+#include "../../../common/include/common/constants/defines.hpp"
 
 
-#define TIMEOUT 15000
-#define HEARTBEAT_INTERVAL 5000
-#define TICK_RATE 16
-
-#define HEARTBEAT_TICK_INTERVAL 300
-#define INPUT_SEND_TICK_INTERVAL 2
 
 
 class RTypeClient {
@@ -44,6 +39,15 @@ class RTypeClient {
         void networkLoop();
         
         void gameLoop();
+
+        std::string getPlayerName() const { return _playerName; }
+        uint32_t getSelfId() const { return _selfId; }
+        std::shared_ptr<common::network::AsioSocket> getServer() const { return _server; }
+        std::atomic<bool>& isRunning() { return _isRunning; }
+        std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
+        std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
+
+        //std::shared_ptr<engine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
 
     private:
         std::shared_ptr<common::network::AsioSocket> _server;                   // relation with server , need to create a AsioSocket

@@ -112,27 +112,16 @@ void RTypeClient::gameLoop()
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        bool shouldSendHeartbeat = (currentTick - lastHeartbeatTick) >= HEARTBEAT_TICK_INTERVAL;
-        bool shouldSendInputs = (currentTick - lastInputSendTick) >= INPUT_SEND_TICK_INTERVAL;
+        //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and last heartbeat and time
+        //    outgoingPackets,
+        //    currentTick,
+        //    NETWORK_TYPE_CLIENT,
+        //    lastHeartbeatTick,
+        //    lastInputSendTick
+        //);
 
-        if (shouldSendHeartbeat || shouldSendInputs) {
-            //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and last heartbeat and time
-            //    outgoingPackets,
-            //    currentTick,
-            //    shouldSendHeartbeat,
-            //    shouldSendInputs
-            //);
-
-            for (const auto& packet : outgoingPackets) {
-                this->_packetsToSend.push_back(packet);
-            }
-
-            if (shouldSendHeartbeat) {
-                lastHeartbeatTick = currentTick;
-            }
-            if (shouldSendInputs) {
-                lastInputSendTick = currentTick;
-            }
+        for (const auto& packet : outgoingPackets) {
+            this->_packetsToSend.push_back(packet);
         }
     }
 }
