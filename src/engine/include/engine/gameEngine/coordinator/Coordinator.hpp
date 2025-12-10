@@ -13,8 +13,7 @@
 
 #include "./ecs/system/SystemManager.hpp"
 #include "./ecs/entity/EntityManager.hpp"
-#include "./ecs/system/SystemManager.hpp"
-
+#include "./render/RenderManager.hpp"
 class Coordinator {
     public:
         // ==============================================================
@@ -25,6 +24,7 @@ class Coordinator {
         {
             this->_entityManager = std::make_unique<EntityManager>();
             this->_systemManager = std::make_unique<SystemManager>();
+            this->_renderManager = std::make_unique<RenderManager>();
         }
 
         // ==============================================================
@@ -120,9 +120,39 @@ class Coordinator {
             this->_systemManager->updateAll(dt);
         }
 
+        // ==============================================================
+        //                              Render
+        // ==============================================================
+
+        void processInput()
+        {
+            this->_renderManager->processInput();
+        }
+
+        void render()
+        {
+            this->_renderManager->render();
+        }
+
+        bool isActionActive(GameAction action) const
+        {
+            return this->_renderManager->isActionActive(action);
+        }
+
+        std::map<GameAction, bool>& getActiveActions()
+        {
+            return this->_renderManager->getActiveActions();
+        }
+
+        bool isOpen()
+        {
+            return this->_renderManager->isOpen();
+        }
+
     private:
         std::unique_ptr<EntityManager> _entityManager;
         std::unique_ptr<SystemManager> _systemManager;
+        std::unique_ptr<RenderManager> _renderManager;
 };
 
 #endif /* !COORDINATOR_HPP_ */
