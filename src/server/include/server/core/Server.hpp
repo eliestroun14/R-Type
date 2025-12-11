@@ -24,7 +24,7 @@ namespace server {
         uint16_t port = 4242;
         uint32_t maxPlayers = 16;
         uint32_t tickRate = 60;  // Hz
-        std::chrono::milliseconds heartbeatTimeout = std::chrono::milliseconds(TIMEOUT);
+        std::chrono::milliseconds heartbeatTimeout = std::chrono::milliseconds(TIMEOUT_MS);
         bool enableLogging = true;
     };
 

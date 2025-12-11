@@ -8,7 +8,7 @@
 #ifndef DEFINES_HPP_
 #define DEFINES_HPP_
 
-#define TIMEOUT 15000
+#define TIMEOUT_MS 15000
 #define HEARTBEAT_INTERVAL 5000
 #define TICK_RATE 16
 
