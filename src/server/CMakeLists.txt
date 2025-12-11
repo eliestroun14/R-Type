@@ -15,6 +15,20 @@ file(GLOB_RECURSE SERVER_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
 )
 
+# Create server library
+add_library(server_lib STATIC ${SERVER_SOURCES} ${SERVER_HEADERS})
+
+target_include_directories(server_lib PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Link libraries
+target_link_libraries(server_lib PUBLIC
+    engine
+    common
+    ${COMMON_LIBS}
+)
+
 # Create server executable
 add_executable(r-type-server ${SERVER_SOURCES} ${SERVER_HEADERS})
 

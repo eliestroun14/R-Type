@@ -1,6 +1,6 @@
 #pragma once
 
-#include "InputManager.hpp"
+#include <client/input/InputManager.hpp>
 #include <functional>
 #include <unordered_map>
 #include <string>

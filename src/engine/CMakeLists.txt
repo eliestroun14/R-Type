@@ -23,4 +23,10 @@ target_include_directories(engine PUBLIC
 )
 
 # Link dependencies
-target_link_libraries(engine PUBLIC ${COMMON_LIBS})
+target_link_libraries(engine PUBLIC
+    common
+    ${COMMON_LIBS}
+    sfml-graphics
+    sfml-window
+    sfml-system
+)

@@ -1,4 +1,11 @@
-#include "../include/common/error/Error.hpp"
+/*
+** EPITECH PROJECT, 2025
+** mirror_rtype
+** File description:
+** Error
+*/
+
+#include <common/error/Error.hpp>
 
 Error::Error(ErrorType type, const std::string &message) : _type(type), _message(message) {}
 

@@ -89,12 +89,15 @@ nav:
   - Game Engine & Architecture:
     - Overview: GameEngine&Architecture/index.md
     - Game Engine: GameEngine&Architecture/GameEngine/index.md
-    - ECS:
-      - What is an ECS: GameEngine&Architecture/ECS/index.md
-      - Entity: GameEngine&Architecture/ECS/entity.md
-      - Component Manager: GameEngine&Architecture/ECS/component-manager.md
-      - System: GameEngine&Architecture/ECS/system.md
-      - Coordinator: GameEngine&Architecture/ECS/coordinator.md
+    - Coordinator:
+      - Overview: GameEngine&Architecture/GameEngine/Coordinator/index.md
+      - ECS:
+        - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/index.md
+        - Entity: GameEngine&Architecture/GameEngine/Coordinator/ECS/entity.md
+        - Component Manager: GameEngine&Architecture/GameEngine/Coordinator/ECS/component-manager.md
+        - System: GameEngine&Architecture/GameEngine/Coordinator/ECS/system.md
+        - Coordinator: GameEngine&Architecture/GameEngine/Coordinator/ECS/coordinator.md
+      - Render: 
 
   - Logger:
     - Overview: Logger/index.md

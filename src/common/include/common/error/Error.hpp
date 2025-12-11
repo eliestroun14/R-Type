@@ -3,7 +3,7 @@
 
 #include <exception>
 #include <string>
-#include "ErrorMessages.hpp"
+#include <common/error/ErrorMessages.hpp>
 
 // Enum for error types
 enum class ErrorType {
@@ -26,7 +26,13 @@ enum class ErrorType {
     RenderFailure,
     ResourceLoadFailure,
     UnsupportedResolution,
-    GraphicsInitializationFailed
+    GraphicsInitializationFailed,
+    EcsError,
+    EcsInvalidSystem,
+    EcsDuplicateSystem,
+    EcsMissingSignature,
+    EcsInvalidEntity,
+    EcsComponentAccessError,
 };
 
 class Error : public std::exception {

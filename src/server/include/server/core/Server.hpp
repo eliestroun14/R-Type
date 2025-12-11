@@ -5,9 +5,15 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-#include "../network/Network.hpp"
-#include "../session/Session.hpp"
-#include "../../../../common/include/common/protocol/Protocol.hpp"
+#include <common/protocol/Protocol.hpp>
+#include <common/network/sockets/AsioSocket.hpp>
+#include <atomic>
+#include <deque>
+#include <common/protocol/Packet.hpp>
+#include <common/constants/defines.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
+#include <server/network/ServerNetworkManager.hpp>
+
 
 namespace server {
 
@@ -18,7 +24,7 @@ namespace server {
         uint16_t port = 4242;
         uint32_t maxPlayers = 16;
         uint32_t tickRate = 60;  // Hz
-        std::chrono::milliseconds heartbeatTimeout = std::chrono::milliseconds(10000);
+        std::chrono::milliseconds heartbeatTimeout = std::chrono::milliseconds(TIMEOUT_MS);
         bool enableLogging = true;
     };
 
@@ -35,80 +41,40 @@ namespace server {
         Server(const Server&) = delete;
         Server& operator=(const Server&) = delete;
 
-        /**
-         * @brief Initialise le serveur
-         * @return true si succès, false sinon
-         */
-        bool initialize();
 
-        /**
-         * @brief Démarre le serveur et toutes ses couches
-         * @return true si succès, false sinon
-         */
-        bool start();
+        bool init();
 
-        /**
-         * @brief Arrête le serveur
-         */
-        void stop();
-
-        /**
-         * @brief Boucle principale du serveur (bloquante)
-         * Traite les paquets et met à jour les systèmes
-         */
         void run();
 
-        /**
-         * @brief Vérifie si le serveur est en cours d'exécution
-         */
-        bool isRunning() const { return m_running.load(); }
+        void stop();
 
-        /**
-         * @brief Récupère les statistiques du serveur
-         */
+        bool isRunning() const { return _isRunning.load(); }
+
         void printStatistics() const;
+
+        void networkLoop();
+        
+        void gameLoop();
+
+        std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
+        std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
+
+        //std::shared_ptr<engine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
 
     private:
         // Configuration
-        ServerConfig m_config;
+        ServerConfig _config;
 
-        // Layers
-        std::unique_ptr<network::UDPSocketManager> m_networkLayer;
-        std::unique_ptr<session::ConnectionManager> m_sessionLayer;
+        std::unique_ptr<server::network::ServerNetworkManager> _networkManager;
 
         // State
-        std::atomic<bool> m_running;
-        std::atomic<bool> m_initialized;
+        std::atomic<bool> _isRunning;
 
-        // Threads
-        std::unique_ptr<std::thread> m_heartbeatThread;
-        void heartbeatThreadFunction();
+        //std::shared_ptr<engine::GameEngine> _gameEngine;
 
-        // Packet Processing (Protocol Layer)
-        void processPackets();
-        void processPacket(const network::RawPacket& rawPacket);
+        std::deque<common::protocol::Packet> _packetsReceived;
+        std::deque<common::protocol::Packet> _packetsToSend;
 
-        // Packet Handlers
-        void handleClientConnect(const network::RawPacket& rawPacket);
-        void handleClientDisconnect(const network::RawPacket& rawPacket);
-        void handleHeartbeat(const network::RawPacket& rawPacket);
-        void handlePlayerInput(const network::RawPacket& rawPacket);
-
-        // Sending helpers
-        bool sendServerAccept(const network::ClientAddress& address, uint32_t playerId);
-        bool sendServerReject(const network::ClientAddress& address, 
-                             protocol::RejectCodes reason, 
-                             const std::string& message);
-        bool sendPacket(const void* data, size_t size, const network::ClientAddress& destination);
-
-        // Validation
-        bool validatePacketHeader(const protocol::PacketHeader* header, size_t packetSize) const;
-        bool canAcceptNewPlayer() const;
-
-        // Statistics
-        std::atomic<uint64_t> m_totalPacketsProcessed;
-        std::atomic<uint64_t> m_invalidPackets;
-        std::chrono::steady_clock::time_point m_startTime;
     };
 
 } // namespace server

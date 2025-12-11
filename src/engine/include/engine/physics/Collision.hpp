@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/Transform.hpp"
+#include <engine/core/Transform.hpp>
 
 namespace engine {
 namespace physics {
