@@ -8,20 +8,58 @@
 #ifndef GAMEENGINE_HPP_
 #define GAMEENGINE_HPP_
 
-#include "src/engine/include/engine/ecs/Coordinator.hpp"
-#include "src/server/include/server/network/NetworkType.hpp"
+#include <memory>
+
+#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <common/constants/defines.hpp>
+
+/**
+ * @brief High-level game loop orchestrator.
+ *
+ * Owns a Coordinator and delegates:
+ *  - input handling
+ *  - system updates
+ *  - rendering
+ * depending on the network mode (server, client, standalone).
+ */
+namespace gameEngine {
 
 class GameEngine {
-    private:
-        std::unique_ptr<Coordinator> _coordinator;
+private:
+    std::unique_ptr<Coordinator> _coordinator;
 
-        void update(float dt) {}
-        void processInput(NetworkType type) {}
-        void render(NetworkType type) {}
+    /**
+     * @brief Updates all systems via the Coordinator.
+     * @param dt Delta time in seconds.
+     */
+    void update(float dt);
 
-    public:
-        void init() {}
-        void process(float dt, NetworkType type) {}
+    /**
+     * @brief Handles input depending on the network mode.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void processInput(NetworkType type);
+
+    /**
+     * @brief Triggers rendering depending on the network mode.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void render(NetworkType type);
+
+public:
+    /**
+     * @brief Initializes the GameEngine and underlying Coordinator.
+     */
+    void init();
+
+    /**
+     * @brief Executes a full frame: input → update → render.
+     * @param dt Delta time.
+     * @param type Network mode.
+     */
+    void process(float dt, NetworkType type);
 };
+
+} // namespace gameEngine
 
 #endif /* !GAMEENGINE_HPP_ */

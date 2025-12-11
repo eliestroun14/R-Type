@@ -1,4 +1,6 @@
-#include "src/engine/include/engine/gameEngine/GameEngine.hpp"
+#include <engine/gameEngine/GameEngine.hpp>
+#include <engine/gameEngine/coordinator/ecs/component/Components.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/MovementSystem.hpp>
 
 namespace gameEngine {
 
@@ -10,6 +12,22 @@ namespace gameEngine {
      */
     void GameEngine::init() {
         this->_coordinator = std::make_unique<Coordinator>();
+
+        _coordinator->init();
+
+        _coordinator->registerComponent<Transform>();
+        _coordinator->registerComponent<Velocity>();
+
+        _coordinator->registerSystem<MovementSystem>(*_coordinator);
+
+        _coordinator->setSystemSignature<MovementSystem, Transform, Velocity>();
+
+        Entity player = _coordinator->createEntity("Player");
+        _coordinator->addComponent<Transform>(player, Transform{0.f, 0.f, 0.f, 1.f});
+        _coordinator->addComponent<Velocity>(player, Velocity{50.f, 0.f});
+
+
+        _coordinator->onCreateSystems();
     }
 
     /**
@@ -34,9 +52,9 @@ namespace gameEngine {
      *   Coordinator::processInput().
      */
     void GameEngine::processInput(NetworkType type) {
-        if (type == NetworkType::SERVER || type == NetworkType::STANDALONE) {
+        if (type == NetworkType::NETWORK_TYPE_SERVER || type == NetworkType::NETWORK_TYPE_STANDALONE) {
             // this->_coordinator->processInput();
-        } else if (type == NetworkType::SERVER) {
+        } else if (type == NetworkType::NETWORK_TYPE_SERVER) {
             return;
         }
     }
@@ -50,9 +68,9 @@ namespace gameEngine {
      * - SERVER mode: render operations are skipped entirely.
      */
     void GameEngine::render(NetworkType type) {
-        if (type == NetworkType::CLIENT || type == NetworkType::STANDALONE) {
+        if (type == NetworkType::NETWORK_TYPE_CLIENT || type == NetworkType::NETWORK_TYPE_STANDALONE) {
             // this->_coordinator->render();
-        } else if (type == NetworkType::SERVER) {
+        } else if (type == NetworkType::NETWORK_TYPE_SERVER) {
             return;
         }
     }

@@ -67,6 +67,14 @@ public:
     EntityManager() = default;
 
     /**
+     * @brief Returns the unique component type ID for the given component.
+     */
+    template <class Component>
+    std::size_t getComponentTypeId() const {
+        return getComponentTypeID<Component>();
+    }
+
+    /**
      * @brief Links this EntityManager to a SystemManager.
      */
     void setSystemManager(SystemManager* sm) {
