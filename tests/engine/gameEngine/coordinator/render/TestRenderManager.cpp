@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <SFML/Config.hpp>
-#include "../../../../../src/engine/include/engine/gameEngine/coordinator/render/RenderManager.hpp"
+#include <engine/gameEngine/coordinator/render/RenderManager.hpp>
 
 // Test inputs
 TEST(RenderManagerTest, ProcessInputShooting) {

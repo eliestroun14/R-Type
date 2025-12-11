@@ -10,7 +10,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <memory>
-#include "./coordinator/Coordinator.hpp"
+#include <engine/gameEngine/coordinator/Coordinator.hpp>
 
 class GameEngine {
     private:

@@ -5,10 +5,10 @@
 ** RenderManager
 */
 
-#include "../../../../include/engine/gameEngine/coordinator/render/RenderManager.hpp"
-#include "../../../../../common/include/common/error/Error.hpp"
-#include "../../../../../common/include/common/error/ErrorMessages.hpp"
-#include "../../../../../common/include/common/constants/render/Assets.hpp"
+#include <engine/gameEngine/coordinator/render/RenderManager.hpp>
+#include <common/error/Error.hpp>
+#include <common/error/ErrorMessages.hpp>
+#include <common/constants/render/Assets.hpp>
 
 RenderManager::RenderManager()
 {

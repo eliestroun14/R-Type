@@ -12,8 +12,8 @@
 #include <string>
 #include <atomic>
 #include <chrono>
-#include "ISocket.hpp"
-#include "../../protocol/Packet.hpp"
+#include <common/network/sockets/ISocket.hpp>
+#include <common/protocol/Packet.hpp>
 
 namespace common {
 namespace network {

@@ -5,7 +5,7 @@
 ** Packet implementation
 */
 
-#include "../../include/common/protocol/Packet.hpp"
+#include <common/protocol/Packet.hpp>
 #include <cstring>
 
 namespace common {

@@ -5,7 +5,7 @@
 ** ASocket
 */
 
-#include "../../../include/common/network/sockets/ASocket.hpp"
+#include <common/network/sockets/ASocket.hpp>
 #include <algorithm>
 
 namespace common {

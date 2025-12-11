@@ -1,6 +1,8 @@
 #pragma once
 
-#include "UIManager.hpp"
+#include <client/ui/UIManager.hpp>
+#include <iostream>
+#include <cstdint>
 
 namespace client {
 namespace ui {

@@ -10,7 +10,7 @@
 
 #include <cstdint>
 #include <string>
-#include "../../protocol/Packet.hpp"
+#include <common/protocol/Packet.hpp>
 
 namespace common {
 namespace network {

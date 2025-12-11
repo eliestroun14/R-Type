@@ -8,12 +8,12 @@
 #ifndef ENTITYMANAGER_HPP_
 #define ENTITYMANAGER_HPP_
 
-#include "../component/ComponentManager.hpp"
-#include "../system/SystemManager.hpp"
-#include "Entity.hpp"
-#include "../Signature.hpp"
+#include <engine/gameEngine/coordinator/ecs/component/ComponentManager.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/SystemManager.hpp>
+#include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
+#include <engine/gameEngine/coordinator/ecs/Signature.hpp>
 
-#include "../../../../../../../common/include/common/error/Error.hpp"
+#include <common/error/Error.hpp>
 
 #include <unordered_map>
 #include <vector>

@@ -5,8 +5,8 @@
 ** ServerNetworkManager
 */
 
-#include "../../include/server/network/ServerNetworkManager.hpp"
-#include "common/protocol/Protocol.hpp"
+#include <server/network/ServerNetworkManager.hpp>
+#include <common/protocol/Protocol.hpp>
 #include <algorithm>
 #include <chrono>
 #include <iostream>

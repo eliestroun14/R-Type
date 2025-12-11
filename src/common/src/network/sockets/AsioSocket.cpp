@@ -5,7 +5,7 @@
 ** AsioSocket
 */
 
-#include "../../../include/common/network/sockets/AsioSocket.hpp"
+#include <common/network/sockets/AsioSocket.hpp>
 #include <iostream>
 
 namespace common {

@@ -6,9 +6,9 @@
 */
 
 #include <gtest/gtest.h>
-#include "../../../../../src/engine/include/engine/gameEngine/coordinator/ecs/system/SystemManager.hpp"
-#include "../../../../../src/engine/include/engine/gameEngine/coordinator/ecs/system/System.hpp"
-#include "../../../../../src/engine/include/engine/gameEngine/coordinator/ecs/entity/EntityManager.hpp"
+#include <engine/gameEngine/coordinator/ecs/system/SystemManager.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/System.hpp>
+#include <engine/gameEngine/coordinator/ecs/entity/EntityManager.hpp>
 
 struct Position {
     float x, y;

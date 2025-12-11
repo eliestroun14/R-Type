@@ -5,10 +5,10 @@
 ** RTypeClient
 */
 
-#include "../include/client/RTypeClient.hpp"
+#include <client/RTypeClient.hpp>
 #include <string.h>
 #include <arpa/inet.h>
-#include "../include/client/utils/ClientUtils.hpp"
+#include <client/utils/ClientUtils.hpp>
 #include <thread>
 #include <chrono>
 #include <iostream>

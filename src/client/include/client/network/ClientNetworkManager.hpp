@@ -14,8 +14,8 @@
 #include <optional>
 #include <string>
 #include <thread>
-#include "common/network/NetworkManager.hpp"
-#include "common/network/sockets/AsioSocket.hpp"
+#include <common/network/NetworkManager.hpp>
+#include <common/network/sockets/AsioSocket.hpp>
 
 namespace client {
 namespace network {

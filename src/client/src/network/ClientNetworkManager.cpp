@@ -5,8 +5,8 @@
 ** ClientNetworkManager
 */
 
-#include "../../include/client/network/ClientNetworkManager.hpp"
-#include "common/protocol/Protocol.hpp"
+#include <client/network/ClientNetworkManager.hpp>
+#include <common/protocol/Protocol.hpp>
 #include <chrono>
 
 using namespace std::chrono_literals;

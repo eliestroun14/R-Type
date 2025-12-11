@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "common/protocol/Packet.hpp"
+#include <common/protocol/Packet.hpp>
 #include <vector>
 #include <cstring>
 

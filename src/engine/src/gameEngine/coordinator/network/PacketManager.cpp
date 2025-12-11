@@ -5,11 +5,11 @@
 ** PacketManager implementation
 */
 
-#include "../../../../include/engine/gameEngine/coordinator/network/PacketManager.hpp"
-#include "../../../../../common/include/common/protocol/Packet.hpp"
-#include "../../../../../common/include/common/constants/defines.hpp"
+#include <engine/gameEngine/coordinator/network/PacketManager.hpp>
+#include <common/protocol/Packet.hpp>
+#include <common/constants/defines.hpp>
 #include <cstring>
-#include "../../../../../engine/include/engine/utils/Logger.hpp"
+#include <engine/utils/Logger.hpp>
 
 PacketManager::PacketHandler *PacketManager::findHandler(protocol::PacketTypes type)
 {
