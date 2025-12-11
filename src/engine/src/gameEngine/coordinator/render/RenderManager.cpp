@@ -6,6 +6,9 @@
 */
 
 #include "../../../../include/engine/gameEngine/coordinator/render/RenderManager.hpp"
+#include "../../../../../common/include/common/error/Error.hpp"
+#include "../../../../../common/include/common/error/ErrorMessages.hpp"
+#include "../../../../../common/include/common/constants/render/Assets.hpp"
 
 RenderManager::RenderManager()
 {
@@ -58,6 +61,13 @@ void RenderManager::init()
     this->_window.setPosition(sf::Vector2i(
         desktop.width / 2 - this->_window.getSize().x / 2,
         desktop.height / 2 - this->_window.getSize().y / 2));
+
+    auto image = sf::Image{};
+    if (!image.loadFromFile(pathAssets[RTYPE_ICON])) {
+        throw Error(ErrorType::ResourceLoadFailure, ErrorMessages::RESOURCE_LOAD_FAILURE);
+    }
+
+    this->_window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
 }
 
 void RenderManager::render()
