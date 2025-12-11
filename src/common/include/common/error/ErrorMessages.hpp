@@ -26,6 +26,14 @@ namespace ErrorMessages {
     constexpr const char *RESOURCE_ERROR = "Failed to load resource: File not found.";
     constexpr const char *CONFIGURATION_ERROR = "Invalid configuration: Missing required parameter.";
     constexpr const char *SYSTEM_ERROR = "System error: Insufficient permissions to access the network.";
+
+    // ECS Errors
+    constexpr const char *ECS_SYSTEM_NOT_FOUND = "ECS error: Requested system does not exist.";
+    constexpr const char *ECS_DUPLICATE_SYSTEM = "ECS error: System already registered.";
+    constexpr const char *ECS_MISSING_SIGNATURE = "ECS error: System signature not defined.";
+    constexpr const char *ECS_INVALID_ENTITY = "ECS error: Invalid or dead entity.";
+    constexpr const char *ECS_COMPONENT_ACCESS_ERROR = "ECS error: Attempted to access a missing component.";
+
 }
 
 #endif // ERRORMESSAGES_HPP

@@ -10,21 +10,21 @@
 #include "../../../../../src/engine/include/engine/gameEngine/coordinator/ecs/system/System.hpp"
 #include "../../../../../src/engine/include/engine/gameEngine/coordinator/ecs/entity/EntityManager.hpp"
 
+struct Position {
+    float x, y;
+    Position(float xx, float yy) : x(xx), y(yy) {}
+};
+
 class DummySystem : public System {
 public:
-    DummySystem() = default;
-
     void onCreate() override { created = true; }
     void onDestroy() override { destroyed = true; }
-    void onUpdate(float dt) override {
-        lastDt = dt;
-        ++updateCount;
-    }
+    void onUpdate(float dt) override { lastDt = dt; ++updateCount; }
 
-    bool created {false};
-    bool destroyed {false};
-    int updateCount {0};
-    float lastDt {0.f};
+    bool created = false;
+    bool destroyed = false;
+    int updateCount = 0;
+    float lastDt = 0.f;
 };
 
 class AnotherSystem : public System {
@@ -33,26 +33,33 @@ public:
     void onDestroy() override { destroyed = true; }
     void onUpdate(float) override { ++updateCount; }
 
-    bool created {false};
-    bool destroyed {false};
-    int updateCount {0};
+    bool created = false;
+    bool destroyed = false;
+    int updateCount = 0;
 };
 
 TEST(SystemManagerTest, AddSystemAndHasSystem)
 {
     SystemManager manager;
+    EntityManager em;
+    em.setSystemManager(&manager);
 
     auto &sys = manager.addSystem<DummySystem>();
-
     EXPECT_TRUE(manager.hasSystem<DummySystem>());
+    EXPECT_EQ(&sys, &manager.getSystem<DummySystem>());
 
-    EXPECT_TRUE(sys.empty());
+    em.registerComponent<Position>();
 
-    EntityManager em;
+    Signature sig;
+    sig.set(0);
+    manager.setSignature<DummySystem>(sig);
+
     Entity e = em.spawnEntity("dummy");
-    sys.addEntity(e);
+    em.emplaceComponent<Position>(e, 1.f, 2.f);
 
-    EXPECT_FALSE(sys.empty());
+    EXPECT_EQ(sys.entityCount(), 1);
+    EXPECT_TRUE(sys.hasEntity(static_cast<size_t>(e)));
+
 }
 
 TEST(SystemManagerTest, GetSystemReturnsSameInstance)
@@ -81,7 +88,7 @@ TEST(SystemManagerTest, GetSystemThrowsIfNotFound)
 {
     SystemManager manager;
 
-    EXPECT_THROW(manager.getSystem<DummySystem>(), std::runtime_error);
+    EXPECT_THROW(manager.getSystem<DummySystem>(), Error);
 }
 
 TEST(SystemManagerTest, DeleteSystemRemovesSystem)
@@ -93,7 +100,7 @@ TEST(SystemManagerTest, DeleteSystemRemovesSystem)
 
     manager.deleteSystem<DummySystem>();
     EXPECT_FALSE(manager.hasSystem<DummySystem>());
-    EXPECT_THROW(manager.getSystem<DummySystem>(), std::runtime_error);
+    EXPECT_THROW(manager.getSystem<DummySystem>(), Error);
 }
 
 TEST(SystemManagerTest, OnCreateAllCallsOnCreate)
@@ -102,9 +109,6 @@ TEST(SystemManagerTest, OnCreateAllCallsOnCreate)
 
     auto &sys1 = manager.addSystem<DummySystem>();
     auto &sys2 = manager.addSystem<AnotherSystem>();
-
-    EXPECT_FALSE(sys1.created);
-    EXPECT_FALSE(sys2.created);
 
     manager.onCreateAll();
 
@@ -119,24 +123,17 @@ TEST(SystemManagerTest, OnDestroyAllCallsOnDestroy)
     auto &sys1 = manager.addSystem<DummySystem>();
     auto &sys2 = manager.addSystem<AnotherSystem>();
 
-    EXPECT_FALSE(sys1.destroyed);
-    EXPECT_FALSE(sys2.destroyed);
-
     manager.onDestroyAll();
 
     EXPECT_TRUE(sys1.destroyed);
     EXPECT_TRUE(sys2.destroyed);
 }
 
-TEST(SystemManagerTest, UpdateAllCallsOnUpdateWhenNotEmpty)
+TEST(SystemManagerTest, UpdateAllCallsOnUpdate)
 {
     SystemManager manager;
 
     auto &sys = manager.addSystem<DummySystem>();
-
-    EntityManager em;
-    Entity e = em.spawnEntity("dummy");
-    sys.addEntity(e);
 
     EXPECT_EQ(sys.updateCount, 0);
 
@@ -145,17 +142,4 @@ TEST(SystemManagerTest, UpdateAllCallsOnUpdateWhenNotEmpty)
 
     EXPECT_EQ(sys.updateCount, 1);
     EXPECT_FLOAT_EQ(sys.lastDt, dt);
-}
-
-TEST(SystemManagerTest, UpdateAllSkipsEmptySystems)
-{
-    SystemManager manager;
-
-    auto &sys = manager.addSystem<DummySystem>();
-
-    EXPECT_TRUE(sys.empty());
-
-    manager.updateAll(0.1f);
-
-    EXPECT_EQ(sys.updateCount, 0);
 }

@@ -12,97 +12,160 @@
 #include <vector>
 #include <cstddef>
 
+/**
+ * @class ComponentManager
+ * @brief Stores and manages all components of a specific type.
+ *
+ * Responsibilities:
+ *  - maintain a dense array of optional components indexed by entity ID;
+ *  - automatically expand when needed;
+ *  - provide insertion, emplacement, retrieval, and removal operations;
+ *  - offer iterator access over all component slots.
+ *
+ * This class contains no logic related to systems or signatures.
+ *
+ * @tparam Component The type of component stored.
+ */
 template <typename Component>
-
 class ComponentManager {
-    public :
-        using valueType = std::optional<Component>; // optional component type
-        using referenceType = valueType &;
-        using constReferenceType = valueType const&;
-        using containerT = std::vector<valueType>; // optionally add your allocator template here.
-        using sizeType = typename containerT::size_type;
+public:
+    using valueType = std::optional<Component>;        /**< Optional component slot */
+    using referenceType = valueType&;                  /**< Mutable reference to a component slot */
+    using constReferenceType = const valueType&;       /**< Const reference to a component slot */
+    using containerT = std::vector<valueType>;         /**< Internal container type */
+    using sizeType = typename containerT::size_type;   /**< Size/index type */
 
-        using iterator = typename containerT::iterator;
-        using constIterator = typename containerT::const_iterator;
+    using iterator = typename containerT::iterator;            /**< Iterator over component slots */
+    using constIterator = typename containerT::const_iterator; /**< Const iterator */
 
-    public :
-        ComponentManager () = default; // You can add more constructors .
+public:
+    /** @brief Default constructor */
+    ComponentManager() = default;
 
-        ComponentManager (ComponentManager const &) = default; // copy constructor
-        ComponentManager (ComponentManager &&) noexcept = default; // move constructor
-        ~ComponentManager () = default;
+    /** @brief Copy constructor */
+    ComponentManager(const ComponentManager&) = default;
 
-        ComponentManager & operator=(ComponentManager const &) = default; // copy assignment operator
-        ComponentManager & operator=(ComponentManager &&) noexcept = default; // move assignment operator
+    /** @brief Move constructor */
+    ComponentManager(ComponentManager&&) noexcept = default;
 
-        // Access
-        referenceType operator[](size_t idx) {
-            return this->_data[idx];
-        }
+    /** @brief Destructor */
+    ~ComponentManager() = default;
 
-        constReferenceType operator[](size_t idx) const {
-            return this->_data[idx];
-        }
+    /** @brief Copy assignment */
+    ComponentManager& operator=(const ComponentManager&) = default;
 
-        iterator begin () {
-            return this->_data.begin();
-        }
-        constIterator begin () const {
-            return this->_data.begin();
-        }
-        constIterator cbegin () const {
-            return this->_data.cbegin();
-        }
+    /** @brief Move assignment */
+    ComponentManager& operator=(ComponentManager&&) noexcept = default;
 
-        iterator end () {
-            return this->_data.end();
-        }
-        constIterator end () const {
-            return this->_data.end();
-        }
-        constIterator cend () const {
-            return this->_data.cend();
-        }
+    /**
+     * @brief Access a component slot by index.
+     * @param idx Entity ID.
+     * @return Reference to the optional component at this index.
+     */
+    referenceType operator[](size_t idx) {
+        return _data[idx];
+    }
 
-        sizeType size () const {
-            return this->_data.size();
-        }
+    /**
+     * @brief Const-qualified access to a component slot.
+     */
+    constReferenceType operator[](size_t idx) const {
+        return _data[idx];
+    }
 
-        void ensureSize(sizeType pos) {
-            if (pos >= this->_data.size())
-                this->_data.resize(pos + 1);
-        }
+    /** @return Iterator to the beginning of the internal storage */
+    iterator begin() { return _data.begin(); }
 
-        referenceType insertAt (sizeType pos, Component const& c) {
-            ensureSize(pos);
-            this->_data[pos] = c;
-            return this->_data[pos];
-        }
+    /** @return Const iterator to the beginning of the internal storage */
+    constIterator begin() const { return _data.begin(); }
 
-        referenceType insertAt (sizeType pos, Component &&c) {
-            ensureSize(pos);
-            this->_data[pos] = std::move(c);
-            return this->_data[pos];
-        }
+    /** @return Const iterator to the beginning of the internal storage */
+    constIterator cbegin() const { return _data.cbegin(); }
 
-        template <class... Params>
-        referenceType emplaceAt (sizeType pos, Params &&... args) {
-            ensureSize(pos);
-            this->_data[pos].reset();
-            this->_data[pos].emplace(std::forward<Params>(args)...);
-            return this->_data[pos];
-        }
+    /** @return Iterator to the end of the internal storage */
+    iterator end() { return _data.end(); }
 
-        void erase (sizeType pos) {
-            if (this->_data[pos])
-                this->_data[pos].reset();
-        }
-        sizeType getIndex (valueType const& v) const {
-            return &v - this->_data.data();
-        }
+    /** @return Const iterator to the end of the internal storage */
+    constIterator end() const { return _data.end(); }
 
-    private :
-        containerT _data;
+    /** @return Const iterator to the end of the internal storage */
+    constIterator cend() const { return _data.cend(); }
+
+    /**
+     * @brief Returns the number of allocated component slots.
+     */
+    sizeType size() const {
+        return _data.size();
+    }
+
+    /**
+     * @brief Ensures the internal vector can hold at least pos+1 entries.
+     * @param pos Required index.
+     */
+    void ensureSize(sizeType pos) {
+        if (pos >= _data.size())
+            _data.resize(pos + 1);
+    }
+
+    /**
+     * @brief Inserts a component by copy at a given index.
+     * @param pos Entity ID.
+     * @param c Component to copy.
+     * @return Reference to the optional component slot.
+     */
+    referenceType insertAt(sizeType pos, const Component& c) {
+        ensureSize(pos);
+        _data[pos] = c;
+        return _data[pos];
+    }
+
+    /**
+     * @brief Inserts a component by move at a given index.
+     * @param pos Entity ID.
+     * @param c Component to move.
+     * @return Reference to the optional component slot.
+     */
+    referenceType insertAt(sizeType pos, Component&& c) {
+        ensureSize(pos);
+        _data[pos] = std::move(c);
+        return _data[pos];
+    }
+
+    /**
+     * @brief Constructs a component in-place at a given index.
+     * @tparam Params Constructor parameter types.
+     * @param pos Entity ID.
+     * @param args Arguments forwarded to the component constructor.
+     * @return Reference to the optional component slot.
+     */
+    template <class... Params>
+    referenceType emplaceAt(sizeType pos, Params&&... args) {
+        ensureSize(pos);
+        _data[pos].reset();
+        _data[pos].emplace(std::forward<Params>(args)...);
+        return _data[pos];
+    }
+
+    /**
+     * @brief Removes the component at the given index.
+     * @param pos Entity ID.
+     */
+    void erase(sizeType pos) {
+        if (_data[pos])
+            _data[pos].reset();
+    }
+
+    /**
+     * @brief Computes the array index of a component slot.
+     * @param v Reference to a component slot.
+     * @return The index of the slot inside the internal vector.
+     */
+    sizeType getIndex(const valueType& v) const {
+        return &v - _data.data();
+    }
+
+private:
+    containerT _data; /**< Internal storage for optional components */
 };
 
 #endif /* !COMPONENTMANAGER_HPP_ */

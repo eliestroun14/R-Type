@@ -26,7 +26,13 @@ enum class ErrorType {
     RenderFailure,
     ResourceLoadFailure,
     UnsupportedResolution,
-    GraphicsInitializationFailed
+    GraphicsInitializationFailed,
+    EcsError,
+    EcsInvalidSystem,
+    EcsDuplicateSystem,
+    EcsMissingSignature,
+    EcsInvalidEntity,
+    EcsComponentAccessError,
 };
 
 class Error : public std::exception {

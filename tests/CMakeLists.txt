@@ -8,6 +8,7 @@ add_executable(ecs_tests
    engine/gameEngine/coordinator/ecs/entity/TestEntityManager.cpp
    engine/gameEngine/coordinator/ecs/component/TestComponentManager.cpp
    engine/gameEngine/coordinator/ecs/system/TestSystemManager.cpp
+    engine/gameEngine/coordinator/ecs/system/TestSystem.cpp
 
    engine/gameEngine/coordinator/render/TestRenderManager.cpp
 
