@@ -8,10 +8,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <vector>
-#include "engine/gameEngine/coordinator/network/PacketManager.hpp"
-#include "common/protocol/Packet.hpp"
-#include "common/protocol/Protocol.hpp"
-#include "common/constants/defines.hpp"
+#include <engine/gameEngine/coordinator/network/PacketManager.hpp>
+#include <common/protocol/Packet.hpp>
+#include <common/protocol/Protocol.hpp>
+#include <common/constants/defines.hpp>
 
 using namespace protocol;
 

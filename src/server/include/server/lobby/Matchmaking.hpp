@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Room.hpp"
+#include <server/lobby/Room.hpp>
 #include <memory>
 
 namespace server {

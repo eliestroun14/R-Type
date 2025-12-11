@@ -1,4 +1,4 @@
-#include "../include/engine/utils/Logger.hpp"
+#include <engine/utils/Logger.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/rotating_file_sink.h>

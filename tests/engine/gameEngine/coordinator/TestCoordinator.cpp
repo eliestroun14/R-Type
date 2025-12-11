@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "../../../src/engine/include/engine/gameEngine/coordinator/Coordinator.hpp"
+#include <engine/gameEngine/coordinator/Coordinator.hpp>
 
 struct Transform {
     float x, y, rotation;

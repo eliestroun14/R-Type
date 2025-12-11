@@ -6,10 +6,10 @@
 */
 
 #include <gtest/gtest.h>
-#include "../../../../src/client/include/client/network/ClientNetworkManager.hpp"
-#include "../../../../src/server/include/server/network/ServerNetworkManager.hpp"
-#include "common/protocol/Protocol.hpp"
-#include "common/protocol/Packet.hpp"
+#include <client/network/ClientNetworkManager.hpp>
+#include <server/network/ServerNetworkManager.hpp>
+#include <common/protocol/Protocol.hpp>
+#include <common/protocol/Packet.hpp>
 
 TEST(NetworkManagers, ClientQueueLifecycle)
 {

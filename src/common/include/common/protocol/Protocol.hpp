@@ -5,7 +5,7 @@
 #include <string>
 #include <array>
 #include <vector>
-#include "Packet.hpp"
+#include <common/protocol/Packet.hpp>
 
 namespace protocol {
 

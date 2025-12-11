@@ -11,7 +11,7 @@
 #include <atomic>
 #include <optional>
 #include <vector>
-#include "common/protocol/Packet.hpp"
+#include <common/protocol/Packet.hpp>
 
 namespace common {
 namespace network {

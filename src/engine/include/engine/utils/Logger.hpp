@@ -6,8 +6,8 @@
 #include <spdlog/logger.h>
 #include <spdlog/common.h>
 #include <spdlog/fmt/fmt.h>
-#include "LogLevel.hpp"
-#include "Settings.hpp"
+#include <engine/utils/LogLevel.hpp>
+#include <engine/utils/Settings.hpp>
 
 namespace logger {
 

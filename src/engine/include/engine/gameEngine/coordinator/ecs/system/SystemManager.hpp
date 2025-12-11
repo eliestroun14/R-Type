@@ -8,10 +8,9 @@
 #ifndef SYSTEMMANAGER_HPP_
 #define SYSTEMMANAGER_HPP_
 
-#include "System.hpp"
-#include "../Signature.hpp"
-
-#include "../../../../../../../common/include/common/error/Error.hpp"
+#include <engine/gameEngine/coordinator/ecs/system/System.hpp>
+#include <engine/gameEngine/coordinator/ecs/Signature.hpp>
+#include <common/error/Error.hpp>
 
 #include <unordered_map>
 #include <typeindex>

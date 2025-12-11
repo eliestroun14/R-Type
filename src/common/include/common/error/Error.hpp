@@ -3,7 +3,7 @@
 
 #include <exception>
 #include <string>
-#include "ErrorMessages.hpp"
+#include <common/error/ErrorMessages.hpp>
 
 // Enum for error types
 enum class ErrorType {

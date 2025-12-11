@@ -5,7 +5,7 @@
 ** ClientUtils
 */
 
-#include "../../include/client/utils/ClientUtils.hpp"
+#include <client/utils/ClientUtils.hpp>
 #include <random>
 #include <iostream>
 #include <chrono>

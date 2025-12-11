@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ecs/System.hpp"
+#include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 
 namespace engine {
 namespace physics {

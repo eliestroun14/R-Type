@@ -22,5 +22,5 @@ target_include_directories(common PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Link engine and common dependencies
-target_link_libraries(common PUBLIC engine ${COMMON_LIBS})
+# Link common dependencies
+target_link_libraries(common PUBLIC ${COMMON_LIBS})

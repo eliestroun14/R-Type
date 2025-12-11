@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Packet.hpp"
+#include <common/protocol/Packet.hpp>
 #include <string>
 
 namespace common {

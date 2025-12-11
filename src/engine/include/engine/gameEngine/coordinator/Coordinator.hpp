@@ -11,9 +11,9 @@
 #include <memory>
 #include <string>
 
-#include "./ecs/system/SystemManager.hpp"
-#include "./ecs/entity/EntityManager.hpp"
-#include "./render/RenderManager.hpp"
+#include <engine/gameEngine/coordinator/ecs/system/SystemManager.hpp>
+#include <engine/gameEngine/coordinator/ecs/entity/EntityManager.hpp>
+#include <engine/gameEngine/coordinator/render/RenderManager.hpp>
 class Coordinator {
     public:
         // ==============================================================
