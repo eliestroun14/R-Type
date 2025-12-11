@@ -9,9 +9,19 @@
 #define RTYPECLIENT_HPP_
 
 #include <cstdint>
-#include <sys/socket.h>
 #include <SFML/Graphics.hpp>
-#include <netinet/in.h>
+
+// Platform-specific socket headers 
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+#endif
+
 #include "common/protocol/Protocol.hpp"
 #include "network/ClientNetworkManager.hpp"
 //#include "../../../engine/include/engine/GameEngine.hpp"                      // TODO
@@ -20,9 +30,6 @@
 #include "common/protocol/Packet.hpp"
 #include "common/constants/defines.hpp"
 
-
-
-
 class RTypeClient {
     public:
         RTypeClient();
@@ -30,9 +37,7 @@ class RTypeClient {
 
         void init(const char* serverIp, uint16_t port, std::string playerName);
 
-
         void run();
-
 
         void stop();
 
