@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "../src/common/include/common/error/Error.hpp"
-#include "../src/common/include/common/error/ErrorMessages.hpp"
+#include "common/error/Error.hpp"
+#include "common/error/ErrorMessages.hpp"
 
 TEST(ErrorTest, ConstructorAndWhat) {
     Error error(ErrorType::NetworkError, ErrorMessages::NETWORK_ERROR);

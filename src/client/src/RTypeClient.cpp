@@ -7,7 +7,16 @@
 
 #include "../include/client/RTypeClient.hpp"
 #include <string.h>
-#include <arpa/inet.h>
+
+// Compatibilité multi-plateforme pour les fonctions réseau
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+#else
+    #include <arpa/inet.h>
+#endif
+
 #include "../include/client/utils/ClientUtils.hpp"
 #include <thread>
 #include <chrono>

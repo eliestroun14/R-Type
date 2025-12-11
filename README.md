@@ -91,8 +91,11 @@ cmake .. -G "Visual Studio 18 2026" -A x64
 # Build
 cmake --build . --config Release
 
-# Binaries will be in build/Release/
+# Binaries will be in
+
+# build\src\server\Release\
 r-type_server.exe
+# build\src\client\Release\
 r-type_client.exe
 ```
 
