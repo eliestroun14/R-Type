@@ -86,7 +86,7 @@ mkdir build
 cd build
 
 # Configure with CMake (Visual Studio)
-cmake .. -G "Visual Studio 17 2022"
+cmake .. -G "Visual Studio 18 2026" -A x64
 
 # Build
 cmake --build . --config Release
