@@ -52,7 +52,7 @@ namespace gameEngine {
         _coordinator->addComponent<Transform>(player, Transform(100.f, 150.f, 0.f, 5.0f));
         _coordinator->addComponent<Playable>(player, Playable{});
         _coordinator->addComponent<Velocity>(player, Velocity(0.f, 0.f));
-        _coordinator->addComponent<Animation>(player, Animation(32, 15, 0, 0.f, 0.1f, 0, 3, false));
+        _coordinator->addComponent<Animation>(player, Animation(32, 15, 0, 0.f, 0.1f, 0, 2, false));
 
         _coordinator->onCreateSystems();
     }
