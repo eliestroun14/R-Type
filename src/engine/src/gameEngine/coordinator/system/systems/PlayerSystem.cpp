@@ -26,13 +26,13 @@ void PlayerSystem::onUpdate(float dt)
 
         // Check RenderManager actions instead of raw keyboard input
         if (this->_coordinator.isActionActive(GameAction::MOVE_LEFT))
-            vx = -200.0f;
+            vx = -0.1f;
         if (this->_coordinator.isActionActive(GameAction::MOVE_RIGHT))
-            vx = 200.0f;
+            vx = 0.1f;
         if (this->_coordinator.isActionActive(GameAction::MOVE_UP))
-            vy = -200.0f;
+            vy = -0.1f;
         if (this->_coordinator.isActionActive(GameAction::MOVE_DOWN))
-            vy = 200.0f;
+            vy = 0.1f;
 
         vel.vx = vx;
         vel.vy = vy;
