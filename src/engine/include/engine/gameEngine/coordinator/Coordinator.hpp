@@ -17,7 +17,10 @@
 class Coordinator {
     public:
 
-        Coordinator() = default;
+        Coordinator() {
+            std::cout << "Coordinator constructor START" << std::endl;
+            std::cout << "Coordinator constructor END" << std::endl;
+        }
         ~Coordinator() = default;
 
         // ==============================================================

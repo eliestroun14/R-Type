@@ -67,8 +67,9 @@ void RenderManager::init()
         throw Error(ErrorType::ResourceLoadFailure, ErrorMessages::RESOURCE_LOAD_FAILURE);
     }
 
+    
     this->_window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
-
+    
     // load every textures for the game.
     this->_textures.init();
 }

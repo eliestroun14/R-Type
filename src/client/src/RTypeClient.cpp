@@ -28,7 +28,7 @@ RTypeClient::~RTypeClient()
 void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerName)
 {
     _networkManager = std::make_unique<client::network::ClientNetworkManager>(serverIp, port);
-    //this->_gameEngine = std::make_shared<engine::GameEngine>();             // TODO
+    this->_gameEngine = std::make_shared<gameEngine::GameEngine>();             // TODO
 
     _packetsReceived.clear();
     _packetsToSend.clear();
@@ -47,8 +47,8 @@ void RTypeClient::run()
     
     std::thread networkThread(&RTypeClient::networkLoop, this);
     
-    this->_gameEngine->initRender();
     this->_gameEngine->init();
+    this->_gameEngine->initRender();
     std::thread gameThread(&RTypeClient::gameLoop, this);
 
     networkThread.join();

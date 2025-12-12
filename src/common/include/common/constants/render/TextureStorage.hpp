@@ -28,7 +28,7 @@ class TextureStorage {
             for (size_t i = 0; i < NUMBER_ASSETS; i++) {
                 auto texture = std::make_shared<sf::Texture>();
 
-                if (texture->loadFromFile(pathAssets[i]))
+                if (!texture->loadFromFile(pathAssets[i]))
                     throw Error(ErrorType::GraphicsInitializationFailed, ErrorMessages::GRAPHICS_INITIALIZATION_FAILED);
 
                 this->_textures.push_back(std::move(texture));

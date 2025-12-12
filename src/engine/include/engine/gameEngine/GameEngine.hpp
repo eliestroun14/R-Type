@@ -53,9 +53,7 @@ public:
     void init();
 
 
-    void initRender() {
-        _coordinator->initRender();
-    }
+    void initRender();
 
     /**
      * @brief Executes a full frame: input → update → render.
