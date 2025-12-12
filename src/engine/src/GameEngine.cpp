@@ -15,52 +15,42 @@ namespace gameEngine {
      * This must be called before any update, rendering, or input processing.
      */
     void GameEngine::init() {
-        std::cout << "ici" << std::endl;
         this->_coordinator = std::make_unique<Coordinator>();
-        std::cout << "ccaca" << std::endl;
-        _coordinator->init();  // Crée EntityManager et SystemManager
-        std::cout << "zizi" << std::endl;
-        
+        _coordinator->init();
+
         // Composants (pas besoin de RenderManager pour ça)
-        this->_coordinator->registerComponent<Transform>();
-        this->_coordinator->registerComponent<Velocity>();
-        
+        _coordinator->registerComponent<Transform>();
+        _coordinator->registerComponent<Velocity>();
+        _coordinator->registerComponent<Sprite>();
+        _coordinator->registerComponent<Playable>();
+        _coordinator->registerComponent<Animation>();
+
         std::cout << "Components registered" << std::endl;
 
     }
 
     void GameEngine::initRender()
     {
-        if (!_coordinator) {
-            throw std::runtime_error("GameEngine::init() must be called before initRender()");
-        }
+        if (!_coordinator) throw std::runtime_error("GameEngine::init() must be called before initRender()");
 
-        // Crée RenderManager
         _coordinator->initRender();
 
-        // Maintenant enregistre les systèmes qui dépendent du rendu
-        this->_coordinator->registerSystem<RenderSystem>(*_coordinator);
-        this->_coordinator->registerSystem<PlayerSystem>(*_coordinator);
-        this->_coordinator->registerSystem<AnimationSystem>(*_coordinator);
+        _coordinator->registerSystem<RenderSystem>(*_coordinator);
+        _coordinator->registerSystem<PlayerSystem>(*_coordinator);
+        _coordinator->registerSystem<AnimationSystem>(*_coordinator);
 
-        std::cout << "4" << std::endl;
+        _coordinator->setSystemSignature<RenderSystem, Sprite, Transform>();
+        _coordinator->setSystemSignature<PlayerSystem, Playable, Velocity>();
+        _coordinator->setSystemSignature<AnimationSystem, Animation, Sprite>();
 
-        this->_coordinator->setSystemSignature<RenderSystem, Sprite, Transform>();
-        this->_coordinator->setSystemSignature<PlayerSystem, Playable, Velocity>();
-        this->_coordinator->setSystemSignature<AnimationSystem, Animation, Sprite>();
-
-        std::cout << "2" << std::endl;
-
-        Entity player = this->_coordinator->createEntity("Player");
-        std::cout << "sdq" << std::endl;
-
-        this->_coordinator->addComponent<Sprite>(player, Sprite{PLAYER_1, 1, sf::IntRect(0, 0, 32, 15)});
-        std::cout << "pet" << std::endl;
-        this->_coordinator->addComponent<Transform>(player, Transform{50.0f, 50.0f, 0.0f, 1.0f});
-        this->_coordinator->addComponent<Playable>(player, Playable{});
+        Entity player = _coordinator->createEntity("Player");
+        _coordinator->addComponent<Sprite>(player, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 32, 15)));
+        _coordinator->addComponent<Transform>(player, Transform(50.f, 50.f, 0.f, 1.f));
+        _coordinator->addComponent<Playable>(player, Playable{});
+        _coordinator->addComponent<Velocity>(player, Velocity(0.f, 0.f));
+        _coordinator->addComponent<Animation>(player, Animation(32, 15, 0, 0.f, 0.1f, 0, 3, true));
 
         _coordinator->onCreateSystems();
-        std::cout << "9" << std::endl;
     }
 
     /**
