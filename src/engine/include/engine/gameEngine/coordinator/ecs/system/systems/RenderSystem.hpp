@@ -17,7 +17,7 @@ class RenderSystem : public System {
 
         void onCreate() override {}
 
-        void onUpdate(float dt) override {}
+        void onUpdate(float dt) override;
 
     private:
         Coordinator& _coordinator;

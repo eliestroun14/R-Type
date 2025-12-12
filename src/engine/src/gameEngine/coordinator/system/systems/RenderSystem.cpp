@@ -22,7 +22,7 @@ void RenderSystem::onUpdate(float dt)
 
     // we need to sort here cuz Z = 0 (background) and Z = 1 (player) and Z = 2 (HUD/UI), to display in the right order
     std::sort(this->_sortedEntities.begin(), this->_sortedEntities.end(),
-        [&sprites](Entity a, Entity b) {
+        [&sprites](size_t a, size_t b) {
             // little check au cas ou a sprite doesn't have a zIndex (no reason to append but au cas ou)
             if (!sprites[a] || !sprites[b])
                 return a < b;
