@@ -119,12 +119,20 @@ struct Sprite
  */
 struct Animation
 {
-    size_t numFrames;
-    size_t frameSpeed;
-    size_t currentFrame;
-    uint32_t lastFrameTime;
-    Animation(size_t nbFrames, size_t speed, size_t current, uint32_t lastTime)
-        : numFrames(nbFrames), frameSpeed(speed), currentFrame(current), lastFrameTime(lastTime) {}
+    int frameWidth;   // frame width (ex: 32px)
+    int frameHeight;  // frame height (ex: 32px)
+
+    int currentFrame;    // current frame (ex: 3)
+    float elapsedTime;   // elapsed time since last frame
+    float frameDuration; // speed (ex: 0.1s)
+
+    int startFrame;      // frame start (ex: 3 for UP animation for the player)
+    int endFrame;        // frame end (ex: 4 for UP animation for the player)
+    bool loop;
+    Animation(int w, int h, int current, float elapsTime, float duration,
+        int start, int end, bool isLooping)
+        : frameWidth(w), frameHeight(h), currentFrame(current), elapsedTime(elapsTime),
+        frameDuration(duration), startFrame(start), endFrame(end), loop(isLooping) {}
 };
 
 
