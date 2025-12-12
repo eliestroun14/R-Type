@@ -149,6 +149,14 @@ class Coordinator {
             return this->_renderManager->isOpen();
         }
 
+        std::shared_ptr<sf::Texture> getTexture(Assets id) const {
+            return this->_renderManager->getTexture(id);
+        }
+
+        sf::RenderWindow& getWindow() {
+            return this->_renderManager->getWindow();
+        }
+
     private:
         std::unique_ptr<EntityManager> _entityManager;
         std::unique_ptr<SystemManager> _systemManager;
