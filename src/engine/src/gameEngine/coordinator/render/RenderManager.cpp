@@ -68,6 +68,9 @@ void RenderManager::init()
     }
 
     this->_window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
+
+    // load every textures for the game.
+    this->_textures.init();
 }
 
 void RenderManager::render()
@@ -136,4 +139,14 @@ void RenderManager::handleEvent(const sf::Event& event)
 std::map<GameAction, bool>& RenderManager::getActiveActions()
 {
     return this->_activeActions;
+}
+
+std::shared_ptr<sf::Texture> RenderManager::getTexture(Assets id) const
+{
+    return this->_textures.getTexture(id);
+}
+
+sf::RenderWindow &RenderManager::getWindow()
+{
+    return this->_window;
 }

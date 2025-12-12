@@ -9,6 +9,7 @@
 #define RENDERMANAGER_HPP_
 
 #include <SFML/Graphics.hpp>
+#include <common/constants/render/TextureStorage.hpp>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -107,8 +108,14 @@ class RenderManager {
          */
         std::map<GameAction, bool>& getActiveActions();
 
+
+        std::shared_ptr<sf::Texture> getTexture(Assets id) const;
+
+        sf::RenderWindow& getWindow();
+
     private:
         sf::RenderWindow _window;
+        TextureStorage _textures;
 
         /// @brief Maps physical keys (sf::Keyboard::Key) to logical actions (GameAction).
         std::map<sf::Keyboard::Key, GameAction> _keyBindings;
