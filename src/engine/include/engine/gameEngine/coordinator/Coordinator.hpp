@@ -31,6 +31,7 @@ class Coordinator {
         {
             this->_entityManager = std::make_unique<EntityManager>();
             this->_systemManager = std::make_unique<SystemManager>();
+            this->_entityManager->setSystemManager(this->_systemManager.get());
         }
 
         void initRender()  // Nouvelle méthode
@@ -157,6 +158,11 @@ class Coordinator {
         void processInput()
         {
             this->_renderManager->processInput();
+        }
+
+        void beginFrame()
+        {
+            this->_renderManager->beginFrame();
         }
 
         void render()

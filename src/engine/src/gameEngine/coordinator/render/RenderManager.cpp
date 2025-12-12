@@ -74,14 +74,19 @@ void RenderManager::init()
     this->_textures.init();
 }
 
+void RenderManager::beginFrame()
+{
+    if (!this->_window.isOpen())
+        return;
+
+    this->_window.clear();
+}
+
 void RenderManager::render()
 {
     if (!this->_window.isOpen())
         return;
 
-    // TODO: add sprites etc... display the game en gros haha
-
-    this->_window.clear();
     this->_window.display();
 }
 

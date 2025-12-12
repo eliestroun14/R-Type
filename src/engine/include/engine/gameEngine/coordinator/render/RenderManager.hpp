@@ -58,9 +58,14 @@ class RenderManager {
         void init();
 
         /**
-         * @brief Renders the current frame.
-         * * Clears the window buffer and displays the new frame.
-         * Should be called once per game loop iteration.
+         * @brief Clears the window buffer to prepare for new frame drawing.
+         * * Should be called at the start of each frame before any drawing.
+         */
+        void beginFrame();
+
+        /**
+         * @brief Displays the rendered frame.
+         * * Should be called at the end of the frame after all drawing is done.
          */
         void render();
 

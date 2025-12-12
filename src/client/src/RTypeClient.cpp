@@ -49,10 +49,11 @@ void RTypeClient::run()
     
     this->_gameEngine->init();
     this->_gameEngine->initRender();
-    std::thread gameThread(&RTypeClient::gameLoop, this);
+    
+    // Keep gameLoop in main thread for OpenGL context to work properly
+    this->gameLoop();
 
     networkThread.join();
-    gameThread.join();
 }
 
 void RTypeClient::stop()
