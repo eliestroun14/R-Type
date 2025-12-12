@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(R-Type VERSION 0.1.0 LANGUAGES C CXX)
 
 # Set C++ standard globally
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Option to enable code coverage
