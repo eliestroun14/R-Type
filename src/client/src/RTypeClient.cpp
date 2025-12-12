@@ -43,8 +43,12 @@ void RTypeClient::run()
     _isRunning = true;
     _networkManager->start();
 
+    std::cout << "client run" << std::endl;
+    
     std::thread networkThread(&RTypeClient::networkLoop, this);
-
+    
+    this->_gameEngine->initRender();
+    this->_gameEngine->init();
     std::thread gameThread(&RTypeClient::gameLoop, this);
 
     networkThread.join();
@@ -86,6 +90,7 @@ void RTypeClient::gameLoop()
     uint64_t lastInputSendTick = 0;
 
     while (_isRunning) {
+
         next += tick;
         std::this_thread::sleep_until(next);
 
@@ -103,14 +108,16 @@ void RTypeClient::gameLoop()
             this->_packetsReceived.pop_front();
         }
 
-        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
+        // this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
 
-        // Poll inputs every tick
-        //this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
-        //this->_gameEngine->coordinator->processInputs();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+        // // Poll inputs every tick
+        // this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
+        // this->_gameEngine->coordinator->processInputs();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+
+
 
         // Update game state every tick
-        //this->_gameEngine->coordinator->update(deltaTime, currentTick);         // engine -> coordinator -> ecs (all systems update)
+        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_STANDALONE);         // engine -> coordinator -> ecs (all systems update)
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;

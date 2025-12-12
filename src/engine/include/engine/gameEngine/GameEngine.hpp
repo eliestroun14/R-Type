@@ -52,6 +52,11 @@ public:
      */
     void init();
 
+
+    void initRender() {
+        _coordinator->initRender();
+    }
+
     /**
      * @brief Executes a full frame: input → update → render.
      * @param dt Delta time.

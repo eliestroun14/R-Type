@@ -16,6 +16,10 @@
 #include <engine/gameEngine/coordinator/render/RenderManager.hpp>
 class Coordinator {
     public:
+
+        Coordinator() = default;
+        ~Coordinator() = default;
+
         // ==============================================================
         //                          Initialization
         // ==============================================================
@@ -24,7 +28,12 @@ class Coordinator {
         {
             this->_entityManager = std::make_unique<EntityManager>();
             this->_systemManager = std::make_unique<SystemManager>();
+        }
+
+        void initRender()  // Nouvelle méthode
+        {
             this->_renderManager = std::make_unique<RenderManager>();
+            this->_renderManager->init();
         }
 
         // ==============================================================

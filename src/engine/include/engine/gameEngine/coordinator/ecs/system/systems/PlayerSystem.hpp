@@ -13,7 +13,7 @@
 
 class PlayerSystem : public System{
     public:
-        PlayerSystem(Coordinator coordinator) : _coordinator(coordinator) {}
+        PlayerSystem(Coordinator& coordinator) : _coordinator(coordinator) {}
 
         void onCreate() override {}
 

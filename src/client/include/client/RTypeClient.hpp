@@ -14,7 +14,7 @@
 #include <netinet/in.h>
 #include <common/protocol/Protocol.hpp>
 #include <client/network/ClientNetworkManager.hpp>
-//#include "../../../engine/include/engine/GameEngine.hpp"                      // TODO:
+#include <engine/gameEngine/GameEngine.hpp>                   // TODO:
 #include <atomic>
 #include <deque>
 #include <common/protocol/Packet.hpp>
@@ -46,7 +46,7 @@ class RTypeClient {
         std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
         std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
 
-        //std::shared_ptr<engine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
+        std::shared_ptr<gameEngine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
 
     private:
         std::unique_ptr<client::network::ClientNetworkManager> _networkManager;
@@ -54,7 +54,7 @@ class RTypeClient {
         std::string _playerName;
         std::atomic<bool> _isRunning;
 
-        //std::shared_ptr<engine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us TODO
+        std::shared_ptr<gameEngine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us TODO
 
         std::deque<common::protocol::Packet> _packetsReceived;
         std::deque<common::protocol::Packet> _packetsToSend;
