@@ -46,28 +46,28 @@ enum Assets {
 
 static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     // WINDOW
-    "./assets/window/RTypeIcon.png",
+    "../assets/window/RTypeIcon.png",
 
     // PLAYERS
-    "./assets/players/player1.png",
-    "./assets/players/player2.png",
-    "./assets/players/player3.png",
-    "./assets/players/player4.png",
-    "./assets/players/player5.png",
+    "../assets/players/player1.png",
+    "../assets/players/player2.png",
+    "../assets/players/player3.png",
+    "../assets/players/player4.png",
+    "../assets/players/player5.png",
 
     // ENEMIES
-    "./assets/enemies/baseEnemy.png",
+    "../assets/enemies/baseEnemy.png",
 
     // BULLET
-    "./assets/bullet/chargingBullet.png",
-    "./assets/bullet/defaultBullet.png",
-    "./assets/bullet/fullChargedBullet.png",
+    "../assets/bullet/chargingBullet.png",
+    "../assets/bullet/defaultBullet.png",
+    "../assets/bullet/fullChargedBullet.png",
 
     // POWERUPS
-    "./assets/powerups/petPowerup.png",
+    "../assets/powerups/petPowerup.png",
 
     // EXPLOSIONS
-    "./assets/explosions/explosions.png",
+    "../assets/explosions/explosions.png",
 };
 
 

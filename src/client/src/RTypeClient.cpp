@@ -113,7 +113,7 @@ void RTypeClient::gameLoop()
 
         // // Poll inputs every tick
         // this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
-        // this->_gameEngine->coordinator->processInputs();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+        this->_gameEngine->processInput();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
 
 
 

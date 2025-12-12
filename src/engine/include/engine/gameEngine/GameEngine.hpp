@@ -61,6 +61,9 @@ public:
      * @param type Network mode.
      */
     void process(float dt, NetworkType type);
+
+    void processInput();
+
 };
 
 } // namespace gameEngine

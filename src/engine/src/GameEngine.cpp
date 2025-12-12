@@ -47,11 +47,11 @@ namespace gameEngine {
         Entity player = _coordinator->createEntity("Player");
         std::cout << "[GameEngine] Creating player entity: " << player << std::endl;
         
-        _coordinator->addComponent<Sprite>(player, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 32, 15)));
+        _coordinator->addComponent<Sprite>(player, Sprite(PLAYER_3, 1, sf::IntRect(0, 0, 33, 15)));
         _coordinator->addComponent<Transform>(player, Transform(50.f, 50.f, 0.f, 3.0f));
         _coordinator->addComponent<Playable>(player, Playable{});
         _coordinator->addComponent<Velocity>(player, Velocity(0.f, 0.f));
-        _coordinator->addComponent<Animation>(player, Animation(32, 15, 0, 0.f, 0.1f, 0, 3, true));
+        _coordinator->addComponent<Animation>(player, Animation(33, 15, 0, 0.f, 0.1f, 0, 2, false));
 
         std::cout << "[GameEngine] Player entity created with all components" << std::endl;
 
@@ -128,4 +128,8 @@ namespace gameEngine {
         this->render(type);
     }
 
+    void GameEngine::processInput()
+    {
+        this->_coordinator->processInput();
+    }
 }

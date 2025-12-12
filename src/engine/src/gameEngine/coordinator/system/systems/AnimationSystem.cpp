@@ -29,7 +29,7 @@ void AnimationSystem::onUpdate(float dt)
 
         if (anim.currentFrame > anim.endFrame) {
             if (anim.loop == true)
-                anim.currentFrame == anim.startFrame;
+                anim.currentFrame = anim.startFrame;
             else
                 anim.currentFrame = anim.endFrame;
         }
