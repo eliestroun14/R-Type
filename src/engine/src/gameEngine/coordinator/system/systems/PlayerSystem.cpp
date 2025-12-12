@@ -14,7 +14,7 @@ void PlayerSystem::onUpdate(float dt)
     auto& velocities = this->_coordinator.getComponents<Velocity>();
 
     for (size_t e : this->_entities) {
-        if (!playables[e] || velocities[e])
+        if (!playables[e] || !velocities[e])
             continue;
 
         auto& vel = velocities[e].value();
