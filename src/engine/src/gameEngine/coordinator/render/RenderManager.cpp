@@ -102,6 +102,9 @@ void RenderManager::processInput()
     while(this->_window.pollEvent(event)) {
         handleEvent(event);
     }
+
+    // Save current state as previous for edge detection
+    this->_previousActions = this->_activeActions;
 }
 
 bool RenderManager::isActionActive(GameAction action) const
@@ -109,6 +112,18 @@ bool RenderManager::isActionActive(GameAction action) const
     if (this->_activeActions.count(action))
         return this->_activeActions.at(action);
     return false;
+}
+
+bool RenderManager::isActionJustPressed(GameAction action) const
+{
+    bool currentState = isActionActive(action);
+    bool previousState = false;
+    
+    if (this->_previousActions.count(action))
+        previousState = this->_previousActions.at(action);
+    
+    // True only if currently pressed AND was not pressed before
+    return currentState && !previousState;
 }
 
 sf::Vector2i RenderManager::getMousePosition() const

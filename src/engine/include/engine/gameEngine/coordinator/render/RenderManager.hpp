@@ -95,6 +95,14 @@ class RenderManager {
         bool isActionActive(GameAction action) const;
 
         /**
+         * @brief Checks if a specific game action was just pressed (edge detection).
+         * * @param action The logical action to check.
+         * @return true If the action is currently pressed AND was not pressed last frame.
+         * @return false Otherwise.
+         */
+        bool isActionJustPressed(GameAction action) const;
+
+        /**
          * @brief Retrieves the current mouse position relative to the window.
          * * @return sf::Vector2i Coordinates (x, y) of the mouse.
          */
@@ -127,6 +135,9 @@ class RenderManager {
 
         /// @brief Stores the current state (true=pressed, false=released) of each action.
         std::map<GameAction, bool> _activeActions;
+
+        /// @brief Stores the previous frame state of each action (for edge detection).
+        std::map<GameAction, bool> _previousActions;
 
         sf::Vector2i _mousePos;
 };

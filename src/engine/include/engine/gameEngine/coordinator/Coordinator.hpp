@@ -175,6 +175,11 @@ class Coordinator {
             return this->_renderManager->isActionActive(action);
         }
 
+        bool isActionJustPressed(GameAction action) const
+        {
+            return this->_renderManager->isActionJustPressed(action);
+        }
+
         std::map<GameAction, bool>& getActiveActions()
         {
             return this->_renderManager->getActiveActions();
