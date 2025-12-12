@@ -8,14 +8,14 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 20
+#define NUMBER_ASSETS 12
 
 #include <array>
 #include <iostream>
 
 // ############################################################################
 // ############### IF YOU ADD A NEW ASSET, PLEASE UPDATE THE ##################
-// ################# ENUM AND THE ARRAY IN THE SAME ORDER #####################
+// ############ MACRO, THE ENUM AND THE ARRAY IN THE SAME ORDER ###############
 // ############################################################################
 
 enum Assets {
