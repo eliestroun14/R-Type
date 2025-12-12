@@ -12,24 +12,27 @@ void PlayerSystem::onUpdate(float dt)
 {
     auto& playables = this->_coordinator.getComponents<Playable>();
     auto& velocities = this->_coordinator.getComponents<Velocity>();
+    auto& transforms = this->_coordinator.getComponents<Transform>();
 
     for (size_t e : this->_entities) {
-        if (!playables[e] || velocities[e])
+        if (!playables[e] || !velocities[e])
             continue;
 
         auto& vel = velocities[e].value();
+        auto& trans = transforms[e].value();
 
-        float vx;
-        float vy;
+        float vx = 0.0f;
+        float vy = 0.0f;
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            vx = -0.1;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            vx = 0.1;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
-            vy = -0.1;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
-            vy = 0.1;
+        // Check RenderManager actions instead of raw keyboard input
+        if (this->_coordinator.isActionActive(GameAction::MOVE_LEFT))
+            vx = -200.0f;
+        if (this->_coordinator.isActionActive(GameAction::MOVE_RIGHT))
+            vx = 200.0f;
+        if (this->_coordinator.isActionActive(GameAction::MOVE_UP))
+            vy = -200.0f;
+        if (this->_coordinator.isActionActive(GameAction::MOVE_DOWN))
+            vy = 200.0f;
 
         vel.vx = vx;
         vel.vy = vy;

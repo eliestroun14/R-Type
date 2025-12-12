@@ -24,7 +24,7 @@ void AnimationSystem::onUpdate(float dt)
 
         if (anim.elapsedTime > anim.frameDuration) {
             anim.currentFrame++;
-            anim.frameDuration = 0;
+            anim.elapsedTime = 0;
         }
 
         if (anim.currentFrame > anim.endFrame) {

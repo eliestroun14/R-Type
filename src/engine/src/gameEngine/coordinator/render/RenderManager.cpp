@@ -52,8 +52,19 @@ void RenderManager::init()
 {
     // TODO: when project is ended, set fullscreen mod for the window
 
+    // Load icon BEFORE creating window
+    auto image = sf::Image{};
+    if (!image.loadFromFile(pathAssets[RTYPE_ICON])) {
+        throw Error(ErrorType::ResourceLoadFailure, ErrorMessages::RESOURCE_LOAD_FAILURE);
+    }
+
+    // Create window and set icon BEFORE positioning
     this->_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "R-Type", sf::Style::Close);
+    this->_window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
+    std::cout << "[RenderManager] Icon set to window" << std::endl;
+    
     this->_window.setFramerateLimit(FRAMERATE_LIMIT);
+    this->_window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
 
     auto desktop = sf::VideoMode::getDesktopMode();
 
@@ -61,14 +72,6 @@ void RenderManager::init()
     this->_window.setPosition(sf::Vector2i(
         desktop.width / 2 - this->_window.getSize().x / 2,
         desktop.height / 2 - this->_window.getSize().y / 2));
-
-    auto image = sf::Image{};
-    if (!image.loadFromFile(pathAssets[RTYPE_ICON])) {
-        throw Error(ErrorType::ResourceLoadFailure, ErrorMessages::RESOURCE_LOAD_FAILURE);
-    }
-
-    
-    this->_window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
     
     // load every textures for the game.
     this->_textures.init();
