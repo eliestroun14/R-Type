@@ -63,16 +63,16 @@ class Coordinator {
 
         template <class Component>
         typename ComponentManager<Component>::referenceType
-            addComponent(Entity const &entity, Component &&component)
+        addComponent(Entity const &entity, Component component)
         {
-            return this->_entityManager->addComponent(entity, component);
+            return this->_entityManager->template addComponent<Component>(entity, std::move(component));
         }
 
         template<class Component, class... Params>
         typename ComponentManager<Component>::referenceType
-            emplaceComponent(Entity const &entity, Params&&... params)
+        emplaceComponent(Entity const &entity, Params&&... params)
         {
-            return this->_entityManager->emplaceComponent<Component>(entity, params...);
+            return this->_entityManager->template emplaceComponent<Component>(entity, std::forward<Params>(params)...);
         }
 
         template<class Component>
@@ -118,6 +118,24 @@ class Coordinator {
         void updateSystems(float dt)
         {
             this->_systemManager->updateAll(dt);
+        }
+
+        void onCreateSystems()
+        {
+            _systemManager->onCreateAll();
+        }
+
+        void onDestroySystems()
+        {
+            _systemManager->onDestroyAll();
+        }
+
+        template <class S, class... Components>
+        void setSystemSignature()
+        {
+            Signature sig{};
+            (sig.set(_entityManager->template getComponentTypeId<Components>()), ...);
+            _systemManager->setSignature<S>(sig);
         }
 
         // ==============================================================
