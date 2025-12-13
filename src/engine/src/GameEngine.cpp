@@ -51,6 +51,7 @@ namespace gameEngine {
         _coordinator->setSystemSignature<CollisionSystem, Transform, Sprite>();
 
         Entity player = _coordinator->createEntity("Player");
+        Entity background = _coordinator->createEntity("Stars Background");
         
         _coordinator->addComponent<Sprite>(player, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 33, 15)));
         _coordinator->addComponent<Transform>(player, Transform(100.f, 150.f, 0.f, 5.0f));
@@ -67,6 +68,8 @@ namespace gameEngine {
         _coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
         _coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 3.0f));
         _coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
+        _coordinator->addComponent<Sprite>(background, Sprite(STARS_BG, 0, sf::IntRect(0, 0, 755, 448)));
+        _coordinator->addComponent<Transform>(background, Transform(0.f, 0.f, 0.f, 2.0f));
 
         _coordinator->onCreateSystems();
     }
