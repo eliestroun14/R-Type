@@ -65,6 +65,7 @@ private:
 
     std::shared_ptr<common::network::AsioSocket> _socket;
     std::atomic<bool> _running;
+    std::atomic<bool> _connected;
 
     std::mutex _inMutex;
     std::mutex _outMutex;

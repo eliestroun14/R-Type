@@ -20,7 +20,7 @@ namespace client {
 namespace network {
 
 ClientNetworkManager::ClientNetworkManager(const std::string& host, uint16_t port, RTypeClient* client)
-    : _host(host), _port(port), _socket(std::make_shared<common::network::AsioSocket>()), _running(false), _client(client), _tickCount(0)
+    : _host(host), _port(port), _socket(std::make_shared<common::network::AsioSocket>()), _running(false), _connected(false), _client(client), _tickCount(0)
 {
 }
 
@@ -35,7 +35,8 @@ void ClientNetworkManager::start()
         return;
     }
     _socket->setNonBlocking(true);
-    _socket->connect(_host, _port);
+    _socket->bind(0);  // Bind on any available port
+    _socket->connect(_host, _port);  // Connect to server
     // Thread is now managed by RTypeClient, not here
 }
 
@@ -83,36 +84,56 @@ bool ClientNetworkManager::shouldForward(const common::protocol::Packet& packet)
 
 void ClientNetworkManager::run()
 {
-    auto next = std::chrono::steady_clock::now();
-    const std::chrono::milliseconds tick(std::chrono::milliseconds(TICK_RATE));
-    
+    // Phase 1: Wait for server connection response
+    std::cout << "[ClientNetworkManager] Waiting for server connection..." << std::endl;
+    while (!_connected && _running.load()) {
+        common::protocol::Packet incoming;
+        std::string remoteAddress;
+        if (_socket->receiveFrom(incoming, remoteAddress)) {
+            std::cout << "[ClientNetworkManager] Phase 1: Received packet type: " << (int)incoming.header.packet_type << std::endl;
+            handleNetworkPacket(incoming);
+        }
+        
+        std::lock_guard<std::mutex> lock(_outMutex);
+        while (!_outgoing.empty()) {
+            _socket->send(_outgoing.front());
+            _outgoing.pop_front();
+        }
+        
+        std::this_thread::sleep_for(1ms);
+    }
+
+    if (!_connected) {
+        std::cout << "[ClientNetworkManager] Connection failed, stopping" << std::endl;
+        return;
+    }
+
+    std::cout << "[ClientNetworkManager] Connected! Starting normal operation" << std::endl;
+
+    // Phase 2: Normal operation (heartbeats, game packets, etc.)
     auto startEpoch = std::chrono::steady_clock::now();
     uint64_t lastHeartbeatTime = 0;
 
     while (_running.load()) {
-        // Calculate time since epoch in milliseconds
         auto currentTime = std::chrono::steady_clock::now();
         uint64_t elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startEpoch).count();
 
-        // Handle heartbeat every HEARTBEAT_INTERVAL milliseconds
         if (elapsedMs - lastHeartbeatTime >= HEARTBEAT_INTERVAL) {
             sendHeartbeat();
             lastHeartbeatTime = elapsedMs;
         }
 
-        // Receive packets from socket
         common::protocol::Packet incoming;
-        if (_socket->receive(incoming)) {
+        std::string remoteAddress;
+        if (_socket->receiveFrom(incoming, remoteAddress)) {
             if (shouldForward(incoming)) {
                 std::lock_guard<std::mutex> lock(_inMutex);
                 _incoming.push_back({incoming, std::nullopt});
             } else {
-                // Handle network-level packets (connection, heartbeat, etc.)
                 handleNetworkPacket(incoming);
             }
         }
 
-        // Send outgoing packets
         {
             std::lock_guard<std::mutex> lock(_outMutex);
             while (!_outgoing.empty()) {
@@ -175,10 +196,14 @@ void ClientNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
 void ClientNetworkManager::handleConnectionAccepted(const common::protocol::Packet& packet)
 {
     std::cout << "[handleConnectionAccepted] Connection accepted by server" << std::endl;
+    std::cout << "[handleConnectionAccepted] Packet data size: " << packet.data.size() << std::endl;
     protocol::ServerAccept payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
+    std::cout << "[handleConnectionAccepted] Assigned player ID: " << payload.assigned_player_id << std::endl;
     _client->setSelfId(payload.assigned_player_id);
+    _connected = true;
     _client->setConnected(true);
+    std::cout << "[handleConnectionAccepted] Client connected set to true" << std::endl;
 }
 
 void ClientNetworkManager::handleConnectionRejected(const common::protocol::Packet& packet)

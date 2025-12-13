@@ -70,7 +70,7 @@ void Server::gameLoop() {
         //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
 
         // Update game state every tick
-        _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_STANDALONE);
+        _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_SERVER);
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;

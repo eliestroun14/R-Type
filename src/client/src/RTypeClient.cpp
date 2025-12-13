@@ -50,13 +50,17 @@ void RTypeClient::run()
 
     std::thread networkThread(&client::network::ClientNetworkManager::run, _networkManager.get());
 
-    if (isConnected()) {
+    // Wait for connection to be established
+    while (!isConnected() && _isRunning) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
-    this->_gameEngine->init();
-    this->_gameEngine->initRender();
-    
-    // Keep gameLoop in main thread for OpenGL context to work properly
-    this->gameLoop();
+    if (isConnected()) {
+        this->_gameEngine->init();
+        this->_gameEngine->initRender();
+        
+        // Keep gameLoop in main thread for OpenGL context to work properly
+        this->gameLoop();
     }
     networkThread.join();
 }
@@ -120,7 +124,7 @@ void RTypeClient::gameLoop()
 
 
         // Update game state every tick
-        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_STANDALONE);         // engine -> coordinator -> ecs (all systems update) elapsedMS
+        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT);         // engine -> coordinator -> ecs (all systems update) elapsedMS
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
