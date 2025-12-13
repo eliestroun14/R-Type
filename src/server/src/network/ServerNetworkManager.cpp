@@ -45,17 +45,12 @@ void ServerNetworkManager::start()
             std::cerr << "[ServerNetworkManager] Failed to bind port " << (_basePort + i) << std::endl;
         }
     }
-
-    _thread = std::thread(&ServerNetworkManager::networkLoop, this);
 }
 
 void ServerNetworkManager::stop()
 {
     if (!_running.exchange(false)) {
         return;
-    }
-    if (_thread.joinable()) {
-        _thread.join();
     }
     for (auto& slot : _clients) {
         if (slot.socket) {
@@ -80,49 +75,28 @@ std::vector<common::network::ReceivedPacket> ServerNetworkManager::fetchIncoming
     return packets;
 }
 
-bool ServerNetworkManager::shouldForward(const common::protocol::Packet& packet) const
+void ServerNetworkManager::run()
 {
-    const auto type = static_cast<protocol::PacketTypes>(packet.header.packet_type);
-    switch (type) {
-        case protocol::PacketTypes::TYPE_CLIENT_CONNECT:
-        case protocol::PacketTypes::TYPE_SERVER_ACCEPT:
-        case protocol::PacketTypes::TYPE_SERVER_REJECT:
-        case protocol::PacketTypes::TYPE_CLIENT_DISCONNECT:
-        case protocol::PacketTypes::TYPE_HEARTBEAT:
-        case protocol::PacketTypes::TYPE_ACK:
-        case protocol::PacketTypes::TYPE_PING:
-        case protocol::PacketTypes::TYPE_PONG:
-            return false;
-        default:
-            return true;
-    }
-}
+    auto startEpoch = std::chrono::steady_clock::now();
 
-void ServerNetworkManager::ensureConnected(ClientSlot& slot)
-{
-    if (slot.active) {
-        return;
-    }
-    if (!slot.socket->getRemoteAddress().empty()) {
-        slot.socket->connect(slot.socket->getRemoteAddress(), slot.socket->getRemotePort());
-        slot.active = true;
-    }
-}
-
-void ServerNetworkManager::networkLoop()
-{
     while (_running.load()) {
+        auto currentTime = std::chrono::steady_clock::now();
+        uint64_t currentMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            currentTime.time_since_epoch()).count();
+
+        // Check for client timeouts
+        checkClientTimeouts();
+
         for (uint32_t i = 0; i < _maxPlayers; ++i) {
             auto& slot = _clients[i];
             common::protocol::Packet incoming;
             if (slot.socket->receive(incoming)) {
-                ensureConnected(slot);
                 if (shouldForward(incoming)) {
                     std::lock_guard<std::mutex> lock(_inMutex);
                     _incoming.push_back({incoming, i});
                 } else {
                     // Handle network-level packets (connection, heartbeat, etc.)
-                    handleNetworkPacket(incoming, i);
+                    handleNetworkPacket(incoming, i, currentMs);
                 }
             }
         }
@@ -151,13 +125,54 @@ void ServerNetworkManager::networkLoop()
     }
 }
 
-void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& packet, uint32_t clientId)
+bool ServerNetworkManager::shouldForward(const common::protocol::Packet& packet) const
+{
+    const auto type = static_cast<protocol::PacketTypes>(packet.header.packet_type);
+    switch (type) {
+        case protocol::PacketTypes::TYPE_CLIENT_CONNECT:
+        case protocol::PacketTypes::TYPE_SERVER_ACCEPT:
+        case protocol::PacketTypes::TYPE_SERVER_REJECT:
+        case protocol::PacketTypes::TYPE_CLIENT_DISCONNECT:
+        case protocol::PacketTypes::TYPE_HEARTBEAT:
+        case protocol::PacketTypes::TYPE_ACK:
+        case protocol::PacketTypes::TYPE_PING:
+        case protocol::PacketTypes::TYPE_PONG:
+            return false;
+        default:
+            return true;
+    }
+}
+
+void ServerNetworkManager::checkClientTimeouts()
+{
+    auto startEpoch = std::chrono::steady_clock::now();
+    uint64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    for (uint32_t i = 0; i < _maxPlayers; ++i) {
+        auto& slot = _clients[i];
+        if (slot.active && slot.lastHeartbeatTime > 0) {
+            // Calculate elapsed time since last heartbeat
+            // If client hasn't sent heartbeat for TIMEOUT_MS, disconnect it
+            uint64_t timeSinceLastHeartbeat = currentTime - slot.lastHeartbeatTime;
+            if (timeSinceLastHeartbeat > TIMEOUT_MS) {
+                std::cout << "[ServerNetworkManager] Client " << i << " timeout (no heartbeat for " 
+                          << timeSinceLastHeartbeat << "ms)" << std::endl;
+                slot.active = false;
+                slot.socket->close();
+            }
+        }
+    }
+}
+
+void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& packet, uint32_t clientId, uint64_t currentMs)
 {
     const auto type = static_cast<protocol::PacketTypes>(packet.header.packet_type);
     
     switch (type) {
         case protocol::PacketTypes::TYPE_CLIENT_CONNECT: {
             std::cout << "[ServerNetworkManager] Client " << clientId << " connection request received" << std::endl;
+            _clients[clientId].lastHeartbeatTime = currentMs;
+            _clients[clientId].active = true;
             // TODO: Validate connection request, send TYPE_SERVER_ACCEPT or TYPE_SERVER_REJECT
             break;
         }
@@ -172,10 +187,8 @@ void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
         }
         
         case protocol::PacketTypes::TYPE_HEARTBEAT: {
-            // Respond with heartbeat acknowledgment
-            common::protocol::Packet response(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ACK));
-            response.header.sequence_number = packet.header.sequence_number;
-            queueOutgoing(response, clientId);
+            // Update last heartbeat time when receiving heartbeat from client
+            _clients[clientId].lastHeartbeatTime = currentMs;
             break;
         }
         

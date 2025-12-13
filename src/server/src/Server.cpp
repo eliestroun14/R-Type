@@ -8,8 +8,6 @@ Server::Server(const ServerConfig& config)
     : _config(config)
     , _isRunning(false)
     , _networkManager(std::make_unique<server::network::ServerNetworkManager>(_config.port, _config.maxPlayers))
-    , _packetsReceived()
-    , _packetsToSend()
 {
 }
 
@@ -23,16 +21,15 @@ bool Server::init() {
 
 void Server::run() {
     _isRunning = true;
+    _gameEngine = std::make_shared<gameEngine::GameEngine>();
     _networkManager->start();
 
     std::cout << "server run" << std::endl;
 
-    std::thread networkThread(&Server::networkLoop, this);
+    std::thread networkThread(&server::network::ServerNetworkManager::run, _networkManager.get());
 
-    std::thread gameThread(&Server::gameLoop, this);
-
+    this->gameLoop();
     networkThread.join();
-    gameThread.join();
 
 }
 
@@ -43,30 +40,15 @@ void Server::stop() {
     }
 }
 
-void Server::networkLoop() {
-
-    while (_isRunning) {
-
-        auto packets = _networkManager->fetchIncoming();
-        for (const auto& entry : packets) {
-            _packetsReceived.push_back(entry.packet);
-        }
-
-        while (!_packetsToSend.empty()) {
-            _networkManager->queueOutgoing(_packetsToSend.front());
-            _packetsToSend.pop_front();
-        }
-    }
-}
-
 void Server::gameLoop() {
 
+    _gameEngine->init();
+    
     auto next = std::chrono::steady_clock::now();
     const std::chrono::milliseconds tick(std::chrono::milliseconds(TICK_RATE));
 
     uint64_t currentTick = 0;
     uint64_t lastHeartbeatTick = 0;
-    uint64_t lastInputSendTick = 0;
 
     while (_isRunning) {
 
@@ -83,22 +65,19 @@ void Server::gameLoop() {
         }
 
         // Calculate delta time in milliseconds
-
         float deltaTime = static_cast<float>(TICK_RATE);
 
         // Process received packets
         std::vector<common::protocol::Packet> packetsToProcess;
-        size_t packetCount = this->_packetsReceived.size();
-
-        for (size_t i = 0; i < packetCount; ++i) {
-            packetsToProcess.push_back(this->_packetsReceived.front());
-            this->_packetsReceived.pop_front();
+        auto incomingPackets = _networkManager->fetchIncoming();
+        for (const auto& entry : incomingPackets) {
+            packetsToProcess.push_back(entry.packet);
         }
 
         //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
 
         // Update game state every tick
-        //this->_gameEngine->coordinator->update(deltaTime, currentTick);         // engine -> coordinator -> ecs (all systems update)
+        _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_STANDALONE);
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
@@ -107,12 +86,11 @@ void Server::gameLoop() {
         //    outgoingPackets,
         //    currentTick,
         //    lastHeartbeatTick,
-        //    lastInputSendTick,
         //    NETWORK_TYPE_SERVER
         //);
 
         for (const auto& packet : outgoingPackets) {
-            this->_packetsToSend.push_back(packet);
+            _networkManager->queueOutgoing(packet);
         }
     }
 }

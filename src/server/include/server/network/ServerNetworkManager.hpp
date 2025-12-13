@@ -35,23 +35,24 @@ public:
 
     std::vector<common::network::ReceivedPacket> fetchIncoming() override;
 
+    void run();
+
 private:
     struct ClientSlot {
         std::shared_ptr<common::network::AsioSocket> socket;
         bool active = false;
+        uint64_t lastHeartbeatTime = 0;  // Track last activity from client
     };
 
-    void networkLoop();
     bool shouldForward(const common::protocol::Packet& packet) const;
-    void ensureConnected(ClientSlot& slot);
-    void handleNetworkPacket(const common::protocol::Packet& packet, uint32_t clientId);
+    void checkClientTimeouts();
+    void handleNetworkPacket(const common::protocol::Packet& packet, uint32_t clientId, uint64_t currentMs);
 
     uint16_t _basePort;
     uint32_t _maxPlayers;
     std::vector<ClientSlot> _clients;
 
     std::atomic<bool> _running;
-    std::thread _thread;
 
     std::mutex _inMutex;
     std::mutex _outMutex;
