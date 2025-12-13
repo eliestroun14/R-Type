@@ -6,6 +6,7 @@
 */
 
 #include <client/network/ClientNetworkManager.hpp>
+#include <client/RTypeClient.hpp>
 #include <common/protocol/Protocol.hpp>
 #include <chrono>
 #include <iostream>
@@ -15,7 +16,7 @@ using namespace std::chrono_literals;
 namespace client {
 namespace network {
 
-ClientNetworkManager::ClientNetworkManager(const std::string& host, uint16_t port, std::shared_ptr<RTypeClient> client)
+ClientNetworkManager::ClientNetworkManager(const std::string& host, uint16_t port, RTypeClient* client)
     : _host(host), _port(port), _socket(std::make_shared<common::network::AsioSocket>()), _running(false), _client(client)
 {
 }
@@ -138,11 +139,10 @@ void ClientNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
         }
         
         case protocol::PacketTypes::TYPE_CLIENT_CONNECT: {
-
+            break;
         }
 
-
-        case protocol::PacketTypes::TYPE_CLIENT_DISCONNECT:
+        case protocol::PacketTypes::TYPE_CLIENT_DISCONNECT: {
             // Server disconnects client
             std::cout << "[ClientNetworkManager] Disconnected by server" << std::endl;
             protocol::ClientDisconnect payload;
@@ -150,6 +150,7 @@ void ClientNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
             std::cerr << "Disconnect reason: " << static_cast<int>(payload.reason) << std::endl;
             _client->stop();
             break;
+        }
 
         default:
             std::cerr << "[ClientNetworkManager] Unknown network packet type: " 

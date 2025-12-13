@@ -25,6 +25,8 @@ void Server::run() {
     _isRunning = true;
     _networkManager->start();
 
+    std::cout << "server run" << std::endl;
+
     std::thread networkThread(&Server::networkLoop, this);
 
     std::thread gameThread(&Server::gameLoop, this);
@@ -74,7 +76,7 @@ void Server::gameLoop() {
         currentTick++;
 
         // Send heartbeat every HEARTBEAT_INTERVAL_TICKS
-        if (currentTick - lastHeartbeatTick >= HEARTBEAT_INTERVAL_TICKS) {
+        if (currentTick - lastHeartbeatTick >= HEARTBEAT_INTERVAL) {
             sendHeartbeat();
             checkClientTimeouts();
             lastHeartbeatTick = currentTick;

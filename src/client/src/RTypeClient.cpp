@@ -30,7 +30,7 @@ RTypeClient::~RTypeClient()
 void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerName)
 {
     _networkManager = std::make_unique<client::network::ClientNetworkManager>(serverIp, port, this);
-    //this->_gameEngine = std::make_shared<engine::GameEngine>();             // TODO
+    this->_gameEngine = std::make_shared<gameEngine::GameEngine>();             // TODO
 
     _packetsReceived.clear();
     _packetsToSend.clear();
@@ -50,11 +50,14 @@ void RTypeClient::run()
     sendConnectionRequest();
 
     std::thread networkThread(&RTypeClient::networkLoop, this);
-
-    std::thread gameThread(&RTypeClient::gameLoop, this);
+    
+    this->_gameEngine->init();
+    this->_gameEngine->initRender();
+    
+    // Keep gameLoop in main thread for OpenGL context to work properly
+    this->gameLoop();
 
     networkThread.join();
-    gameThread.join();
 }
 
 void RTypeClient::stop()
@@ -108,6 +111,7 @@ void RTypeClient::gameLoop()
     uint64_t lastInputSendTime = 0;
 
     while (_isRunning) {
+
         next += tick;
         std::this_thread::sleep_until(next);
         tickCount++;
@@ -128,14 +132,16 @@ void RTypeClient::gameLoop()
             this->_packetsReceived.pop_front();
         }
 
-        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
+        // this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
 
-        // Poll inputs every tick
-        //this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
-        //this->_gameEngine->coordinator->processInputs();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+        // // Poll inputs every tick
+        // this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
+        this->_gameEngine->processInput();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+
+
 
         // Update game state every tick
-        //this->_gameEngine->coordinator->update(deltaTime, elapsedMs);         // engine -> coordinator -> ecs (all systems update)
+        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_STANDALONE);         // engine -> coordinator -> ecs (all systems update) elapsedMS
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
@@ -242,22 +248,4 @@ void RTypeClient::sendPing()
 uint32_t RTypeClient::calculateLatency(uint32_t ping_sent_time , uint32_t ping_received_time)
 {
     return ping_received_time - ping_sent_time;
-}
-
-int main(int argc, char** argv)
-{
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <server_ip>" << "<port>" << "<player_name>" << std::endl;
-        return 1;
-    }
-
-    RTypeClient client;
-
-    // Initialize the client with server IP, port, and player name
-    client.init(argv[1], std::stoi(argv[2]), argv[3]);
-
-    // Start the client
-    client.run();
-
-    return 0;
 }

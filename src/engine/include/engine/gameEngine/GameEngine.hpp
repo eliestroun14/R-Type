@@ -8,27 +8,64 @@
 #ifndef GAMEENGINE_HPP_
 #define GAMEENGINE_HPP_
 
-#include <SFML/Graphics.hpp>
 #include <memory>
+
 #include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <common/constants/defines.hpp>
+
+/**
+ * @brief High-level game loop orchestrator.
+ *
+ * Owns a Coordinator and delegates:
+ *  - input handling
+ *  - system updates
+ *  - rendering
+ * depending on the network mode (server, client, standalone).
+ */
+namespace gameEngine {
 
 class GameEngine {
-    private:
-        sf::RenderWindow _window;
-        std::unique_ptr<Coordinator> _coordinator;
-        // INetworkClient *_client;
+private:
+    std::unique_ptr<Coordinator> _coordinator;
 
-        bool _isRunning;
+    /**
+     * @brief Updates all systems via the Coordinator.
+     * @param dt Delta time in seconds.
+     */
+    void update(float dt);
+
+    /**
+     * @brief Handles input depending on the network mode.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void processInput(NetworkType type);
+
+    /**
+     * @brief Triggers rendering depending on the network mode.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void render(NetworkType type);
+
+public:
+    /**
+     * @brief Initializes the GameEngine and underlying Coordinator.
+     */
+    void init();
 
 
-        void processInput() {}
+    void initRender();
 
-        void update(float dt) {}
+    /**
+     * @brief Executes a full frame: input → update → render.
+     * @param dt Delta time.
+     * @param type Network mode.
+     */
+    void process(float dt, NetworkType type);
 
-    public:
-        // void init(INetworkClient *networkImpl) {}
+    void processInput();
 
-        void run() {}
 };
+
+} // namespace gameEngine
 
 #endif /* !GAMEENGINE_HPP_ */

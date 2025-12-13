@@ -16,6 +16,13 @@
 #include <engine/gameEngine/coordinator/render/RenderManager.hpp>
 class Coordinator {
     public:
+
+        Coordinator() {
+            std::cout << "Coordinator constructor START" << std::endl;
+            std::cout << "Coordinator constructor END" << std::endl;
+        }
+        ~Coordinator() = default;
+
         // ==============================================================
         //                          Initialization
         // ==============================================================
@@ -24,7 +31,13 @@ class Coordinator {
         {
             this->_entityManager = std::make_unique<EntityManager>();
             this->_systemManager = std::make_unique<SystemManager>();
+            this->_entityManager->setSystemManager(this->_systemManager.get());
+        }
+
+        void initRender()  // Nouvelle méthode
+        {
             this->_renderManager = std::make_unique<RenderManager>();
+            this->_renderManager->init();
         }
 
         // ==============================================================
@@ -63,16 +76,16 @@ class Coordinator {
 
         template <class Component>
         typename ComponentManager<Component>::referenceType
-            addComponent(Entity const &entity, Component &&component)
+        addComponent(Entity const &entity, Component component)
         {
-            return this->_entityManager->addComponent(entity, component);
+            return this->_entityManager->template addComponent<Component>(entity, std::move(component));
         }
 
         template<class Component, class... Params>
         typename ComponentManager<Component>::referenceType
-            emplaceComponent(Entity const &entity, Params&&... params)
+        emplaceComponent(Entity const &entity, Params&&... params)
         {
-            return this->_entityManager->emplaceComponent<Component>(entity, params...);
+            return this->_entityManager->template emplaceComponent<Component>(entity, std::forward<Params>(params)...);
         }
 
         template<class Component>
@@ -120,6 +133,24 @@ class Coordinator {
             this->_systemManager->updateAll(dt);
         }
 
+        void onCreateSystems()
+        {
+            _systemManager->onCreateAll();
+        }
+
+        void onDestroySystems()
+        {
+            _systemManager->onDestroyAll();
+        }
+
+        template <class S, class... Components>
+        void setSystemSignature()
+        {
+            Signature sig{};
+            (sig.set(_entityManager->template getComponentTypeId<Components>()), ...);
+            _systemManager->setSignature<S>(sig);
+        }
+
         // ==============================================================
         //                              Render
         // ==============================================================
@@ -127,6 +158,11 @@ class Coordinator {
         void processInput()
         {
             this->_renderManager->processInput();
+        }
+
+        void beginFrame()
+        {
+            this->_renderManager->beginFrame();
         }
 
         void render()
@@ -139,6 +175,11 @@ class Coordinator {
             return this->_renderManager->isActionActive(action);
         }
 
+        bool isActionJustPressed(GameAction action) const
+        {
+            return this->_renderManager->isActionJustPressed(action);
+        }
+
         std::map<GameAction, bool>& getActiveActions()
         {
             return this->_renderManager->getActiveActions();
@@ -147,6 +188,14 @@ class Coordinator {
         bool isOpen()
         {
             return this->_renderManager->isOpen();
+        }
+
+        std::shared_ptr<sf::Texture> getTexture(Assets id) const {
+            return this->_renderManager->getTexture(id);
+        }
+
+        sf::RenderWindow& getWindow() {
+            return this->_renderManager->getWindow();
         }
 
     private:

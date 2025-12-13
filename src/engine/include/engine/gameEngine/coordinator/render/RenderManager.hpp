@@ -9,6 +9,7 @@
 #define RENDERMANAGER_HPP_
 
 #include <SFML/Graphics.hpp>
+#include <common/constants/render/TextureStorage.hpp>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -57,9 +58,14 @@ class RenderManager {
         void init();
 
         /**
-         * @brief Renders the current frame.
-         * * Clears the window buffer and displays the new frame.
-         * Should be called once per game loop iteration.
+         * @brief Clears the window buffer to prepare for new frame drawing.
+         * * Should be called at the start of each frame before any drawing.
+         */
+        void beginFrame();
+
+        /**
+         * @brief Displays the rendered frame.
+         * * Should be called at the end of the frame after all drawing is done.
          */
         void render();
 
@@ -89,6 +95,14 @@ class RenderManager {
         bool isActionActive(GameAction action) const;
 
         /**
+         * @brief Checks if a specific game action was just pressed (edge detection).
+         * * @param action The logical action to check.
+         * @return true If the action is currently pressed AND was not pressed last frame.
+         * @return false Otherwise.
+         */
+        bool isActionJustPressed(GameAction action) const;
+
+        /**
          * @brief Retrieves the current mouse position relative to the window.
          * * @return sf::Vector2i Coordinates (x, y) of the mouse.
          */
@@ -107,14 +121,23 @@ class RenderManager {
          */
         std::map<GameAction, bool>& getActiveActions();
 
+
+        std::shared_ptr<sf::Texture> getTexture(Assets id) const;
+
+        sf::RenderWindow& getWindow();
+
     private:
         sf::RenderWindow _window;
+        TextureStorage _textures;
 
         /// @brief Maps physical keys (sf::Keyboard::Key) to logical actions (GameAction).
         std::map<sf::Keyboard::Key, GameAction> _keyBindings;
 
         /// @brief Stores the current state (true=pressed, false=released) of each action.
         std::map<GameAction, bool> _activeActions;
+
+        /// @brief Stores the previous frame state of each action (for edge detection).
+        std::map<GameAction, bool> _previousActions;
 
         sf::Vector2i _mousePos;
 };

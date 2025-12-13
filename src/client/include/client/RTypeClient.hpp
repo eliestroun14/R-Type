@@ -14,7 +14,7 @@
 #include <netinet/in.h>
 #include <common/protocol/Protocol.hpp>
 #include <client/network/ClientNetworkManager.hpp>
-//#include "../../../engine/include/engine/GameEngine.hpp"                      // TODO:
+#include <engine/gameEngine/GameEngine.hpp>                   // TODO:
 #include <atomic>
 #include <deque>
 #include <common/protocol/Packet.hpp>
@@ -54,15 +54,11 @@ class RTypeClient {
         void sendAck(uint32_t acked_sequence, uint32_t received_timestamp);
         void sendPing();
         uint32_t calculateLatency(uint32_t ping_sent_time, uint32_t ping_received_time);
-
-
-        std::string getPlayerName() const { return _playerName; }
-        uint32_t getSelfId() const { return _selfId; }
         std::atomic<bool>& isRunning() { return _isRunning; }
         std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
         std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
 
-        //std::shared_ptr<engine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
+        std::shared_ptr<gameEngine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
 
     private:
         std::unique_ptr<client::network::ClientNetworkManager> _networkManager;
@@ -71,7 +67,7 @@ class RTypeClient {
         std::atomic<bool> _isRunning;
         std::atomic<unsigned int> tickCount;
 
-        //std::shared_ptr<engine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us TODO
+        std::shared_ptr<gameEngine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us TODO
 
         std::deque<common::protocol::Packet> _packetsReceived;
         std::deque<common::protocol::Packet> _packetsToSend;
