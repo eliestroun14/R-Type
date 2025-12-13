@@ -16,13 +16,14 @@
 #include <thread>
 #include <common/network/NetworkManager.hpp>
 #include <common/network/sockets/AsioSocket.hpp>
+#include <client/RTypeClient.hpp>
 
 namespace client {
 namespace network {
 
 class ClientNetworkManager : public common::network::INetworkManager {
 public:
-    ClientNetworkManager(const std::string& host, uint16_t port);
+    ClientNetworkManager(const std::string& host, uint16_t port, std::shared_ptr<RTypeClient> client = nullptr);
     ~ClientNetworkManager() override;
 
     void start() override;
@@ -37,9 +38,11 @@ public:
 private:
     void networkLoop();
     bool shouldForward(const common::protocol::Packet& packet) const;
+    void handleNetworkPacket(const common::protocol::Packet& packet);
 
     std::string _host;
     uint16_t _port;
+    std::shared_ptr<RTypeClient> _client;
 
     std::shared_ptr<common::network::AsioSocket> _socket;
     std::atomic<bool> _running;

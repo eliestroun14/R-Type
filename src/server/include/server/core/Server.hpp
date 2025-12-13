@@ -56,6 +56,13 @@ namespace server {
         
         void gameLoop();
 
+    private:
+        void sendHeartbeat();
+        void checkClientTimeouts();
+        void sendAck();
+        void sendPong();
+        
+
         std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
         std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
 

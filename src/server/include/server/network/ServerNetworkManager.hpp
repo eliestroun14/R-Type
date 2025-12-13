@@ -44,6 +44,7 @@ private:
     void networkLoop();
     bool shouldForward(const common::protocol::Packet& packet) const;
     void ensureConnected(ClientSlot& slot);
+    void handleNetworkPacket(const common::protocol::Packet& packet, uint32_t clientId);
 
     uint16_t _basePort;
     uint32_t _maxPlayers;

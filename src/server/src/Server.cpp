@@ -73,6 +73,13 @@ void Server::gameLoop() {
 
         currentTick++;
 
+        // Send heartbeat every HEARTBEAT_INTERVAL_TICKS
+        if (currentTick - lastHeartbeatTick >= HEARTBEAT_INTERVAL_TICKS) {
+            sendHeartbeat();
+            checkClientTimeouts();
+            lastHeartbeatTick = currentTick;
+        }
+
         // Calculate delta time in milliseconds
 
         float deltaTime = static_cast<float>(TICK_RATE);
@@ -106,6 +113,21 @@ void Server::gameLoop() {
             this->_packetsToSend.push_back(packet);
         }
     }
+}
+
+void Server::sendHeartbeat()
+{
+    common::protocol::Packet heartbeat(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT));
+    
+    // Broadcast heartbeat to all connected clients
+    _networkManager->queueOutgoing(heartbeat);
+}
+
+void Server::checkClientTimeouts()
+{
+    // TODO: Implement client timeout checking
+    // Track last heartbeat received from each client
+    // Disconnect clients that haven't responded within timeout period
 }
 
 } // namespace server
