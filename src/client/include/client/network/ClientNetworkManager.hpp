@@ -44,6 +44,16 @@ public:
     void sendAck(uint32_t acked_sequence, uint32_t received_timestamp);
     void sendPing();
 
+    // handling methods
+    void handleConnectionAccepted(const common::protocol::Packet& packet);
+    void handleConnectionRejected(const common::protocol::Packet& packet);
+    //void handleHeartbeatAck();
+    void handleDisconnect(const common::protocol::Packet& packet);
+    void handleAck(const common::protocol::Packet& packet);
+    void handlePong(const common::protocol::Packet& packet);
+
+
+
 private:
     bool shouldForward(const common::protocol::Packet& packet) const;
     void handleNetworkPacket(const common::protocol::Packet& packet);
