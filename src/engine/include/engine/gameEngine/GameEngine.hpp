@@ -46,6 +46,37 @@ private:
      */
     void render(NetworkType type);
 
+    /**
+     * @brief Register Components for the Game.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void registerComponents();
+
+    /**
+     * @brief Register Systems for the Game.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void registerSystems();
+
+    /**
+     * @brief Create player Entity for the Game.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void createPlayer();
+
+    /**
+     * @brief Create background Entity(ies) for the Game.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void createBackground();
+
+    /**
+     * @brief Create enimies Entities for the Game.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void createEnemies();
+
+
 public:
     /**
      * @brief Initializes the GameEngine and underlying Coordinator.
