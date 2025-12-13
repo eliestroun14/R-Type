@@ -58,7 +58,7 @@ namespace gameEngine {
         _coordinator->addComponent<Animation>(player, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
 
         _coordinator->addComponent<Sprite>(background, Sprite(STARS_BG, 0, sf::IntRect(0, 0, 755, 448)));
-        _coordinator->addComponent<Transform>(background, Transform(0.f, 0.f, 0.f, 5.0f));
+        _coordinator->addComponent<Transform>(background, Transform(0.f, 0.f, 0.f, 2.0f));
 
         _coordinator->onCreateSystems();
     }
