@@ -46,3 +46,10 @@ target_link_libraries(r-type-client PRIVATE
 # Link rendering/audio libraries (SFML)
 find_package(SFML 2.6 COMPONENTS graphics window system REQUIRED)
 target_link_libraries(r-type-client PRIVATE sfml-graphics sfml-window sfml-system)
+
+add_custom_command(TARGET r-type-client POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:r-type-client>/assets
+    COMMENT "Copying assets..."
+)

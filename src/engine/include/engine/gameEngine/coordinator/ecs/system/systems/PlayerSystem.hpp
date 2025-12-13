@@ -13,7 +13,7 @@
 
 class PlayerSystem : public System{
     public:
-        PlayerSystem(Coordinator coordinator) : _coordinator(coordinator) {}
+        PlayerSystem(Coordinator& coordinator) : _coordinator(coordinator), _lastDirection(2) {}
 
         void onCreate() override {}
 
@@ -21,6 +21,7 @@ class PlayerSystem : public System{
 
     private:
         Coordinator& _coordinator;
+        int _lastDirection;  // Track previous direction to detect changes
 };
 
 #endif /* !PLAYERSYSTEM_HPP_ */

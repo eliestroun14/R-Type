@@ -52,12 +52,18 @@ public:
      */
     void init();
 
+
+    void initRender();
+
     /**
      * @brief Executes a full frame: input → update → render.
      * @param dt Delta time.
      * @param type Network mode.
      */
     void process(float dt, NetworkType type);
+
+    void processInput();
+
 };
 
 } // namespace gameEngine

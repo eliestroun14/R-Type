@@ -25,6 +25,8 @@ void Server::run() {
     _isRunning = true;
     _networkManager->start();
 
+    std::cout << "server run" << std::endl;
+
     std::thread networkThread(&Server::networkLoop, this);
 
     std::thread gameThread(&Server::gameLoop, this);

@@ -16,6 +16,13 @@
 #include <engine/gameEngine/coordinator/render/RenderManager.hpp>
 class Coordinator {
     public:
+
+        Coordinator() {
+            std::cout << "Coordinator constructor START" << std::endl;
+            std::cout << "Coordinator constructor END" << std::endl;
+        }
+        ~Coordinator() = default;
+
         // ==============================================================
         //                          Initialization
         // ==============================================================
@@ -24,7 +31,13 @@ class Coordinator {
         {
             this->_entityManager = std::make_unique<EntityManager>();
             this->_systemManager = std::make_unique<SystemManager>();
+            this->_entityManager->setSystemManager(this->_systemManager.get());
+        }
+
+        void initRender()  // Nouvelle méthode
+        {
             this->_renderManager = std::make_unique<RenderManager>();
+            this->_renderManager->init();
         }
 
         // ==============================================================
@@ -147,6 +160,11 @@ class Coordinator {
             this->_renderManager->processInput();
         }
 
+        void beginFrame()
+        {
+            this->_renderManager->beginFrame();
+        }
+
         void render()
         {
             this->_renderManager->render();
@@ -155,6 +173,11 @@ class Coordinator {
         bool isActionActive(GameAction action) const
         {
             return this->_renderManager->isActionActive(action);
+        }
+
+        bool isActionJustPressed(GameAction action) const
+        {
+            return this->_renderManager->isActionJustPressed(action);
         }
 
         std::map<GameAction, bool>& getActiveActions()
