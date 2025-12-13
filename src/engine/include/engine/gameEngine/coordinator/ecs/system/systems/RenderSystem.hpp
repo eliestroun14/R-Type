@@ -11,6 +11,8 @@
 #include <engine/gameEngine/coordinator/Coordinator.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 
+const sf::Vector2f REFERENCE_RESOLUTION(1920.f, 1080.f);
+
 class RenderSystem : public System {
     public:
         RenderSystem(Coordinator& coordinator) : _coordinator(coordinator) {}
