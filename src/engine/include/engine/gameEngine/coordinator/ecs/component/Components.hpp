@@ -85,10 +85,6 @@ struct NetworkId {
  */
 struct HitBox
 {
-    float width, height;
-    bool isTrigger;
-    HitBox(float w, float h, bool triggered)
-        : width(w), height(h), isTrigger(triggered) {}
 };
 
 
