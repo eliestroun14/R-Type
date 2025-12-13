@@ -57,6 +57,8 @@ void RenderSystem::onUpdate(float dt)
             if (sprite.rect.width > 0)
                 sfSprite.setTextureRect(sprite.rect);
 
+            sprite.globalBounds = sfSprite.getGlobalBounds();
+
             window.draw(sfSprite);
         }
 

@@ -95,16 +95,19 @@ struct HitBox
 /**
  * @brief Visual representation of an entity using an asset ID.
  *
- * Used by: RenderSystem.
+ * Used by: RenderSystem, CollisionSystem
  */
 struct Sprite
 {
     Assets assetId;
     int zIndex; // 0 = Background, 1 = Game, 2 = UI/HUD
     sf::Rect<int> rect;
+    sf::FloatRect globalBounds; // for collisions
+
     Sprite(Assets id, int z, sf::Rect<int> r)
-        : assetId(id), zIndex(z), rect(r) {}
-    Sprite(Assets id, int z) : assetId(id), zIndex(z) {}
+        : assetId(id), zIndex(z), rect(r), globalBounds() {}
+
+    Sprite(Assets id, int z) : assetId(id), zIndex(z), rect(), globalBounds() {}
 };
 
 
