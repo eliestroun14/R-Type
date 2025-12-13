@@ -4,6 +4,7 @@
 #include <engine/gameEngine/coordinator/ecs/system/systems/RenderSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/PlayerSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/AnimationSystem.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/systems/CollisionSystem.hpp>
 #include <common/constants/render/Assets.hpp>
 
 namespace gameEngine {
@@ -32,6 +33,7 @@ namespace gameEngine {
     void GameEngine::initRender()
     {
         if (!_coordinator) throw std::runtime_error("GameEngine::init() must be called before initRender()");
+    _coordinator->registerComponent<Health>();
 
         _coordinator->initRender();
 
@@ -39,12 +41,14 @@ namespace gameEngine {
         _coordinator->registerSystem<RenderSystem>(*_coordinator);
         _coordinator->registerSystem<PlayerSystem>(*_coordinator);
         _coordinator->registerSystem<AnimationSystem>(*_coordinator);
+        _coordinator->registerSystem<CollisionSystem>(*_coordinator);
 
         // Set system signatures BEFORE creating entities
         _coordinator->setSystemSignature<MovementSystem, Transform, Velocity>();
         _coordinator->setSystemSignature<RenderSystem, Sprite, Transform>();
         _coordinator->setSystemSignature<PlayerSystem, Playable, Velocity>();
         _coordinator->setSystemSignature<AnimationSystem, Animation, Sprite>();
+        _coordinator->setSystemSignature<CollisionSystem, Transform, Sprite>();
 
         Entity player = _coordinator->createEntity("Player");
         
@@ -52,9 +56,17 @@ namespace gameEngine {
         _coordinator->addComponent<Transform>(player, Transform(100.f, 150.f, 0.f, 5.0f));
         _coordinator->addComponent<Playable>(player, Playable{});
         _coordinator->addComponent<Velocity>(player, Velocity(0.f, 0.f));
+        _coordinator->addComponent<Health>(player, Health(100, 100));
         // Animation: frameWidth=33, frameHeight=15, currentFrame=2 (neutral), elapsedTime=0, frameDuration=0.1s
         // startFrame=2, endFrame=2 (neutral frame), loop=true
         _coordinator->addComponent<Animation>(player, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
+
+        // Create a static enemy for collision testing
+        Entity staticEnemy = _coordinator->createEntity("StaticEnemy");
+
+        _coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
+        _coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 3.0f));
+        _coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
 
         _coordinator->onCreateSystems();
     }
