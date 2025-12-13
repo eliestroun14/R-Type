@@ -121,10 +121,25 @@ class RenderManager {
          */
         std::map<GameAction, bool>& getActiveActions();
 
-
+        /**
+         * @brief Get the sf::Texture of sprite in function of his id.
+         * * @return const std::shared_ptr<sf::Texture> to the sf::Texture.
+         * * @param id The id reference to the enum Assets
+         */
         std::shared_ptr<sf::Texture> getTexture(Assets id) const;
 
+
+        /**
+         * @brief Get the sf::RenderWindow of the game.
+         * * @return const sf::RenderWindow& Reference to the window.
+         */
         sf::RenderWindow& getWindow();
+
+        /**
+         * @brief Get the Factor scale for adjust velocity in function of the window size.
+         * * @return const float of the factor.
+         */
+        float getScaleFactor() const;
 
     private:
         sf::RenderWindow _window;

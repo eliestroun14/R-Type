@@ -155,47 +155,109 @@ class Coordinator {
         //                              Render
         // ==============================================================
 
+        /**
+         * @brief Polls all pending input events from the window.
+         * * Retrieves events (keyboard, mouse, window close) from SFML
+         * and updates the internal state of GameActions via handleEvent().
+         * Updates the mouse position.
+         */
         void processInput()
         {
             this->_renderManager->processInput();
         }
 
+        /**
+         * @brief Clears the window buffer to prepare for new frame drawing.
+         * * Should be called at the start of each frame before any drawing.
+         */
         void beginFrame()
         {
             this->_renderManager->beginFrame();
         }
 
+        /**
+         * @brief Displays the rendered frame.
+         * * Should be called at the end of the frame after all drawing is done.
+         */
         void render()
         {
             this->_renderManager->render();
         }
 
+        /**
+         * @brief Checks if a specific game action is currently active (pressed).
+         * * @param action The logical action to check (e.g., GameAction::SHOOT).
+         * @return true If the key corresponding to the action is currently held down.
+         * @return false Otherwise.
+         */
         bool isActionActive(GameAction action) const
         {
             return this->_renderManager->isActionActive(action);
         }
 
+        /**
+         * @brief Checks if a specific game action was just pressed (edge detection).
+         * * @param action The logical action to check.
+         * @return true If the action is currently pressed AND was not pressed last frame.
+         * @return false Otherwise.
+         */
         bool isActionJustPressed(GameAction action) const
         {
             return this->_renderManager->isActionJustPressed(action);
         }
 
+        /**
+         * @brief Get the full map of active actions.
+         * * @return const std::map<GameAction, bool>& Reference to the internal action map.
+         */
         std::map<GameAction, bool>& getActiveActions()
         {
             return this->_renderManager->getActiveActions();
         }
 
+        /**
+         * @brief Checks if the game window is currently open.
+         * * @return true If the window is open and running.
+         * @return false If the window has been closed.
+         */
         bool isOpen()
         {
             return this->_renderManager->isOpen();
         }
 
+        /**
+         * @brief Get the sf::Texture of sprite in function of his id.
+         * * @return const std::shared_ptr<sf::Texture> to the sf::Texture.
+         * * @param id The id reference to the enum Assets
+         */
         std::shared_ptr<sf::Texture> getTexture(Assets id) const {
             return this->_renderManager->getTexture(id);
         }
 
+        /**
+         * @brief Get the sf::RenderWindow of the game.
+         * * @return const sf::RenderWindow& Reference to the window.
+         */
         sf::RenderWindow& getWindow() {
             return this->_renderManager->getWindow();
+        }
+
+        /**
+         * @brief Get the Factor scale for adjust velocity in function of the window size.
+         * * @return const float of the factor.
+         */
+        float getScaleFactor() const
+        {
+            return this->getScaleFactor();
+        }
+
+        /**
+         * @brief Retrieves the current mouse position relative to the window.
+         * * @return sf::Vector2i Coordinates (x, y) of the mouse.
+         */
+        sf::Vector2i getMousePosition() const
+        {
+            return this->getMousePosition();
         }
 
     private:
