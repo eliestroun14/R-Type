@@ -33,6 +33,13 @@ void RenderSystem::onUpdate(float dt)
     sf::RenderWindow& window = this->_coordinator.getWindow();
     auto& transforms = this->_coordinator.getComponents<Transform>();
 
+    // this part is to render propely in function of the window size
+    sf::Vector2u windowSize = window.getSize();
+    float scaleX = windowSize.x / REFERENCE_RESOLUTION.x;
+    float scaleY = windowSize.y / REFERENCE_RESOLUTION.y;
+
+    float scale = std::min(scaleX, scaleY);
+
     for (const auto& entity : this->_sortedEntities) {
         auto& trans = transforms[entity].value();
         auto& sprite = sprites[entity].value();
@@ -44,7 +51,7 @@ void RenderSystem::onUpdate(float dt)
             sfSprite.setTexture(*texture);
 
             sfSprite.setPosition(trans.x, trans.y);
-            sfSprite.setScale(trans.scale, trans.scale);
+            sfSprite.setScale(trans.scale * scale, trans.scale * scale);
             sfSprite.setRotation(trans.rotation);
 
             if (sprite.rect.width > 0)

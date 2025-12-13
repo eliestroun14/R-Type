@@ -19,15 +19,7 @@ namespace gameEngine {
         this->_coordinator = std::make_unique<Coordinator>();
         _coordinator->init();
 
-        // Composants (pas besoin de RenderManager pour ça)
-        _coordinator->registerComponent<Transform>();
-        _coordinator->registerComponent<Velocity>();
-        _coordinator->registerComponent<Sprite>();
-        _coordinator->registerComponent<Playable>();
-        _coordinator->registerComponent<Animation>();
-
-        std::cout << "Components registered" << std::endl;
-
+        registerComponents();
     }
 
     void GameEngine::initRender()
@@ -37,39 +29,11 @@ namespace gameEngine {
 
         _coordinator->initRender();
 
-        _coordinator->registerSystem<MovementSystem>(*_coordinator);
-        _coordinator->registerSystem<RenderSystem>(*_coordinator);
-        _coordinator->registerSystem<PlayerSystem>(*_coordinator);
-        _coordinator->registerSystem<AnimationSystem>(*_coordinator);
-        _coordinator->registerSystem<CollisionSystem>(*_coordinator);
+        registerSystems();
 
-        // Set system signatures BEFORE creating entities
-        _coordinator->setSystemSignature<MovementSystem, Transform, Velocity>();
-        _coordinator->setSystemSignature<RenderSystem, Sprite, Transform>();
-        _coordinator->setSystemSignature<PlayerSystem, Playable, Velocity>();
-        _coordinator->setSystemSignature<AnimationSystem, Animation, Sprite>();
-        _coordinator->setSystemSignature<CollisionSystem, Transform, Sprite>();
-
-        Entity player = _coordinator->createEntity("Player");
-        Entity background = _coordinator->createEntity("Stars Background");
-        
-        _coordinator->addComponent<Sprite>(player, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 33, 15)));
-        _coordinator->addComponent<Transform>(player, Transform(100.f, 150.f, 0.f, 5.0f));
-        _coordinator->addComponent<Playable>(player, Playable{});
-        _coordinator->addComponent<Velocity>(player, Velocity(0.f, 0.f));
-        _coordinator->addComponent<Health>(player, Health(100, 100));
-        // Animation: frameWidth=33, frameHeight=15, currentFrame=2 (neutral), elapsedTime=0, frameDuration=0.1s
-        // startFrame=2, endFrame=2 (neutral frame), loop=true
-        _coordinator->addComponent<Animation>(player, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
-
-        // Create a static enemy for collision testing
-        Entity staticEnemy = _coordinator->createEntity("StaticEnemy");
-
-        _coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
-        _coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 3.0f));
-        _coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
-        _coordinator->addComponent<Sprite>(background, Sprite(STARS_BG, 0, sf::IntRect(0, 0, 755, 448)));
-        _coordinator->addComponent<Transform>(background, Transform(0.f, 0.f, 0.f, 2.0f));
+        createBackground();
+        createPlayer();
+        createEnemies();
 
         _coordinator->onCreateSystems();
     }
@@ -119,20 +83,84 @@ namespace gameEngine {
         }
     }
 
+    void GameEngine::registerComponents()
+    {
+        _coordinator->registerComponent<Transform>();
+        _coordinator->registerComponent<Velocity>();
+        _coordinator->registerComponent<Sprite>();
+        _coordinator->registerComponent<Playable>();
+        _coordinator->registerComponent<Animation>();
+        _coordinator->registerComponent<HitBox>();
+
+        std::cout << "Components registered" << std::endl;
+    }
+
+    void GameEngine::registerSystems()
+    {
+        // Set system signatures BEFORE creating entities
+        _coordinator->registerSystem<MovementSystem>(*_coordinator);
+        _coordinator->setSystemSignature<MovementSystem, Transform, Velocity>();
+
+        _coordinator->registerSystem<RenderSystem>(*_coordinator);
+        _coordinator->setSystemSignature<RenderSystem, Sprite, Transform>();
+
+        _coordinator->registerSystem<PlayerSystem>(*_coordinator);
+        _coordinator->setSystemSignature<PlayerSystem, Playable, Velocity>();
+
+        _coordinator->registerSystem<AnimationSystem>(*_coordinator);
+        _coordinator->setSystemSignature<AnimationSystem, Animation, Sprite>();
+
+        _coordinator->registerSystem<CollisionSystem>(*_coordinator);
+        _coordinator->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
+    }
+
+    void GameEngine::createPlayer()
+    {
+        Entity player = _coordinator->createEntity("Player");
+
+        _coordinator->addComponent<Sprite>(player, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 33, 15)));
+        _coordinator->addComponent<Transform>(player, Transform(100.f, 150.f, 0.f, 2.5f));
+        _coordinator->addComponent<Playable>(player, Playable());
+        _coordinator->addComponent<Velocity>(player, Velocity(0.f, 0.f));
+        _coordinator->addComponent<Health>(player, Health(100, 100));
+        _coordinator->addComponent<Animation>(player, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
+        _coordinator->addComponent<HitBox>(player, HitBox());
+    }
+
+    void GameEngine::createBackground()
+    {
+        Entity backgroundStars = _coordinator->createEntity("Stars Background");
+
+        _coordinator->addComponent<Sprite>(backgroundStars, Sprite(STARS_BG, 0, sf::IntRect(0, 0, 755, 448)));
+        _coordinator->addComponent<Transform>(backgroundStars, Transform(0.f, 0.f, 0.f, 2.0f));
+    }
+
+    void GameEngine::createEnemies()
+    {
+        // Create a static enemy for collision testing
+        Entity staticEnemy = _coordinator->createEntity("StaticEnemy");
+
+        _coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
+        _coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 2.0f));
+        _coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
+        _coordinator->addComponent<HitBox>(staticEnemy, HitBox());
+    }
+
+
     /**
-     * @brief Processes a full engine step: input → update → render.
-     *
-     * @param dt Delta time in seconds.
-     * @param type Network execution mode.
-     *
-     * Executes:
-     *   - processInput(type)
-     *   - beginFrame(type) [clear buffer]
-     *   - update(dt) [systems draw here]
-     *   - render(type) [display frame]
-     *
-     * This function represents a full iteration of the game loop.
-     */
+       * @brief Processes a full engine step: input → update → render.
+       *
+       * @param dt Delta time in seconds.
+       * @param type Network execution mode.
+       *
+       * Executes:
+       *   - processInput(type)
+       *   - beginFrame(type) [clear buffer]
+       *   - update(dt) [systems draw here]
+       *   - render(type) [display frame]
+       *
+       * This function represents a full iteration of the game loop.
+       */
     void GameEngine::process(float dt, NetworkType type) {
         this->processInput(type);
         if (type == NetworkType::NETWORK_TYPE_CLIENT || type == NetworkType::NETWORK_TYPE_STANDALONE) {
