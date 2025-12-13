@@ -13,7 +13,6 @@
 #include <mutex>
 #include <optional>
 #include <string>
-#include <thread>
 #include <common/network/NetworkManager.hpp>
 #include <common/network/sockets/AsioSocket.hpp>
 
@@ -36,8 +35,16 @@ public:
 
     std::vector<common::network::ReceivedPacket> fetchIncoming() override;
 
+    void run();
+
+    // Network packet sending methods
+    void sendConnectionRequest();
+    void sendHeartbeat();
+    void sendDisconnect(uint8_t reason);
+    void sendAck(uint32_t acked_sequence, uint32_t received_timestamp);
+    void sendPing();
+
 private:
-    void networkLoop();
     bool shouldForward(const common::protocol::Packet& packet) const;
     void handleNetworkPacket(const common::protocol::Packet& packet);
 
@@ -47,12 +54,13 @@ private:
 
     std::shared_ptr<common::network::AsioSocket> _socket;
     std::atomic<bool> _running;
-    std::thread _thread;
 
     std::mutex _inMutex;
     std::mutex _outMutex;
     std::deque<common::network::ReceivedPacket> _incoming;
     std::deque<common::protocol::Packet> _outgoing;
+
+    std::atomic<unsigned int> _tickCount;
 };
 
 } // namespace network

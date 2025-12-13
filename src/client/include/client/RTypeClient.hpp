@@ -36,7 +36,7 @@ class RTypeClient {
 
         void stop();
 
-        void networkLoop();
+        //void networkLoop();
 
         void gameLoop();
 
@@ -45,18 +45,13 @@ class RTypeClient {
         uint32_t getSelfId() const { return _selfId; }
         void setPlayerName(const std::string& name) { _playerName = name; }
         std::string getPlayerName() const { return _playerName; }
+        bool isConnected() const { return _isConnected; }
+        void setConnected(bool status) { _isConnected = status; }
 
 
     private:
-        void sendConnectionRequest();
-        void sendHeartbeat();
-        void sendDisconnect(uint8_t reason);
-        void sendAck(uint32_t acked_sequence, uint32_t received_timestamp);
-        void sendPing();
         uint32_t calculateLatency(uint32_t ping_sent_time, uint32_t ping_received_time);
         std::atomic<bool>& isRunning() { return _isRunning; }
-        std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
-        std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
 
         std::shared_ptr<gameEngine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
 
@@ -66,11 +61,9 @@ class RTypeClient {
         std::string _playerName;
         std::atomic<bool> _isRunning;
         std::atomic<unsigned int> tickCount;
+        std::atomic<bool> _isConnected;
 
         std::shared_ptr<gameEngine::GameEngine> _gameEngine;                        // game engine that will do a lot of things for us TODO
-
-        std::deque<common::protocol::Packet> _packetsReceived;
-        std::deque<common::protocol::Packet> _packetsToSend;
 
 };
 
