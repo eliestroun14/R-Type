@@ -131,8 +131,8 @@ namespace gameEngine {
     {
         Entity backgroundStars = _coordinator->createEntity("Stars Background");
 
-        _coordinator->addComponent<Sprite>(backgroundStars, Sprite(STARS_BG, 0, sf::IntRect(0, 0, 755, 448)));
-        _coordinator->addComponent<Transform>(backgroundStars, Transform(0.f, 0.f, 0.f, 2.0f));
+        _coordinator->addComponent<Sprite>(backgroundStars, Sprite(GAME_BG, 0, sf::IntRect(0, 0, 1920, 1080)));
+        _coordinator->addComponent<Transform>(backgroundStars, Transform(0.f, 0.f, 0.f, 1.0f));
     }
 
     void GameEngine::createEnemies()

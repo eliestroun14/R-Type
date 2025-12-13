@@ -11,8 +11,8 @@
 #include <SFML/Graphics.hpp>
 #include <common/constants/render/TextureStorage.hpp>
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1080
 #define FRAMERATE_LIMIT 60
 
 // can change on updates
