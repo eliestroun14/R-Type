@@ -70,7 +70,7 @@ void PlayerSystem::onUpdate(float dt)
                 anim.elapsedTime = 0;
             }
 
-            anim.loop = true;
+            anim.loop = false;
         }
     }
 }

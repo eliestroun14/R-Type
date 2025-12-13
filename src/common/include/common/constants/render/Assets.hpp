@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 12
+#define NUMBER_ASSETS 13
 
 #include <array>
 #include <iostream>
@@ -21,6 +21,9 @@
 enum Assets {
     // WINDOW
     RTYPE_ICON,
+
+    // BACKGROUND
+    STARS_BG,
 
     // PLAYERS
     PLAYER_1,
@@ -47,6 +50,9 @@ enum Assets {
 static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     // WINDOW
     "../assets/window/RTypeIcon.png",
+
+    // BACKGROUND
+    "../assets/background/starsBg.png",
 
     // PLAYERS
     "../assets/players/player1.png",
