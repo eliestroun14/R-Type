@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <engine/gameEngine/coordinator/network/PacketManager.hpp>
 
 using namespace std::chrono_literals;
 
@@ -171,33 +172,25 @@ void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
     switch (type) {
         case protocol::PacketTypes::TYPE_CLIENT_CONNECT: {
             std::cout << "[ServerNetworkManager] Client " << clientId << " connection request received" << std::endl;
-            _clients[clientId].lastHeartbeatTime = currentMs;
-            _clients[clientId].active = true;
-            // TODO: Validate connection request, send TYPE_SERVER_ACCEPT or TYPE_SERVER_REJECT
+            handleClientConnect(clientId, currentMs);
             break;
         }
         
         case protocol::PacketTypes::TYPE_CLIENT_DISCONNECT: {
             std::cout << "[ServerNetworkManager] Client " << clientId << " disconnected" << std::endl;
-            if (clientId < _clients.size()) {
-                _clients[clientId].active = false;
-                _clients[clientId].socket->close();
-            }
+            handleClientDisconnect(clientId);
             break;
         }
         
         case protocol::PacketTypes::TYPE_HEARTBEAT: {
-            // Update last heartbeat time when receiving heartbeat from client
-            _clients[clientId].lastHeartbeatTime = currentMs;
+            std::cout << "[ServerNetworkManager] Heartbeat received from client " << clientId << std::endl;
+            handleHeartbeat(clientId, currentMs);
             break;
         }
         
         case protocol::PacketTypes::TYPE_PING: {
-            // Respond with pong
-            common::protocol::Packet pong(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PONG));
-            pong.header.sequence_number = packet.header.sequence_number;
-            pong.header.timestamp = packet.header.timestamp;
-            queueOutgoing(pong, clientId);
+            std::cout << "[ServerNetworkManager] Ping received from client " << clientId << std::endl;
+            handlePing(packet, clientId);
             break;
         }
         
@@ -216,6 +209,87 @@ void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
             std::cerr << "[ServerNetworkManager] Unknown network packet type: " 
                       << static_cast<int>(packet.header.packet_type) << std::endl;
             break;
+    }
+}
+
+void ServerNetworkManager::handleClientConnect(uint32_t clientId, uint64_t currentMs)
+{
+    std::cout << "[ServerNetworkManager] Client " << clientId << " connected" << std::endl;
+    _clients[clientId].lastHeartbeatTime = currentMs;
+    _clients[clientId].active = true;
+    
+    // Send server accept to client using PacketManager
+    std::vector<uint8_t> args;
+    args.push_back(0);  // flags_count
+    // sequence_number (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // timestamp (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // assigned_player_id (4 bytes, little-endian)
+    uint32_t id = clientId;
+    args.push_back(id & 0xFF);
+    args.push_back((id >> 8) & 0xFF);
+    args.push_back((id >> 16) & 0xFF);
+    args.push_back((id >> 24) & 0xFF);
+    // max_players (1 byte)
+    args.push_back(_maxPlayers);
+    // game_instance_id (4 bytes, little-endian) - use 1 for now
+    args.push_back(1); args.push_back(0); args.push_back(0); args.push_back(0);
+    // server_tickrate (2 bytes, little-endian)
+    uint16_t tickrate = 60;
+    args.push_back(tickrate & 0xFF);
+    args.push_back((tickrate >> 8) & 0xFF);
+    
+    auto packet = PacketManager::createServerAccept(args);
+    if (packet) {
+        queueOutgoing(packet.value(), clientId);
+        std::cout << "[ServerNetworkManager] Server accept sent to client " << clientId << std::endl;
+    }
+}
+
+void ServerNetworkManager::handleClientDisconnect(uint32_t clientId)
+{
+    std::cout << "[ServerNetworkManager] Client " << clientId << " disconnected" << std::endl;
+    if (clientId < _clients.size()) {
+        _clients[clientId].active = false;
+        _clients[clientId].socket->close();
+    }
+}
+
+void ServerNetworkManager::handleHeartbeat(uint32_t clientId, uint64_t currentMs)
+{
+    std::cout << "[ServerNetworkManager] Heartbeat from client " << clientId << std::endl;
+    _clients[clientId].lastHeartbeatTime = currentMs;
+}
+
+void ServerNetworkManager::handlePing(const common::protocol::Packet& packet, uint32_t clientId)
+{
+    std::cout << "[ServerNetworkManager] Ping from client " << clientId << std::endl;
+    
+    // Send pong using PacketManager
+    std::vector<uint8_t> args;
+    args.push_back(0);  // flags_count
+    // sequence_number (4 bytes, little-endian)
+    uint32_t seq = packet.header.sequence_number;
+    args.push_back(seq & 0xFF);
+    args.push_back((seq >> 8) & 0xFF);
+    args.push_back((seq >> 16) & 0xFF);
+    args.push_back((seq >> 24) & 0xFF);
+    // timestamp (4 bytes, little-endian)
+    uint32_t ts = packet.header.timestamp;
+    args.push_back(ts & 0xFF);
+    args.push_back((ts >> 8) & 0xFF);
+    args.push_back((ts >> 16) & 0xFF);
+    args.push_back((ts >> 24) & 0xFF);
+    // client_timestamp (4 bytes, little-endian)
+    args.push_back(ts & 0xFF);
+    args.push_back((ts >> 8) & 0xFF);
+    args.push_back((ts >> 16) & 0xFF);
+    args.push_back((ts >> 24) & 0xFF);
+    
+    auto pong = PacketManager::createPong(args);
+    if (pong) {
+        queueOutgoing(pong.value(), clientId);
     }
 }
 

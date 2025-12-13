@@ -50,6 +50,7 @@ public:
     //void handleHeartbeatAck();
     void handleDisconnect(const common::protocol::Packet& packet);
     void handleAck(const common::protocol::Packet& packet);
+    void handlePing(const common::protocol::Packet& packet);
     void handlePong(const common::protocol::Packet& packet);
 
 

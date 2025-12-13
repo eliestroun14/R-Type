@@ -309,5 +309,25 @@ void ClientNetworkManager::sendPing()
     std::cout << "[ClientNetworkManager] Ping packet sent" << std::endl;
 }
 
+void ClientNetworkManager::handlePing(const common::protocol::Packet& packet)
+{
+    std::cout << "[ClientNetworkManager] Ping received from server, sending pong" << std::endl;
+    
+    // Send pong response with same sequence number and timestamp
+    common::protocol::PacketHeader header;
+    header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PONG);
+    header.sequence_number = packet.header.sequence_number;
+    header.timestamp = packet.header.timestamp;
+    header.flags = 0;
+
+    protocol::Pong payload;
+    payload.header = header;
+    payload.client_timestamp = TIMESTAMP;
+
+    common::protocol::Packet pong(header, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&payload), reinterpret_cast<uint8_t*>(&payload) + sizeof(payload)));
+    queueOutgoing(pong);
+    std::cout << "[ClientNetworkManager] Pong packet sent" << std::endl;
+}
+
 } // namespace network
 } // namespace client

@@ -47,6 +47,12 @@ private:
     bool shouldForward(const common::protocol::Packet& packet) const;
     void checkClientTimeouts();
     void handleNetworkPacket(const common::protocol::Packet& packet, uint32_t clientId, uint64_t currentMs);
+    
+    // Individual handlers for each packet type
+    void handleClientConnect(uint32_t clientId, uint64_t currentMs);
+    void handleClientDisconnect(uint32_t clientId);
+    void handleHeartbeat(uint32_t clientId, uint64_t currentMs);
+    void handlePing(const common::protocol::Packet& packet, uint32_t clientId);
 
     uint16_t _basePort;
     uint32_t _maxPlayers;
