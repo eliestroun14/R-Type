@@ -248,7 +248,7 @@ class Coordinator {
          */
         float getScaleFactor() const
         {
-            return this->getScaleFactor();
+            return this->_renderManager->getScaleFactor();
         }
 
         /**
@@ -257,7 +257,7 @@ class Coordinator {
          */
         sf::Vector2i getMousePosition() const
         {
-            return this->getMousePosition();
+            return this->_renderManager->getMousePosition();
         }
 
     private:
