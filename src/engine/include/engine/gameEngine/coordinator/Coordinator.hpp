@@ -18,6 +18,8 @@
 #include <engine/gameEngine/coordinator/network/PacketManager.hpp>
 #include <common/protocol/Protocol.hpp>
 #include <cstring>
+#include <common/constants/defines.hpp>
+
 
 class Coordinator {
     public:
@@ -454,13 +456,36 @@ class Coordinator {
             protocol::EntitySpawn  entitySpawn;
             std::memcpy(&entitySpawn, packet.data.data(), sizeof(protocol::EntitySpawn));
 
-            
-            //_coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
-            //_coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 2.0f));
-            //_coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
-            //_coordinator->addComponent<HitBox>(staticEnemy, HitBox());
-            //_coordinator->addComponent<Velocity>(staticEnemy, Velocity(0.f, 0.f));
-            //_coordinator->addComponent<Weapon>(staticEnemy, Weapon(300, 0, 8, ProjectileType::MISSILE));  // 300ms fire rate, 8 damage
+            switch (entitySpawn.entity_type) {
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_PLAYER):
+                    // Initialize player-specific components
+                    
+                    break;
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_ENEMY):
+                    // Initialize enemy-specific components
+                    addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, 1, sf::IntRect(entitySpawn.position_x, entitySpawn.position_y, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
+                    addComponent<Transform>(newEntity, Transform(entitySpawn.position_x, entitySpawn.position_y, 0.f, 1.f));
+                    addComponent<Health>(newEntity, Health(entitySpawn.initial_health, entitySpawn.initial_health));
+                    addComponent<HitBox>(newEntity, HitBox());
+                    addComponent<Velocity>(newEntity, Velocity(entitySpawn.initial_velocity_x, entitySpawn.initial_velocity_y));
+                    addComponent<Weapon>(newEntity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));  // 300ms fire rate, 8 damage
+                    break;
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
+                    break;
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER):
+                    // Initialize projectile-specific components
+                    break;
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY):
+                    break;
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_POWERUP):
+                    break;
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_OBSTACLE):
+                    break;
+                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_BG_ELEMENT):
+                default:
+                    // Handle unknown entity types
+                    break;
+            }
 
         }
 

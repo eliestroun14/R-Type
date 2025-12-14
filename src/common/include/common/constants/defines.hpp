@@ -30,6 +30,25 @@ enum NetworkType {
 };
 
 // ==============================================================
+//              GAME VARIABLE DEFINITIONS
+// ==============================================================
+
+// BASE_ENEMY
+#define BASE_ENEMY_SPRITE_WIDTH 33
+#define BASE_ENEMY_SPRITE_HEIGHT 36
+
+#define BASE_ENEMY_HEALTH_START 50
+#define BASE_ENEMY_HEALTH_MAX 50
+
+#define BASE_ENEMY_VELOCITY_X 0.0f
+#define BASE_ENEMY_VELOCITY_Y 0.0f
+
+
+// base weapon for enemies
+#define BASE_ENEMY_WEAPON_DAMAGE 8
+#define BASE_ENEMY_WEAPON_FIRE_RATE 300
+
+// ==============================================================
 //              PACKET SIZE DEFINITIONS (Network Protocol)
 // ==============================================================
 
