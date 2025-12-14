@@ -151,14 +151,14 @@ namespace gameEngine {
     void GameEngine::createEnemies()
     {
         // Create a static enemy for collision testing
-        Entity staticEnemy = _coordinator->createEntity("StaticEnemy");
+        //Entity staticEnemy = _coordinator->createEntity("StaticEnemy");
 
-        _coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
-        _coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 2.0f));
-        _coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
-        _coordinator->addComponent<HitBox>(staticEnemy, HitBox());
-        _coordinator->addComponent<Velocity>(staticEnemy, Velocity(0.f, 0.f));
-        _coordinator->addComponent<Weapon>(staticEnemy, Weapon(300, 0, 8, ProjectileType::MISSILE));  // 300ms fire rate, 8 damage
+        //_coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
+        //_coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 2.0f));
+        //_coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
+        //_coordinator->addComponent<HitBox>(staticEnemy, HitBox());
+        //_coordinator->addComponent<Velocity>(staticEnemy, Velocity(0.f, 0.f));
+        //_coordinator->addComponent<Weapon>(staticEnemy, Weapon(300, 0, 8, ProjectileType::MISSILE));  // 300ms fire rate, 8 damage
     }
 
 
