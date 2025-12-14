@@ -12,6 +12,8 @@
 #include <iostream>
 #include <engine/gameEngine/coordinator/network/PacketManager.hpp>
 #include <sstream>
+#include <engine/utils/Logger.hpp>
+#include <common/error/Error.hpp>
 
 using namespace std::chrono_literals;
 
@@ -44,8 +46,10 @@ void ServerNetworkManager::start()
 
     _acceptorSocket->setNonBlocking(true);
     if (!_acceptorSocket->bind(_basePort)) {
-        std::cerr << "[ServerNetworkManager] Failed to bind acceptor port " << _basePort << std::endl;
+        LOG_ERROR("Failed to bind acceptor port {}", _basePort);
+        throw Error(ErrorType::NetworkError, "Failed to bind server port " + std::to_string(_basePort));
     }
+    LOG_INFO("ServerNetworkManager started on port {}", _basePort);
 }
 
 void ServerNetworkManager::stop()
@@ -105,9 +109,9 @@ void ServerNetworkManager::run()
         // Receive packets from the acceptor socket
         common::protocol::Packet incoming;
         std::string remoteAddress;
-        
+
         if (_acceptorSocket->receiveFrom(incoming, remoteAddress)) {
-            std::cout << "[ServerNetworkManager] Received packet from " << remoteAddress << std::endl;
+            LOG_DEBUG("Received packet from {}", remoteAddress);
             if (shouldForward(incoming)) {
                 std::lock_guard<std::mutex> lock(_inMutex);
                 auto clientId = findClientIdByAddress(remoteAddress);
@@ -166,14 +170,13 @@ void ServerNetworkManager::checkClientTimeouts()
 {
     uint64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
-    
-    for (uint32_t i = 0; i < _maxPlayers; ++i) {
+
+        for (uint32_t i = 0; i < _maxPlayers; ++i) {
         auto& slot = _clients[i];
         if (slot.active && slot.lastHeartbeatTime > 0) {
             uint64_t timeSinceLastHeartbeat = currentTime - slot.lastHeartbeatTime;
             if (timeSinceLastHeartbeat > TIMEOUT_MS) {
-                std::cout << "[ServerNetworkManager] Client " << i << " timeout (no heartbeat for " 
-                          << timeSinceLastHeartbeat << "ms)" << std::endl;
+                LOG_WARN("Client {} timeout (no heartbeat for {}ms)", i, timeSinceLastHeartbeat);
                 slot.active = false;
                 _addressToClientId.erase(slot.remoteAddress);
             }
@@ -184,86 +187,85 @@ void ServerNetworkManager::checkClientTimeouts()
 void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& packet, const std::string& remoteAddress, uint64_t currentMs)
 {
     const auto type = static_cast<protocol::PacketTypes>(packet.header.packet_type);
-    
+
     switch (type) {
         case protocol::PacketTypes::TYPE_CLIENT_CONNECT: {
-            std::cout << "[ServerNetworkManager] Client connection request received from " << remoteAddress << std::endl;
+            LOG_INFO("Client connection request received from {}", remoteAddress);
             handleClientConnect(remoteAddress, currentMs);
             break;
         }
-        
+
         case protocol::PacketTypes::TYPE_CLIENT_DISCONNECT: {
-            std::cout << "[ServerNetworkManager] Client disconnected from " << remoteAddress << std::endl;
+            LOG_INFO("Client disconnected from {}", remoteAddress);
             handleClientDisconnect(remoteAddress);
             break;
         }
-        
+
         case protocol::PacketTypes::TYPE_HEARTBEAT: {
             auto clientId = findClientIdByAddress(remoteAddress);
             if (clientId.has_value()) {
-                std::cout << "[ServerNetworkManager] Heartbeat received from client " << clientId.value() << std::endl;
+                LOG_DEBUG("Heartbeat received from client {}", clientId.value());
                 handleHeartbeat(remoteAddress, currentMs);
             }
             break;
         }
-        
+
         case protocol::PacketTypes::TYPE_PING: {
             auto clientId = findClientIdByAddress(remoteAddress);
             if (clientId.has_value()) {
-                std::cout << "[ServerNetworkManager] Ping received from client " << clientId.value() << std::endl;
+                LOG_DEBUG("Ping received from client {}", clientId.value());
                 handlePing(packet, remoteAddress);
             }
             break;
         }
-        
+
         case protocol::PacketTypes::TYPE_ACK:
         case protocol::PacketTypes::TYPE_PONG:
             // Acknowledgment received, no action needed
             break;
-        
-        case protocol::PacketTypes::TYPE_SERVER_ACCEPT:
+
+            case protocol::PacketTypes::TYPE_SERVER_ACCEPT:
         case protocol::PacketTypes::TYPE_SERVER_REJECT:
             // These should only be sent by server, not received
-            std::cerr << "[ServerNetworkManager] Unexpected packet type from client at " << remoteAddress << std::endl;
+            LOG_WARN("Unexpected packet type from client at {}", remoteAddress);
             break;
-        
-        default:
-            std::cerr << "[ServerNetworkManager] Unknown network packet type: " 
-                      << static_cast<int>(packet.header.packet_type) << std::endl;
+
+            default:
+            LOG_ERROR("Unknown network packet type: {}", static_cast<int>(packet.header.packet_type));
             break;
     }
 }
 
 void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress, uint64_t currentMs)
 {
-    std::cout << "[ServerNetworkManager] Client connecting from " << remoteAddress << std::endl;
-    
+    LOG_INFO("Client connecting from {}", remoteAddress);
+
     // Check if this client is already connected
     auto existingId = findClientIdByAddress(remoteAddress);
     if (existingId.has_value()) {
-        std::cout << "[ServerNetworkManager] Client reconnection from same address, updating..." << std::endl;
+        LOG_INFO("Client reconnection from same address, updating...");
         uint32_t clientId = existingId.value();
         _clients[clientId].lastHeartbeatTime = currentMs;
         return;
     }
-    
+
     // Find a free slot
     auto freeSlot = findFreeSlot();
     if (!freeSlot.has_value()) {
-        std::cerr << "[ServerNetworkManager] No free slots for new client" << std::endl;
+        LOG_WARN("No free slots for new client from {}", remoteAddress);
         return;
     }
-    
+
     uint32_t clientId = freeSlot.value();
     _clients[clientId].remoteAddress = remoteAddress;
     _clients[clientId].lastHeartbeatTime = currentMs;
     _clients[clientId].active = true;
-    
+
     // Track the mapping
     _addressToClientId[remoteAddress] = clientId;
-    
-    std::cout << "[ServerNetworkManager] Client " << clientId << " assigned from " << remoteAddress << std::endl;
-    
+
+    LOG_INFO("Client {} assigned from {}", clientId, remoteAddress);
+
     // Send server accept to client using PacketManager
     std::vector<uint8_t> args;
     args.push_back(0);  // flags_count
@@ -285,11 +287,11 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress,
     uint16_t tickrate = 60;
     args.push_back(tickrate & 0xFF);
     args.push_back((tickrate >> 8) & 0xFF);
-    
+
     auto packet = PacketManager::createServerAccept(args);
     if (packet) {
         queueOutgoing(packet.value(), clientId);
-        std::cout << "[ServerNetworkManager] Server accept sent to client " << clientId << std::endl;
+        LOG_INFO("Server accept sent to client {}", clientId);
     }
 }
 
@@ -298,7 +300,7 @@ void ServerNetworkManager::handleClientDisconnect(const std::string& remoteAddre
     auto clientId = findClientIdByAddress(remoteAddress);
     if (clientId.has_value()) {
         uint32_t id = clientId.value();
-        std::cout << "[ServerNetworkManager] Client " << id << " disconnected" << std::endl;
+        LOG_INFO("Client {} disconnected from {}", id, remoteAddress);
         if (id < _clients.size()) {
             _clients[id].active = false;
             _addressToClientId.erase(remoteAddress);
@@ -320,9 +322,9 @@ void ServerNetworkManager::handlePing(const common::protocol::Packet& packet, co
     if (!clientId.has_value()) {
         return;
     }
-    
-    std::cout << "[ServerNetworkManager] Ping from client " << clientId.value() << std::endl;
-    
+
+    LOG_DEBUG("Ping from client {}", clientId.value());
+
     // Send pong using PacketManager
     std::vector<uint8_t> args;
     args.push_back(0);  // flags_count
@@ -343,7 +345,7 @@ void ServerNetworkManager::handlePing(const common::protocol::Packet& packet, co
     args.push_back((ts >> 8) & 0xFF);
     args.push_back((ts >> 16) & 0xFF);
     args.push_back((ts >> 24) & 0xFF);
-    
+
     auto pong = PacketManager::createPong(args);
     if (pong) {
         queueOutgoing(pong.value(), clientId.value());

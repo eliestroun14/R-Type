@@ -4,6 +4,8 @@
 #include <csignal>
 #include <string>
 #include <map>
+#include <engine/utils/Logger.hpp>
+#include <common/error/Error.hpp>
 
 namespace server {
 
@@ -31,7 +33,7 @@ void Server::run() {
     _gameEngine = std::make_shared<gameEngine::GameEngine>();
     _networkManager->start();
 
-    std::cout << "server run" << std::endl;
+    LOG_INFO("Server running on port {}", _config.port);
 
     std::thread networkThread(&server::network::ServerNetworkManager::run, _networkManager.get());
     networkThread.detach(); // Detach the network thread to allow independent execution
@@ -103,7 +105,7 @@ void Server::gameLoop() {
     }
     
     if (g_shutdownRequested.load()) {
-        std::cout << "\n[Server] Shutdown requested, stopping gracefully..." << std::endl;
+        LOG_INFO("Shutdown requested, stopping gracefully...");
     }
 }
 
@@ -112,7 +114,7 @@ void Server::gameLoop() {
 // Signal handler
 static void signalHandler(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
-        std::cout << "\n[Server] Received shutdown signal..." << std::endl;
+        LOG_WARN("Received shutdown signal ({})", signal == SIGINT ? "SIGINT" : "SIGTERM");
         server::g_shutdownRequested.store(true);
         if (server::g_serverInstance) {
             server::g_serverInstance->stop();
@@ -141,42 +143,41 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
     
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        
+
         // Check for help flag
         if (arg == "-h" || arg == "--help") {
             printHelp(argv[0]);
             return false;
         }
-        
+
         // Parse key-value arguments
         if (arg == "-p" || arg == "--port") {
             if (i + 1 < argc) {
                 args["port"] = argv[++i];
             } else {
-                std::cerr << "[Error] " << arg << " requires a value\n";
-                return false;
+                throw Error(ErrorType::ConfigurationError, 
+                    std::string("Argument ") + arg + " requires a value");
             }
         }
         else if (arg == "-mp" || arg == "--maxplayer") {
             if (i + 1 < argc) {
                 args["maxplayer"] = argv[++i];
             } else {
-                std::cerr << "[Error] " << arg << " requires a value\n";
-                return false;
+                throw Error(ErrorType::ConfigurationError, 
+                    std::string("Argument ") + arg + " requires a value");
             }
         }
         else if (arg == "-tr" || arg == "--tickrate") {
             if (i + 1 < argc) {
                 args["tickrate"] = argv[++i];
             } else {
-                std::cerr << "[Error] " << arg << " requires a value\n";
-                return false;
+                throw Error(ErrorType::ConfigurationError, 
+                    std::string("Argument ") + arg + " requires a value");
             }
         }
         else {
-            std::cerr << "[Error] Unknown argument: " << arg << "\n";
-            printHelp(argv[0]);
-            return false;
+            throw Error(ErrorType::ConfigurationError, 
+                std::string("Unknown argument: ") + arg);
         }
     }
     
@@ -185,32 +186,35 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
         if (args.find("port") != args.end()) {
             int port = std::stoi(args["port"]);
             if (port < 1 || port > 65535) {
-                std::cerr << "[Error] Port must be between 1 and 65535\n";
-                return false;
+                throw Error(ErrorType::ConfigurationError, 
+                    "Port must be between 1 and 65535");
             }
             config.port = static_cast<uint16_t>(port);
         }
-        
+
         if (args.find("maxplayer") != args.end()) {
             int maxPlayers = std::stoi(args["maxplayer"]);
             if (maxPlayers < 1 || maxPlayers > 1000) {
-                std::cerr << "[Error] Max players must be between 1 and 1000\n";
-                return false;
+                throw Error(ErrorType::ConfigurationError, 
+                    "Max players must be between 1 and 1000");
             }
             config.maxPlayers = static_cast<uint32_t>(maxPlayers);
         }
-        
+
         if (args.find("tickrate") != args.end()) {
             int tickRate = std::stoi(args["tickrate"]);
             if (tickRate < 1 || tickRate > 1000) {
-                std::cerr << "[Error] Tick rate must be between 1 and 1000 Hz\n";
-                return false;
+                throw Error(ErrorType::ConfigurationError, 
+                    "Tick rate must be between 1 and 1000 Hz");
             }
             config.tickRate = static_cast<uint32_t>(tickRate);
         }
-    } catch (const std::exception& e) {
-        std::cerr << "[Error] Invalid argument value: " << e.what() << "\n";
-        return false;
+    } catch (const std::invalid_argument& e) {
+        throw Error(ErrorType::ConfigurationError, 
+            std::string("Invalid numeric argument value: ") + e.what());
+    } catch (const std::out_of_range& e) {
+        throw Error(ErrorType::ConfigurationError, 
+            std::string("Argument value out of range: ") + e.what());
     }
     
     return true;
@@ -218,38 +222,61 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
 
 int main(int argc, char const *argv[])
 {
+    // Initialize logger first
+    logger::Logger::setup(
+        logger::LogLevel::Info,
+        "server.log",
+        {},
+        false,
+        true,
+        false,
+        true
+    );
+    
     // Set up signal handlers
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
     
-    // Default configuration
-    server::ServerConfig config;
+    try {
+        // Default configuration
+        server::ServerConfig config;
 
-    // Parse command line arguments
-    if (!parseArguments(argc, argv, config)) {
-        return argc > 1 ? 84 : 0; // Return 0 if help was displayed, 84 if error
-    }
-    
-    // Display server configuration
-    std::cout << "[Server] Starting R-Type Server\n";
-    std::cout << "[Server] Port: " << config.port << "\n";
-    std::cout << "[Server] Max Players: " << config.maxPlayers << "\n";
-    std::cout << "[Server] Tick Rate: " << config.tickRate << " Hz\n";
-    std::cout << "[Server] Press Ctrl+C to stop\n" << std::endl;
+        // Parse command line arguments
+        if (!parseArguments(argc, argv, config)) {
+            return 0; // Return 0 for help display (not an error)
+        }
 
-    server::Server server(config);
-    server::g_serverInstance = &server;  // Set global instance for signal handler
-    
-    if (!server.init()) {
-        std::cerr << "[Server] Failed to initialize." << std::endl;
+        // Display server configuration
+        LOG_INFO("Starting R-Type Server");
+        LOG_INFO("Port: {}", config.port);
+        LOG_INFO("Max Players: {}", config.maxPlayers);
+        LOG_INFO("Tick Rate: {} Hz", config.tickRate);
+        LOG_INFO("Press Ctrl+C to stop");
+
+        server::Server server(config);
+        server::g_serverInstance = &server;  // Set global instance for signal handler
+
+        if (!server.init()) {
+            LOG_CRITICAL("Failed to initialize server");
+            server::g_serverInstance = nullptr;
+            return 84;
+        }
+
+        server.run();
+
+        server::g_serverInstance = nullptr;  // Clear global instance
+        LOG_INFO("Server stopped successfully");
+
+    } catch (const Error& e) {
+        LOG_ERROR("Server error: {}", e.what());
         server::g_serverInstance = nullptr;
-        return 1;
+        return 84;
+    } catch (const std::exception& e) {
+        LOG_CRITICAL("Unexpected error: {}", e.what());
+        server::g_serverInstance = nullptr;
+        return 84;
     }
 
-    server.run();
-    
-    server::g_serverInstance = nullptr;  // Clear global instance
-    std::cout << "[Server] Server stopped successfully." << std::endl;
-
+    logger::Logger::getInstance().shutdown();
     return 0;
 }
