@@ -23,32 +23,32 @@ void printHelp(const char* programName) {
     std::cout << "  " << programName << " [OPTIONS]\n\n";
     std::cout << "OPTIONS:\n";
     std::cout << "  -h, --help              Display this help message\n";
-    std::cout << "  -s, --server <ip>       Set server IP address (default: 127.0.0.1)\n";
+    std::cout << "  -h, --host <ip>         Set host IP address (default: 127.0.0.1)\n";
     std::cout << "  -p, --port <value>      Set server port (default: 4242)\n";
     std::cout << "  -n, --name <name>       Set player name (default: Player)\n\n";
     std::cout << "EXAMPLES:\n";
-    std::cout << "  " << programName << " -s 192.168.1.100 -p 8080 -n Player1\n";
-    std::cout << "  " << programName << " --server localhost --port 4242 --name John\n";
-    std::cout << "  " << programName << " -s 127.0.0.1 -n Alice\n\n";
+    std::cout << "  " << programName << " -h 192.168.1.100 -p 8080 -n Player1\n";
+    std::cout << "  " << programName << " --host localhost --port 4242 --name John\n";
+    std::cout << "  " << programName << " -h 127.0.0.1 -n Alice\n\n";
 }
 
 // Parse command line arguments
-static bool parseArguments(int argc, char const *argv[], ClientConfig& config) {
+static bool parseArguments(int argc, char** argv, ClientConfig& config) {
     std::map<std::string, std::string> args;
-    
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        
+
         // Check for help flag
         if (arg == "-h" || arg == "--help") {
             printHelp(argv[0]);
             return false;
         }
-        
+
         // Parse key-value arguments
-        if (arg == "-s" || arg == "--server") {
+        if (arg == "-h" || arg == "--host") {
             if (i + 1 < argc) {
-                args["server"] = argv[++i];
+                args["host"] = argv[++i];
             } else {
                 throw Error(ErrorType::ConfigurationError, 
                     std::string("Argument ") + arg + " requires a value");
@@ -78,14 +78,14 @@ static bool parseArguments(int argc, char const *argv[], ClientConfig& config) {
     
     // Apply parsed values
     try {
-        if (args.find("server") != args.end()) {
-            config.serverIp = args["server"];
+        if (args.find("host") != args.end()) {
+            config.serverIp = args["host"];
             if (config.serverIp.empty()) {
                 throw Error(ErrorType::ConfigurationError, 
-                    "Server IP cannot be empty");
+                    "Host IP cannot be empty");
             }
         }
-        
+
         if (args.find("port") != args.end()) {
             int port = std::stoi(args["port"]);
             if (port < 1 || port > 65535) {
@@ -94,7 +94,7 @@ static bool parseArguments(int argc, char const *argv[], ClientConfig& config) {
             }
             config.port = static_cast<uint16_t>(port);
         }
-        
+
         if (args.find("name") != args.end()) {
             config.playerName = args["name"];
             if (config.playerName.empty()) {
@@ -109,7 +109,7 @@ static bool parseArguments(int argc, char const *argv[], ClientConfig& config) {
         throw Error(ErrorType::ConfigurationError, 
             std::string("Argument value out of range: ") + e.what());
     }
-    
+
     return true;
 }
 
@@ -132,7 +132,7 @@ int main(int argc, char** argv)
 
         // Parse command line arguments
         if (!parseArguments(argc, argv, config)) {
-            return argc > 1 ? 84 : 0; // Return 0 if help was displayed, 84 if error
+            return 0; // Return 0 for help display (not an error)
         }
 
         // Display client configuration

@@ -97,13 +97,13 @@ void ClientNetworkManager::run()
             LOG_DEBUG("Phase 1: Received packet type: {}", static_cast<int>(incoming.header.packet_type));
             handleNetworkPacket(incoming);
         }
-        
+    
         std::lock_guard<std::mutex> lock(_outMutex);
         while (!_outgoing.empty()) {
             _socket->send(_outgoing.front());
             _outgoing.pop_front();
         }
-        
+    
         std::this_thread::sleep_for(1ms);
     }
 
@@ -279,7 +279,7 @@ void ClientNetworkManager::sendHeartbeat()
 
     common::protocol::Packet heartbeat(header, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&payload), reinterpret_cast<uint8_t*>(&payload) + sizeof(payload)));
     queueOutgoing(heartbeat);
-    std::cout << "[ClientNetworkManager] Heartbeat sent" << std::endl;
+    LOG_INFO("[ClientNetworkManager] Heartbeat sent");
 }
 
 void ClientNetworkManager::sendDisconnect(uint8_t reason)
@@ -297,7 +297,7 @@ void ClientNetworkManager::sendDisconnect(uint8_t reason)
 
     common::protocol::Packet disconnect(header, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&payload), reinterpret_cast<uint8_t*>(&payload) + sizeof(payload)));
     queueOutgoing(disconnect);
-    std::cout << "[ClientNetworkManager] Disconnect packet sent" << std::endl;
+    LOG_INFO("[ClientNetworkManager] Disconnect packet sent");
 }
 
 void ClientNetworkManager::sendAck(uint32_t acked_sequence, uint32_t received_timestamp)
@@ -316,7 +316,7 @@ void ClientNetworkManager::sendAck(uint32_t acked_sequence, uint32_t received_ti
 
     common::protocol::Packet ack(header, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&payload), reinterpret_cast<uint8_t*>(&payload) + sizeof(payload)));
     queueOutgoing(ack);
-    std::cout << "[ClientNetworkManager] ACK packet sent" << std::endl;
+    LOG_INFO("[ClientNetworkManager] ACK packet sent");
 }
 
 void ClientNetworkManager::sendPing()
@@ -334,13 +334,13 @@ void ClientNetworkManager::sendPing()
 
     common::protocol::Packet ping(header, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&payload), reinterpret_cast<uint8_t*>(&payload) + sizeof(payload)));
     queueOutgoing(ping);
-    std::cout << "[ClientNetworkManager] Ping packet sent" << std::endl;
+    LOG_INFO("[ClientNetworkManager] Ping packet sent");
 }
 
 void ClientNetworkManager::handlePing(const common::protocol::Packet& packet)
 {
-    std::cout << "[ClientNetworkManager] Ping received from server, sending pong" << std::endl;
-    
+    LOG_INFO("[ClientNetworkManager] Ping received from server, sending pong");
+
     // Send pong response with same sequence number and timestamp
     common::protocol::PacketHeader header;
     header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PONG);
@@ -354,7 +354,7 @@ void ClientNetworkManager::handlePing(const common::protocol::Packet& packet)
 
     common::protocol::Packet pong(header, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&payload), reinterpret_cast<uint8_t*>(&payload) + sizeof(payload)));
     queueOutgoing(pong);
-    std::cout << "[ClientNetworkManager] Pong packet sent" << std::endl;
+    LOG_INFO("[ClientNetworkManager] Pong packet sent");
 }
 
 } // namespace network

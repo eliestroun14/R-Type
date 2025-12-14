@@ -143,13 +143,13 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
     
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        
+
         // Check for help flag
         if (arg == "-h" || arg == "--help") {
             printHelp(argv[0]);
             return false;
         }
-        
+
         // Parse key-value arguments
         if (arg == "-p" || arg == "--port") {
             if (i + 1 < argc) {
@@ -191,7 +191,7 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
             }
             config.port = static_cast<uint16_t>(port);
         }
-        
+
         if (args.find("maxplayer") != args.end()) {
             int maxPlayers = std::stoi(args["maxplayer"]);
             if (maxPlayers < 1 || maxPlayers > 1000) {
@@ -200,7 +200,7 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
             }
             config.maxPlayers = static_cast<uint32_t>(maxPlayers);
         }
-        
+
         if (args.find("tickrate") != args.end()) {
             int tickRate = std::stoi(args["tickrate"]);
             if (tickRate < 1 || tickRate > 1000) {
@@ -243,9 +243,9 @@ int main(int argc, char const *argv[])
 
         // Parse command line arguments
         if (!parseArguments(argc, argv, config)) {
-            return argc > 1 ? 84 : 0; // Return 0 if help was displayed, 84 if error
+            return 0; // Return 0 for help display (not an error)
         }
-        
+
         // Display server configuration
         LOG_INFO("Starting R-Type Server");
         LOG_INFO("Port: {}", config.port);
@@ -255,7 +255,7 @@ int main(int argc, char const *argv[])
 
         server::Server server(config);
         server::g_serverInstance = &server;  // Set global instance for signal handler
-        
+
         if (!server.init()) {
             LOG_CRITICAL("Failed to initialize server");
             server::g_serverInstance = nullptr;
@@ -263,7 +263,7 @@ int main(int argc, char const *argv[])
         }
 
         server.run();
-        
+
         server::g_serverInstance = nullptr;  // Clear global instance
         LOG_INFO("Server stopped successfully");
 
