@@ -375,7 +375,6 @@ class Coordinator {
                 switch (packetType) {
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN):
                         if (PacketManager::assertEntitySpawn(packet)) {
-                            std::cout << "je create entity" << std::endl;
                             this->handlePacketCreateEntity(packet);
                         }
                         break;
@@ -531,68 +530,56 @@ class Coordinator {
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet)
         {
-            if (packet.data.size() != 16) {
-                LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: invalid packet size");
+            // Payload structure is 16 bytes
+            if (packet.data.size() != sizeof(protocol::EntitySpawnPayload)) {
+                LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: invalid packet size %zu, expected %zu", packet.data.size(), sizeof(protocol::EntitySpawnPayload));
                 return;
             }
 
-            uint32_t entity_id;
-            uint8_t entity_type;
-            uint16_t position_x;
-            uint16_t position_y;
-            uint8_t mob_variant;
-            uint8_t initial_health;
-            int16_t initial_velocity_x;
-            int16_t initial_velocity_y;
-            uint8_t is_playable;
+            // Parse the ENTITY_SPAWN payload in one memcpy
+            protocol::EntitySpawnPayload payload;
+            std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-            std::memcpy(&entity_id, packet.data.data() + 0, sizeof(uint32_t));
-            std::memcpy(&entity_type, packet.data.data() + 4, sizeof(uint8_t));
-            std::memcpy(&position_x, packet.data.data() + 5, sizeof(uint16_t));
-            std::memcpy(&position_y, packet.data.data() + 7, sizeof(uint16_t));
-            std::memcpy(&mob_variant, packet.data.data() + 9, sizeof(uint8_t));
-            std::memcpy(&initial_health, packet.data.data() + 10, sizeof(uint8_t));
-            std::memcpy(&initial_velocity_x, packet.data.data() + 11, sizeof(int16_t));
-            std::memcpy(&initial_velocity_y, packet.data.data() + 13, sizeof(int16_t));
-            std::memcpy(&is_playable, packet.data.data() + 15, sizeof(uint8_t));
+            LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u", 
+                payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health);
 
-            Entity newEntity = this->createEntity("Entity_" + std::to_string(entity_id));
+            // Create the entity
+            Entity newEntity = this->createEntity("Entity_" + std::to_string(payload.entity_id));
 
-            switch (entity_type) {
+            // Add type-specific components
+            switch (payload.entity_type) {
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER): {
-                    // Create player entity
+                    addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.5f));
+                    addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
+                    addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
                     addComponent<Sprite>(newEntity, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 33, 15)));
-                    addComponent<Transform>(newEntity, Transform(static_cast<float>(position_x), static_cast<float>(position_y), 0.f, 2.5f));
-                    addComponent<Health>(newEntity, Health(initial_health, initial_health));
-                    addComponent<Velocity>(newEntity, Velocity(static_cast<float>(initial_velocity_x), static_cast<float>(initial_velocity_y)));
                     addComponent<Animation>(newEntity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
                     addComponent<HitBox>(newEntity, HitBox());
                     addComponent<Weapon>(newEntity, Weapon(200, 0, 10, ProjectileType::MISSILE));
-                    addComponent<InputComponent>(newEntity, InputComponent(entity_id));
+                    addComponent<InputComponent>(newEntity, InputComponent(payload.entity_id));
 
                     // If this is the playable player, set it as local player
-                    if (is_playable) {
+                    if (payload.is_playable) {
                         addComponent<Playable>(newEntity, Playable());
-                        this->setLocalPlayerEntity(newEntity, entity_id);
+                        this->setLocalPlayerEntity(newEntity, payload.entity_id);
+                        LOG_INFO_CAT("Coordinator", "Local player created with ID %u", payload.entity_id);
                     }
                     break;
                 }
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY): {
-                    // Initialize enemy-specific components
+                    addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.0f));
+                    addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
+                    addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
                     addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
-                    addComponent<Transform>(newEntity, Transform(static_cast<float>(position_x), static_cast<float>(position_y), 0.f, 2.0f));
-                    addComponent<Health>(newEntity, Health(initial_health, initial_health));
                     addComponent<HitBox>(newEntity, HitBox());
-                    addComponent<Velocity>(newEntity, Velocity(static_cast<float>(initial_velocity_x), static_cast<float>(initial_velocity_y)));
                     addComponent<Weapon>(newEntity, Weapon(300, 0, 8, ProjectileType::MISSILE));
+                    LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
                     break;
                 }
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
                     // TODO: Initialize boss-specific components
                     break;
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER):
-                    // TODO: Initialize projectile-specific components
-                    break;
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY):
                     // TODO: Initialize projectile-specific components
                     break;
@@ -606,7 +593,7 @@ class Coordinator {
                     // TODO: Initialize background element-specific components
                     break;
                 default:
-                    LOG_WARN_CAT("Coordinator", "handlePacketCreateEntity: unknown entity type %u", entity_type);
+                    LOG_WARN_CAT("Coordinator", "Unknown entity type %u", payload.entity_type);
                     break;
             }
         }
