@@ -8,6 +8,7 @@
 #include <engine/gameEngine/coordinator/ecs/system/systems/ShootSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/BackgroundSystem.hpp>
 #include <common/constants/render/Assets.hpp>
+#include "GameEngine.hpp"
 
 namespace gameEngine {
 
@@ -176,7 +177,16 @@ namespace gameEngine {
        *
        * This function represents a full iteration of the game loop.
        */
-    void GameEngine::process(float dt, NetworkType type) {
+    void GameEngine::process(float dt, NetworkType type, std::vector<common::protocol::Packet> &packetsToProcess, uint64_t elapsedMs) { // + packetsToProcess + elapsedMs
+
+        // handlePacket forwarded
+
+        if (type == NetworkType::NETWORK_TYPE_SERVER) {
+            handlePacket(NETWORK_TYPE_SERVER, packetsToProcess, elapsedMs);
+        }
+        else if (type == NetworkType::NETWORK_TYPE_CLIENT) {
+            handlePacket(NETWORK_TYPE_CLIENT, packetsToProcess, elapsedMs);
+        }
         this->processInput(type);
         if (type == NetworkType::NETWORK_TYPE_CLIENT || type == NetworkType::NETWORK_TYPE_STANDALONE) {
             this->_coordinator->beginFrame();
@@ -189,4 +199,16 @@ namespace gameEngine {
     {
         this->_coordinator->processInput();
     }
+
+    void GameEngine::handlePacket(NetworkType type, const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
+    {
+        if (type == NetworkType::NETWORK_TYPE_SERVER) {
+            // Handle server-specific packet processing
+            _coordinator->processServerPackets(packetsToProcess, elapsedMs);
+        } else if (type == NetworkType::NETWORK_TYPE_CLIENT) {
+            // Handle client-specific packet processing
+            _coordinator->processCLientPackets(packetsToProcess, elapsedMs);
+        }
+    }
+
 }

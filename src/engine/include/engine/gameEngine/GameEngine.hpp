@@ -12,6 +12,7 @@
 
 #include <engine/gameEngine/coordinator/Coordinator.hpp>
 #include <common/constants/defines.hpp>
+#include <common/protocol/Packet.hpp>
 
 /**
  * @brief High-level game loop orchestrator.
@@ -91,10 +92,11 @@ public:
      * @param dt Delta time.
      * @param type Network mode.
      */
-    void process(float dt, NetworkType type);
+    void process(float dt, NetworkType type, std::vector<common::protocol::Packet> &packetsToProcess, uint64_t elapsedMs);
 
     void processInput();
 
+    void handlePacket(NetworkType type, const std::vector<common::protocol::Packet> &packetsToProcess, uint64_t elapsedMs);
 };
 
 } // namespace gameEngine

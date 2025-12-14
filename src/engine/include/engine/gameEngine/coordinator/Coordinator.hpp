@@ -14,6 +14,10 @@
 #include <engine/gameEngine/coordinator/ecs/system/SystemManager.hpp>
 #include <engine/gameEngine/coordinator/ecs/entity/EntityManager.hpp>
 #include <engine/gameEngine/coordinator/render/RenderManager.hpp>
+#include <engine/gameEngine/coordinator/network/PacketManager.hpp>
+#include <common/protocol/Protocol.hpp>
+#include <cstring>
+
 class Coordinator {
     public:
 
@@ -258,6 +262,141 @@ class Coordinator {
         sf::Vector2i getMousePosition() const
         {
             return this->_renderManager->getMousePosition();
+        }
+
+        void processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
+        {
+            // TODO
+            for (const auto& packet : packetsToProcess) {
+
+                if (PacketManager::assertPlayerInput(packet)) {
+
+                    handlePlayerInputPacket(packet, elapsedMs);
+                }
+            }
+        }
+
+        void processCLientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
+        {
+            // TODO
+            for (const auto&packet : packetsToProcess) {
+
+                if (PacketManager::assertEntitySpawn(packet)) {
+                    this->handlePacketCreateEntity(packet);
+                }
+                if (PacketManager::assertEntityDestroy(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertEntitySpawn(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertEntityUpdate(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertTransformSnapshot(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertHealthSnapshot(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertWeaponSnapshot(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertComponentRemove(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertAnimationSnapshot(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertTransformSnapshotDelta(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertHealthSnapshotDelta(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+
+                //                  GAME_EVENTS (0x40-0x5F)
+                
+
+                if (PacketManager::assertPlayerHit(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertPlayerDeath(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertScoreUpdate(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertPowerupPickup(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertWeaponFire(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertVisualEffect(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertVisualEffect(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertAudioEffect(packet)) {
+                    //this->hanndleEntitySpawn(packet);
+                }
+                if (PacketManager::assertParticleSpawn(packet)) {
+                    //
+                }
+
+                //                  GAME_CONTROL (0x60-0x6F)
+
+                if (PacketManager::assertGameStart(packet)) {
+                    //
+                }
+                if (PacketManager::assertGameEnd(packet)) {
+                    //
+                }
+                if (PacketManager::assertLevelComplete(packet)) {
+                    //
+                }
+                if (PacketManager::assertLevelStart(packet)) {
+                    //
+                }
+                if (PacketManager::assertForceState(packet)) {
+                    //
+                }
+                if (PacketManager::assertAIState(packet)) {
+                    //
+                }
+
+
+
+
+            }
+        }
+
+        void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
+        {
+            // TODO
+            //this->_renderManager->_activeActions[GameAction::]
+        }
+
+        void handlePacketCreateEntity(const common::protocol::Packet& packet)
+        {
+            // TODO
+            // Extract entity data from the packet and create the entity
+            Entity newEntity = this->createEntity("ReceivedEntity");
+            // Further component initialization based on packet data would go here
+
+            protocol::EntitySpawn  entitySpawn;
+            std::memcpy(&entitySpawn, packet.data.data(), sizeof(protocol::EntitySpawn));
+
+            
+            //_coordinator->addComponent<Sprite>(staticEnemy, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
+            //_coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 2.0f));
+            //_coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
+            //_coordinator->addComponent<HitBox>(staticEnemy, HitBox());
+            //_coordinator->addComponent<Velocity>(staticEnemy, Velocity(0.f, 0.f));
+            //_coordinator->addComponent<Weapon>(staticEnemy, Weapon(300, 0, 8, ProjectileType::MISSILE));  // 300ms fire rate, 8 damage
+
         }
 
     private:

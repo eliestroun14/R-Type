@@ -131,11 +131,11 @@ void RTypeClient::gameLoop()
 
         // // Poll inputs every tick
         // this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
-        this->_gameEngine->processInput();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+        //this->_gameEngine->processInput();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
 
 
 
-        // Update game state every tick
+        // Update game state every tick + elapsedMs + packetsToProcess
         this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT);         // engine -> coordinator -> ecs (all systems update) elapsedMS
 
         // Build and send packets based on tick intervals
