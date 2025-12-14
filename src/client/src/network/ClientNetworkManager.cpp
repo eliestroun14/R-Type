@@ -8,6 +8,7 @@
 #include <client/network/ClientNetworkManager.hpp>
 #include <client/RTypeClient.hpp>
 #include <common/protocol/Protocol.hpp>
+#include <common/protocol/Payload.hpp>
 #include <common/constants/defines.hpp>
 #include <chrono>
 #include <iostream>
@@ -199,8 +200,16 @@ void ClientNetworkManager::handleConnectionAccepted(const common::protocol::Pack
 {
     LOG_INFO("Connection accepted by server");
     LOG_DEBUG("Packet data size: {}", packet.data.size());
-    protocol::ServerAccept payload;
+    
+    protocol::ServerAcceptPayload payload;
+
+    if (packet.data.size() < sizeof(payload)) {
+        LOG_ERROR("Invalid ServerAccept packet size: expected {}, got {}", sizeof(payload), packet.data.size());
+        return;
+    }
+
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
     LOG_INFO("Assigned player ID: {}", payload.assigned_player_id);
     _client->setSelfId(payload.assigned_player_id);
     _connected = true;
@@ -211,9 +220,17 @@ void ClientNetworkManager::handleConnectionAccepted(const common::protocol::Pack
 void ClientNetworkManager::handleConnectionRejected(const common::protocol::Packet& packet)
 {
     LOG_ERROR("Connection rejected by server");
-    protocol::ServerReject payload;
+    
+    protocol::ServerRejectPayload payload;
+    
+    if (packet.data.size() < sizeof(payload)) {
+        LOG_ERROR("Invalid ServerReject packet size: expected {}, got {}", sizeof(payload), packet.data.size());
+        return;
+    }
+    
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
-    LOG_ERROR("Reject reason: {}", payload.reason_message);
+    
+    LOG_ERROR("Reject code: {}, reason: {}", static_cast<int>(payload.reject_code), payload.reason_message);
     _client->setConnected(false);
     _client->stop();
 }
@@ -221,8 +238,16 @@ void ClientNetworkManager::handleConnectionRejected(const common::protocol::Pack
 void ClientNetworkManager::handleDisconnect(const common::protocol::Packet& packet)
 {
     LOG_WARN("Disconnected by server");
-    protocol::ClientDisconnect payload;
+    
+    protocol::ClientDisconnectPayload payload;
+    
+    if (packet.data.size() < sizeof(payload)) {
+        LOG_ERROR("Invalid ClientDisconnect packet size: expected {}, got {}", sizeof(payload), packet.data.size());
+        return;
+    }
+    
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
+    
     LOG_WARN("Disconnect reason: {}", static_cast<int>(payload.reason));
     _client->stop();
 }
@@ -230,16 +255,33 @@ void ClientNetworkManager::handleDisconnect(const common::protocol::Packet& pack
 void ClientNetworkManager::handleAck(const common::protocol::Packet& packet)
 {
     LOG_DEBUG("ACK received from server");
-    protocol::Acknowledgment payload;
+    
+    protocol::AcknowledgmentPayload payload;
+    
+    if (packet.data.size() < sizeof(payload)) {
+        LOG_ERROR("Invalid Acknowledgment packet size: expected {}, got {}", sizeof(payload), packet.data.size());
+        return;
+    }
+    
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
+    
     // TODO we will prob have a ACK queue to manage reliable packets
 }
 
 void ClientNetworkManager::handlePong(const common::protocol::Packet& packet)
 {
     LOG_DEBUG("Pong received from server");
-    protocol::Pong payload;
+    
+    protocol::PongPayload payload;
+    
+    if (packet.data.size() < sizeof(payload)) {
+        LOG_ERROR("Invalid Pong packet size: expected {}, got {}", sizeof(payload), packet.data.size());
+        return;
+    }
+    
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
+    
+    // TODO: Calculate RTT and update latency metrics
 }
 
 void ClientNetworkManager::sendConnectionRequest()
