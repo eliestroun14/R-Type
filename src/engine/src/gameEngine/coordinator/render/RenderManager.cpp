@@ -9,6 +9,7 @@
 #include <common/error/Error.hpp>
 #include <common/error/ErrorMessages.hpp>
 #include <common/constants/render/Assets.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/systems/RenderSystem.hpp>
 
 RenderManager::RenderManager()
 {
@@ -24,10 +25,8 @@ RenderManager::RenderManager()
     this->_keyBindings[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
     // this->_keyBindings[sf::Keyboard::D] = GameAction::MOVE_RIGHT; // to support ZQSD
 
-    this->_keyBindings[sf::Keyboard::S] = GameAction::SHOOT;
-    this->_keyBindings[sf::Keyboard::D] = GameAction::SWITCH_WEAPON;
-    this->_keyBindings[sf::Keyboard::Space] = GameAction::USE_POWERUP;
-    this->_keyBindings[sf::Keyboard::F] = GameAction::SPECIAL;
+    // Primary shoot bindings
+    this->_keyBindings[sf::Keyboard::Space] = GameAction::SHOOT;
     // this->_keyBindings[sf::Keyboard::P] = GameAction::OPTIONS;
     this->_keyBindings[sf::Keyboard::Escape] = GameAction::EXIT;
 
@@ -99,12 +98,12 @@ void RenderManager::processInput()
 
     this->_mousePos = sf::Mouse::getPosition(this->_window);
 
+    // Preserve previous state before processing new events (edge detection)
+    this->_previousActions = this->_activeActions;
+
     while(this->_window.pollEvent(event)) {
         handleEvent(event);
     }
-
-    // Save current state as previous for edge detection
-    this->_previousActions = this->_activeActions;
 }
 
 bool RenderManager::isActionActive(GameAction action) const
@@ -173,4 +172,12 @@ std::shared_ptr<sf::Texture> RenderManager::getTexture(Assets id) const
 sf::RenderWindow &RenderManager::getWindow()
 {
     return this->_window;
+}
+
+float RenderManager::getScaleFactor() const
+{
+    sf::Vector2u windowSize = this->_window.getSize();
+    float scaleX = windowSize.x / REFERENCE_RESOLUTION.x;
+    float scaleY = windowSize.y / REFERENCE_RESOLUTION.y;
+    return std::min(scaleX, scaleY);
 }

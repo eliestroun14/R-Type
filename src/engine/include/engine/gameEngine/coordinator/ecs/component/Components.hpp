@@ -20,6 +20,7 @@
 #include <common/constants/render/Assets.hpp>
 #include <SFML/Graphics.hpp>
 #include <utility>
+#include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
 
 
 // ############################################################################
@@ -85,10 +86,6 @@ struct NetworkId {
  */
 struct HitBox
 {
-    float width, height;
-    bool isTrigger;
-    HitBox(float w, float h, bool triggered)
-        : width(w), height(h), isTrigger(triggered) {}
 };
 
 
@@ -99,16 +96,19 @@ struct HitBox
 /**
  * @brief Visual representation of an entity using an asset ID.
  *
- * Used by: RenderSystem.
+ * Used by: RenderSystem, CollisionSystem
  */
 struct Sprite
 {
     Assets assetId;
     int zIndex; // 0 = Background, 1 = Game, 2 = UI/HUD
     sf::Rect<int> rect;
+    sf::FloatRect globalBounds; // for collisions
+
     Sprite(Assets id, int z, sf::Rect<int> r)
-        : assetId(id), zIndex(z), rect(r) {}
-    Sprite(Assets id, int z) : assetId(id), zIndex(z) {}
+        : assetId(id), zIndex(z), rect(r), globalBounds() {}
+
+    Sprite(Assets id, int z) : assetId(id), zIndex(z), rect(), globalBounds() {}
 };
 
 
@@ -145,6 +145,22 @@ struct Text
 {
     std::string data;
     Text(std::string text) : data(text) {}
+};
+
+/**
+ * @brief Contain for the game background.
+ *
+ * Used by: BackgroundSystem (UI).
+ */
+struct ScrollingBackground
+{
+    float scrollSpeed;
+    float currentOffset;
+    bool horizontal;
+    bool repeat;
+
+    ScrollingBackground(float speed, bool isHorizontal, bool shouldRepeat)
+        : scrollSpeed(speed), currentOffset(0.0f), horizontal(isHorizontal), repeat(shouldRepeat) {}
 };
 
 
@@ -248,6 +264,22 @@ struct Playable {};
  *
  */
 struct Enemy {};
+
+
+ * @brief Represents a projectile fired by an entity.
+ *
+ * Stores information about who shot it and what it can hit.
+ * Used by: ShootSystem, CollisionSystem.
+ */
+struct Projectile
+{
+    Entity shooterId;        ///< ID of the entity that fired this projectile
+    bool isFromPlayable;     ///< True if shot by a playable entity
+    int damage;              ///< Damage dealt on hit
+
+    Projectile(Entity shooter, bool fromPlayable, int dmg)
+        : shooterId(shooter), isFromPlayable(fromPlayable), damage(dmg) {}
+};
 
 
 // ############################################################################

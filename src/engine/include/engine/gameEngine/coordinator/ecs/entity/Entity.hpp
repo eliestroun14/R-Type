@@ -18,6 +18,11 @@ class Entity {
             return this->_id;
         }
 
+        static Entity fromId(std::size_t id)
+        {
+            return Entity(id);
+        }
+
     private:
         std::size_t _id;
 

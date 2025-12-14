@@ -8,8 +8,13 @@
 #ifndef DEFINES_HPP_
 #define DEFINES_HPP_
 
-#define TIMEOUT_MS 15000
-#define HEARTBEAT_INTERVAL 5000
+#define TIMESTAMP std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()
+
+#define PROTOCOL_MAGIC 0x5254  // 'RT' in ASCII
+
+#define TIMEOUT_MS 10000
+#define HEARTBEAT_INTERVAL 1000
+#define ACK_TIMEOUT_MS 1000
 #define TICK_RATE 16
 
 #define HEARTBEAT_TICK_INTERVAL 300

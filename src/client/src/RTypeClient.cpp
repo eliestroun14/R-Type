@@ -12,6 +12,11 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <common/protocol/Protocol.hpp>
+#include <common/constants/defines.hpp>
+#include <client/network/ClientNetworkManager.hpp>
+#include <engine/utils/Logger.hpp>
+#include <common/error/Error.hpp>
 
 
 
@@ -27,14 +32,13 @@ RTypeClient::~RTypeClient()
 
 void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerName)
 {
-    _networkManager = std::make_unique<client::network::ClientNetworkManager>(serverIp, port);
+    _networkManager = std::make_unique<client::network::ClientNetworkManager>(serverIp, port, this);
     this->_gameEngine = std::make_shared<gameEngine::GameEngine>();             // TODO
-
-    _packetsReceived.clear();
-    _packetsToSend.clear();
 
     _playerName = playerName;
     _isRunning = false;
+    tickCount = 0;
+    _isConnected = false;
     // Additional initialization code can be added here
 }
 
@@ -43,70 +47,84 @@ void RTypeClient::run()
     _isRunning = true;
     _networkManager->start();
 
-    std::cout << "client run" << std::endl;
+    LOG_INFO("Starting R-Type Client");
     
-    std::thread networkThread(&RTypeClient::networkLoop, this);
-    
-    this->_gameEngine->init();
-    this->_gameEngine->initRender();
-    
-    // Keep gameLoop in main thread for OpenGL context to work properly
-    this->gameLoop();
+    // Send initial connection request
+    _networkManager->sendConnectionRequest();
 
+    std::thread networkThread(&client::network::ClientNetworkManager::run, _networkManager.get());
+
+    LOG_INFO("Waiting for connection to server...");
+    
+    // Wait for connection to be established
+    while (!isConnected() && _isRunning) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    if (isConnected()) {
+        LOG_INFO("Connected to server! Starting game...");
+        this->_gameEngine->init();
+        this->_gameEngine->initRender();
+        
+        // Keep gameLoop in main thread for OpenGL context to work properly
+        this->gameLoop();
+    } else {
+        LOG_WARN("Failed to connect to server");
+    }
+    
     networkThread.join();
 }
 
 void RTypeClient::stop()
 {
+    LOG_INFO("Stopping R-Type Client...");
+    if (_networkManager) {
+        _networkManager->sendDisconnect(static_cast<uint8_t>(protocol::DisconnectReasons::REASON_NORMAL_DISCONNECT));
+    }
     _isRunning = false;
     if (_networkManager) {
         _networkManager->stop();
     }
+    LOG_INFO("Client stopped successfully");
 }
 
-void RTypeClient::networkLoop()
-{
-    while (_isRunning) {
-        auto packets = _networkManager->fetchIncoming();
-        for (const auto& entry : packets) {
-            _packetsReceived.push_back(entry.packet);
-        }
-
-        while (!_packetsToSend.empty()) {
-            _networkManager->queueOutgoing(_packetsToSend.front());
-            _packetsToSend.pop_front();
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-}
+//void RTypeClient::networkLoop()
+//{
+//    // Directly call the network manager's run method
+//    // This handles heartbeats, packet reception, packet sending, and network-level packet handling
+//    if (_networkManager) {
+//        _networkManager->run();
+//    }
+//}
 
 void RTypeClient::gameLoop()
 {
     auto next = std::chrono::steady_clock::now();
     const std::chrono::milliseconds tick(std::chrono::milliseconds(TICK_RATE));
 
-    uint64_t currentTick = 0;
-    uint64_t lastHeartbeatTick = 0;
-    uint64_t lastInputSendTick = 0;
+    auto startEpoch = std::chrono::steady_clock::now();
+    uint64_t lastInputSendTime = 0;
 
     while (_isRunning) {
 
         next += tick;
         std::this_thread::sleep_until(next);
+        tickCount++;
 
-        currentTick++;
+        // Calculate time since epoch in milliseconds
+        auto currentTime = std::chrono::steady_clock::now();
+        uint64_t elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startEpoch).count();
 
         // Calculate delta time in milliseconds
         float deltaTime = static_cast<float>(TICK_RATE);
 
         // Process received packets
         std::vector<common::protocol::Packet> packetsToProcess;
-        size_t packetCount = this->_packetsReceived.size();
-
-        for (size_t i = 0; i < packetCount; ++i) {
-            packetsToProcess.push_back(this->_packetsReceived.front());
-            this->_packetsReceived.pop_front();
+        
+        // Fetch packets from network manager
+        auto incomingPackets = _networkManager->fetchIncoming();
+        for (const auto& entry : incomingPackets) {
+            packetsToProcess.push_back(entry.packet);
         }
 
         // this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
@@ -118,39 +136,26 @@ void RTypeClient::gameLoop()
 
 
         // Update game state every tick
-        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_STANDALONE);         // engine -> coordinator -> ecs (all systems update)
+        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT);         // engine -> coordinator -> ecs (all systems update) elapsedMS
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and last heartbeat and time
+        //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
         //    outgoingPackets,
-        //    currentTick,
+        //    elapsedMs,
         //    NETWORK_TYPE_CLIENT,
-        //    lastHeartbeatTick,
-        //    lastInputSendTick
+        //    lastInputSendTime
         //);
 
+        // Send packets directly to network manager
         for (const auto& packet : outgoingPackets) {
-            this->_packetsToSend.push_back(packet);
+            _networkManager->queueOutgoing(packet);
         }
     }
 }
 
-int main(int argc, char** argv)
+uint32_t RTypeClient::calculateLatency(uint32_t ping_sent_time , uint32_t ping_received_time)
 {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <server_ip>" << "<port>" << "<player_name>" << std::endl;
-        return 1;
-    }
-
-    RTypeClient client;
-
-    // Initialize the client with server IP, port, and player name
-    client.init(argv[1], std::stoi(argv[2]), argv[3]);
-
-    // Start the client
-    client.run();
-
-    return 0;
+    return ping_received_time - ping_sent_time;
 }

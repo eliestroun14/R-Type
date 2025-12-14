@@ -33,6 +33,15 @@ void RenderSystem::onUpdate(float dt)
     sf::RenderWindow& window = this->_coordinator.getWindow();
     auto& transforms = this->_coordinator.getComponents<Transform>();
 
+    // this part is to render propely in function of the window size
+    sf::Vector2u windowSize = window.getSize();
+    float scaleX = windowSize.x / REFERENCE_RESOLUTION.x;
+    float scaleY = windowSize.y / REFERENCE_RESOLUTION.y;
+
+    float scale = std::min(scaleX, scaleY);
+
+    auto& backgrounds = this->_coordinator.getComponents<ScrollingBackground>();
+
     for (const auto& entity : this->_sortedEntities) {
         auto& trans = transforms[entity].value();
         auto& sprite = sprites[entity].value();
@@ -40,17 +49,47 @@ void RenderSystem::onUpdate(float dt)
         std::shared_ptr<sf::Texture> texture = this->_coordinator.getTexture(sprite.assetId);
 
         if (texture) {
-            sf::Sprite sfSprite;
-            sfSprite.setTexture(*texture);
 
-            sfSprite.setPosition(trans.x, trans.y);
-            sfSprite.setScale(trans.scale, trans.scale);
-            sfSprite.setRotation(trans.rotation);
+            bool isScrollingBg = backgrounds[entity].has_value();
 
-            if (sprite.rect.width > 0)
-                sfSprite.setTextureRect(sprite.rect);
+            if (isScrollingBg && backgrounds[entity]->repeat) {
 
-            window.draw(sfSprite);
+                texture->setRepeated(true);
+
+                sf::Sprite sfSprite;
+                sfSprite.setTexture(*texture);
+
+                sfSprite.setPosition(trans.x, trans.y);
+                sfSprite.setScale(trans.scale * scale, trans.scale * scale);
+                sfSprite.setRotation(trans.rotation);
+
+                // get how many times we need to draw the background to cover all the screen
+                int textureWidth = sprite.rect.width * trans.scale * scale;
+
+                sf::IntRect extendedRect(0,0,
+                    sprite.rect.width * 3, // *3 is to be sure we cover all the screen
+                    sprite.rect.height);
+
+                sfSprite.setTextureRect(extendedRect);
+
+                sprite.globalBounds = sfSprite.getGlobalBounds();
+                window.draw(sfSprite);
+
+            } else {
+                sf::Sprite sfSprite;
+                sfSprite.setTexture(*texture);
+
+                sfSprite.setPosition(trans.x, trans.y);
+                sfSprite.setScale(trans.scale * scale, trans.scale * scale);
+                sfSprite.setRotation(trans.rotation);
+
+                if (sprite.rect.width > 0)
+                    sfSprite.setTextureRect(sprite.rect);
+
+                sprite.globalBounds = sfSprite.getGlobalBounds();
+
+                window.draw(sfSprite);
+            }
         }
 
     }

@@ -2,20 +2,18 @@
 ** EPITECH PROJECT, 2025
 ** mirror_rtype
 ** File description:
-** RenderSystem
+** BackgroundSystem
 */
 
-#ifndef RENDERSYSTEM_HPP_
-#define RENDERSYSTEM_HPP_
+#ifndef BACKGROUNDSYSTEM_HPP_
+#define BACKGROUNDSYSTEM_HPP_
 
 #include <engine/gameEngine/coordinator/Coordinator.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 
-const sf::Vector2f REFERENCE_RESOLUTION(1920.f, 1080.f);
-
-class RenderSystem : public System {
+class BackgroundSystem : public System {
     public:
-        RenderSystem(Coordinator& coordinator) : _coordinator(coordinator) {}
+        BackgroundSystem(Coordinator& coordinator) : _coordinator(coordinator) {}
 
         void onCreate() override {}
 
@@ -23,7 +21,6 @@ class RenderSystem : public System {
 
     private:
         Coordinator& _coordinator;
-        std::vector<size_t> _sortedEntities;
 };
 
-#endif /* !RENDERSYSTEM_HPP_ */
+#endif /* !BACKGROUNDSYSTEM_HPP_ */

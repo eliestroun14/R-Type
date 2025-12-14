@@ -63,6 +63,7 @@ public:
      * @return Reference to the optional component at this index.
      */
     referenceType operator[](size_t idx) {
+        ensureSize(idx);
         return _data[idx];
     }
 
@@ -70,6 +71,10 @@ public:
      * @brief Const-qualified access to a component slot.
      */
     constReferenceType operator[](size_t idx) const {
+        if (idx >= _data.size()) {
+            static std::optional<Component> empty;
+            return empty;
+        }
         return _data[idx];
     }
 
