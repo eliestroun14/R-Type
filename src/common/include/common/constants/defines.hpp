@@ -343,4 +343,13 @@ enum NetworkType {
 #define PONG_PAYLOAD_SIZE                       (PONG_CLIENT_TIMESTAMP_SIZE + PONG_SERVER_TIMESTAMP_SIZE)  // 8 bytes
 #define PONG_MIN_ARGS_SIZE                      (1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PONG_PAYLOAD_SIZE)  // 15 bytes
 
+
+// ==============================================================
+//                          RENDER WINDOW
+// ==============================================================
+
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 450
+#define FRAMERATE_LIMIT 60
+
 #endif /* !DEFINES_HPP_ */
