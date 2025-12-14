@@ -10,7 +10,6 @@
 
 void PlayerSystem::onUpdate(float dt)
 {
-    auto& playables = this->_coordinator.getComponents<Playable>();
     auto& velocities = this->_coordinator.getComponents<Velocity>();
     auto& animations = this->_coordinator.getComponents<Animation>();
     auto& inputs = this->_coordinator.getComponents<InputComponent>();
@@ -18,7 +17,7 @@ void PlayerSystem::onUpdate(float dt)
     float scaleFactor = this->_coordinator.getScaleFactor();
 
     for (size_t e : this->_entities) {
-        if (!playables[e] || !velocities[e] || !inputs[e])
+        if (!velocities[e] || !inputs[e])
             continue;
 
         auto& vel = velocities[e].value();

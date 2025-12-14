@@ -447,20 +447,21 @@ bool PacketManager::assertEntitySpawn(const common::protocol::Packet &packet)
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // Payload: 15 bytes (EntityState)
-    if (data.size() != 15) {
-        LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: payload size != 15, got %zu", data.size());
+    // Payload: 16 bytes (EntityState + is_playable)
+    if (data.size() != 16) {
+        LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: payload size != 16, got %zu", data.size());
         return false;
     }
 
-    // Validate EntityState structure
+    // Validate EntityState structure (first 15 bytes)
     if (!validateEntityState(data, 0)) {
         return false;
     }
 
     // For spawning, health must be > 0 (cannot spawn dead entity)
+    // Health is at offset 10 (after entity_id, entity_type, position_x, position_y, mob_variant)
     uint8_t health;
-    std::memcpy(&health, data.data() + 13, sizeof(uint8_t));
+    std::memcpy(&health, data.data() + 10, sizeof(uint8_t));
     if (health == 0) {
         LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: cannot spawn entity with health == 0");
         return false;
@@ -2167,6 +2168,10 @@ std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const s
 
     // initial_velocity_y (2 bytes)
     std::memcpy(packet.data.data() + 13, args.data() + offset, ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE);
+    offset += ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE;
+
+    // is_playable (1 byte)
+    packet.data[15] = args[offset++];
 
     return packet;
 }

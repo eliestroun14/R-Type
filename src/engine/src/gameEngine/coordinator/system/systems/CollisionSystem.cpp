@@ -22,7 +22,7 @@ void CollisionSystem::onUpdate(float dt)
     auto& healths = this->_coordinator.getComponents<Health>();
     auto& hitboxes = this->_coordinator.getComponents<HitBox>();
     auto& projectiles = this->_coordinator.getComponents<Projectile>();
-    auto& playables = this->_coordinator.getComponents<Playable>();
+    auto& inputs = this->_coordinator.getComponents<InputComponent>();
 
     std::vector<size_t> entities;
     entities.reserve(this->_entities.size());
@@ -75,8 +75,8 @@ void CollisionSystem::onUpdate(float dt)
             }
 
             // Projectile-friendly-fire rules:
-            // - Player bullets must not damage playables (including self)
-            // - Enemy bullets should only damage playables
+            // - Player bullets must not damage players (including self)
+            // - Enemy bullets should only damage players
             bool e1Projectile = e1 < projectiles.size() && projectiles[e1].has_value();
             bool e2Projectile = e2 < projectiles.size() && projectiles[e2].has_value();
 
@@ -109,13 +109,13 @@ void CollisionSystem::onUpdate(float dt)
                 // Prevent hitting shooter
                 if (targetId == static_cast<size_t>(proj.shooterId))
                     return false;
-                bool targetPlayable = targetId < playables.size() && playables[targetId].has_value();
+                bool targetIsPlayer = targetId < inputs.size() && inputs[targetId].has_value();
                 if (proj.isFromPlayable) {
-                    // Player bullets do not hit playables
-                    return !targetPlayable;
+                    // Player bullets do not hit players
+                    return !targetIsPlayer;
                 }
-                // Enemy bullets only hit playables
-                return targetPlayable;
+                // Enemy bullets only hit players
+                return targetIsPlayer;
             };
 
             // Handle projectile collisions

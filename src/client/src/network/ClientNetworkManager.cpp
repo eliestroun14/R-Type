@@ -156,7 +156,6 @@ void ClientNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
 
     switch (type) {
         case protocol::PacketTypes::TYPE_SERVER_ACCEPT: {
-            LOG_INFO("Connection accepted by server");
             handleConnectionAccepted(packet);
             break;
         }

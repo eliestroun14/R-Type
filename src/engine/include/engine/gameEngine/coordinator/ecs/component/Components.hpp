@@ -258,7 +258,8 @@ struct Drawable {};
 /**
  * @brief Tag component. Marks the entity as the local player controlled character.
  *
- * Used by: InputSystem.
+ * Used to distinguish the local player from remote players.
+ * The local player is the one controlled by the keyboard/input on THIS client.
  */
 struct Playable {};
 

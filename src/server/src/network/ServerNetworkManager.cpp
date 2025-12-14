@@ -13,6 +13,7 @@
 #include <engine/gameEngine/coordinator/network/PacketManager.hpp>
 #include <sstream>
 #include <engine/utils/Logger.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
 #include <common/error/Error.hpp>
 
 using namespace std::chrono_literals;
@@ -268,7 +269,8 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress,
 
     // Send server accept to client using PacketManager
     std::vector<uint8_t> args;
-    args.push_back(0);  // flags_count
+    args.push_back(0x01);  // flags_count = 1
+    args.push_back(0x01);  // FLAG_RELIABLE
     // sequence_number (4 bytes, little-endian)
     args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
     // timestamp (4 bytes, little-endian)
@@ -292,6 +294,65 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress,
     if (packet) {
         queueOutgoing(packet.value(), clientId);
         LOG_INFO("Server accept sent to client {}", clientId);
+    }
+
+    // Create player entity and send ENTITY_SPAWN packet
+    if (_gameEngine) {
+        Coordinator* coordinator = _gameEngine->getCoordinator();
+        if (coordinator) {
+            Entity playerEntity = coordinator->createPlayerEntity(clientId, false);  // false = not playable (remote player)
+
+            // Get the entity ID (cast Entity to size_t)
+            uint32_t entityId = static_cast<uint32_t>(static_cast<size_t>(playerEntity));
+
+            // Create ENTITY_SPAWN packet
+            std::vector<uint8_t> spawnArgs;
+            spawnArgs.push_back(0x01);  // flags_count = 1
+            spawnArgs.push_back(0x01);  // FLAG_RELIABLE
+            // sequence_number (4 bytes)
+            spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0);
+            // timestamp (4 bytes)
+            spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0);
+            // entity_id (4 bytes, little-endian)
+            spawnArgs.push_back(entityId & 0xFF);
+            spawnArgs.push_back((entityId >> 8) & 0xFF);
+            spawnArgs.push_back((entityId >> 16) & 0xFF);
+            spawnArgs.push_back((entityId >> 24) & 0xFF);
+            // entity_type (1 byte) - PLAYER = 4
+            spawnArgs.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
+            // position_x (2 bytes, little-endian) - default position
+            uint16_t posX = 100;
+            spawnArgs.push_back(posX & 0xFF);
+            spawnArgs.push_back((posX >> 8) & 0xFF);
+            // position_y (2 bytes, little-endian)
+            uint16_t posY = 150;
+            spawnArgs.push_back(posY & 0xFF);
+            spawnArgs.push_back((posY >> 8) & 0xFF);
+            // mob_variant (1 byte)
+            spawnArgs.push_back(0);
+            // initial_health (1 byte)
+            spawnArgs.push_back(100);
+            // initial_velocity_x (2 bytes, little-endian)
+            uint16_t velX = 0;
+            spawnArgs.push_back(velX & 0xFF);
+            spawnArgs.push_back((velX >> 8) & 0xFF);
+            // initial_velocity_y (2 bytes, little-endian)
+            uint16_t velY = 0;
+            spawnArgs.push_back(velY & 0xFF);
+            spawnArgs.push_back((velY >> 8) & 0xFF);
+            // is_playable (1 byte) - 1 = this is the client's playable player
+            spawnArgs.push_back(1);
+
+            auto spawnPacket = PacketManager::createEntitySpawn(spawnArgs);
+            if (spawnPacket) {
+                queueOutgoing(spawnPacket.value(), clientId);
+                LOG_INFO("Player entity spawn packet sent to client {}", clientId);
+            } else {
+                LOG_ERROR_CAT("ServerNetworkManager", "Failed to create ENTITY_SPAWN packet for client {}", clientId);
+            }
+        }
+    } else {
+        LOG_WARN("GameEngine not available for player spawn");
     }
 }
 

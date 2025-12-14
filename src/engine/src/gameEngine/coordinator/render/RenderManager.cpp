@@ -156,9 +156,14 @@ void RenderManager::handleEvent(const sf::Event& event)
             // Update local _activeActions (for legacy code compatibility)
             this->_activeActions[action] = isPressed;
             
-            // Also update the local player's InputComponent if it exists
+            // Also update the local player's InputComponent if it exists and is Playable
             if (this->_coordinator && static_cast<std::size_t>(this->_localPlayerEntity) != 0) {
-                this->_coordinator->setPlayerInputAction(this->_localPlayerEntity, 0, action, isPressed);
+                auto& playables = this->_coordinator->getComponents<Playable>();
+                size_t entityId = static_cast<std::size_t>(this->_localPlayerEntity);
+                // Only apply input to the local playable player
+                if (entityId < playables.size() && playables[entityId].has_value()) {
+                    this->_coordinator->setPlayerInputAction(this->_localPlayerEntity, 0, action, isPressed);
+                }
             }
         }
     }

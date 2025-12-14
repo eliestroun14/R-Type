@@ -504,10 +504,11 @@ class PacketManager {
          *   - [flags_count+19]: initial_health (uint8_t)
          *   - [flags_count+20..flags_count+21]: initial_velocity_x (uint16_t, little-endian)
          *   - [flags_count+22..flags_count+23]: initial_velocity_y (uint16_t, little-endian)
+         *   - [flags_count+24]: is_playable (uint8_t, 0 = no Playable component, 1 = has Playable)
          *
-         * Total minimum size: 24 bytes (when flags_count = 0)
+         * Total minimum size: 25 bytes (when flags_count = 0)
          *
-         * @return The created ENTITY_SPAWN packet with 15 bytes payload
+         * @return The created ENTITY_SPAWN packet with 16 bytes payload
          */
         static std::optional<common::protocol::Packet> createEntitySpawn(const std::vector<uint8_t> &args);
 

@@ -280,7 +280,7 @@ private:
     std::unordered_map<std::type_index, std::any> _componentsArrays; /**< Storage for all component arrays */
     std::unordered_map<std::type_index, std::function<void(EntityManager&,Entity const&)>> _erasers; /**< Generic component removers */
 
-    size_t _nextId = 0;
+    size_t _nextId = 1;  // Start at 1, 0 is reserved for errors
     std::vector<std::size_t> _freeIds; /**< Recycled entity IDs */
     std::unordered_set<std::size_t> _aliveEntities; /**< Active entities */
     std::vector<Signature> _signatures; /**< Signatures per entity */

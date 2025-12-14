@@ -20,6 +20,11 @@
 #include <common/network/NetworkManager.hpp>
 #include <common/network/sockets/AsioSocket.hpp>
 
+// Forward declaration
+namespace gameEngine {
+    class GameEngine;
+}
+
 namespace server {
 namespace network {
 
@@ -38,6 +43,9 @@ public:
     std::vector<common::network::ReceivedPacket> fetchIncoming() override;
 
     void run();
+
+    // Set the game engine reference for entity creation
+    void setGameEngine(std::shared_ptr<gameEngine::GameEngine> engine) { _gameEngine = engine; }
 
 private:
     struct ClientSlot {
@@ -68,6 +76,8 @@ private:
 
     std::shared_ptr<common::network::AsioSocket> _acceptorSocket;  // Single socket listening on basePort
     std::atomic<bool> _running;
+
+    std::shared_ptr<gameEngine::GameEngine> _gameEngine;  // Reference to game engine for entity creation
 
     std::mutex _inMutex;
     std::mutex _outMutex;

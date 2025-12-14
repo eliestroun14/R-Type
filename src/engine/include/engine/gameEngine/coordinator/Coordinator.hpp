@@ -19,6 +19,8 @@
 #include <common/protocol/Protocol.hpp>
 #include <cstring>
 #include <common/constants/defines.hpp>
+#include <common/constants/render/Assets.hpp>
+#include <engine/utils/Logger.hpp>
 
 
 class Coordinator {
@@ -373,6 +375,7 @@ class Coordinator {
                 switch (packetType) {
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN):
                         if (PacketManager::assertEntitySpawn(packet)) {
+                            std::cout << "je create entity" << std::endl;
                             this->handlePacketCreateEntity(packet);
                         }
                         break;
@@ -528,45 +531,84 @@ class Coordinator {
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet)
         {
-            // TODO
-            // Extract entity data from the packet and create the entity
-            Entity newEntity = this->createEntity("ReceivedEntity");
-            // Further component initialization based on packet data would go here
-
-            protocol::EntitySpawn  entitySpawn;
-            std::memcpy(&entitySpawn, packet.data.data(), sizeof(protocol::EntitySpawn));
-
-            switch (entitySpawn.entity_type) {
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_PLAYER):
-                    // Initialize player-specific components
-                    
-                    break;
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_ENEMY):
-                    // Initialize enemy-specific components
-                    addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, 1, sf::IntRect(entitySpawn.position_x, entitySpawn.position_y, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
-                    addComponent<Transform>(newEntity, Transform(entitySpawn.position_x, entitySpawn.position_y, 0.f, 1.f));
-                    addComponent<Health>(newEntity, Health(entitySpawn.initial_health, entitySpawn.initial_health));
-                    addComponent<HitBox>(newEntity, HitBox());
-                    addComponent<Velocity>(newEntity, Velocity(entitySpawn.initial_velocity_x, entitySpawn.initial_velocity_y));
-                    addComponent<Weapon>(newEntity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));  // 300ms fire rate, 8 damage
-                    break;
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
-                    break;
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER):
-                    // Initialize projectile-specific components
-                    break;
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY):
-                    break;
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_POWERUP):
-                    break;
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_OBSTACLE):
-                    break;
-                case static_cast<int>(protocol::EntityTypes::ENTITY_TYPE_BG_ELEMENT):
-                default:
-                    // Handle unknown entity types
-                    break;
+            if (packet.data.size() != 16) {
+                LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: invalid packet size");
+                return;
             }
 
+            uint32_t entity_id;
+            uint8_t entity_type;
+            uint16_t position_x;
+            uint16_t position_y;
+            uint8_t mob_variant;
+            uint8_t initial_health;
+            int16_t initial_velocity_x;
+            int16_t initial_velocity_y;
+            uint8_t is_playable;
+
+            std::memcpy(&entity_id, packet.data.data() + 0, sizeof(uint32_t));
+            std::memcpy(&entity_type, packet.data.data() + 4, sizeof(uint8_t));
+            std::memcpy(&position_x, packet.data.data() + 5, sizeof(uint16_t));
+            std::memcpy(&position_y, packet.data.data() + 7, sizeof(uint16_t));
+            std::memcpy(&mob_variant, packet.data.data() + 9, sizeof(uint8_t));
+            std::memcpy(&initial_health, packet.data.data() + 10, sizeof(uint8_t));
+            std::memcpy(&initial_velocity_x, packet.data.data() + 11, sizeof(int16_t));
+            std::memcpy(&initial_velocity_y, packet.data.data() + 13, sizeof(int16_t));
+            std::memcpy(&is_playable, packet.data.data() + 15, sizeof(uint8_t));
+
+            Entity newEntity = this->createEntity("Entity_" + std::to_string(entity_id));
+
+            switch (entity_type) {
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER): {
+                    // Create player entity
+                    addComponent<Sprite>(newEntity, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 33, 15)));
+                    addComponent<Transform>(newEntity, Transform(static_cast<float>(position_x), static_cast<float>(position_y), 0.f, 2.5f));
+                    addComponent<Health>(newEntity, Health(initial_health, initial_health));
+                    addComponent<Velocity>(newEntity, Velocity(static_cast<float>(initial_velocity_x), static_cast<float>(initial_velocity_y)));
+                    addComponent<Animation>(newEntity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
+                    addComponent<HitBox>(newEntity, HitBox());
+                    addComponent<Weapon>(newEntity, Weapon(200, 0, 10, ProjectileType::MISSILE));
+                    addComponent<InputComponent>(newEntity, InputComponent(entity_id));
+
+                    // If this is the playable player, set it as local player
+                    if (is_playable) {
+                        addComponent<Playable>(newEntity, Playable());
+                        this->setLocalPlayerEntity(newEntity, entity_id);
+                    }
+                    break;
+                }
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY): {
+                    // Initialize enemy-specific components
+                    addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
+                    addComponent<Transform>(newEntity, Transform(static_cast<float>(position_x), static_cast<float>(position_y), 0.f, 2.0f));
+                    addComponent<Health>(newEntity, Health(initial_health, initial_health));
+                    addComponent<HitBox>(newEntity, HitBox());
+                    addComponent<Velocity>(newEntity, Velocity(static_cast<float>(initial_velocity_x), static_cast<float>(initial_velocity_y)));
+                    addComponent<Weapon>(newEntity, Weapon(300, 0, 8, ProjectileType::MISSILE));
+                    break;
+                }
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
+                    // TODO: Initialize boss-specific components
+                    break;
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER):
+                    // TODO: Initialize projectile-specific components
+                    break;
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY):
+                    // TODO: Initialize projectile-specific components
+                    break;
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_POWERUP):
+                    // TODO: Initialize powerup-specific components
+                    break;
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_OBSTACLE):
+                    // TODO: Initialize obstacle-specific components
+                    break;
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_BG_ELEMENT):
+                    // TODO: Initialize background element-specific components
+                    break;
+                default:
+                    LOG_WARN_CAT("Coordinator", "handlePacketCreateEntity: unknown entity type %u", entity_type);
+                    break;
+            }
         }
 
     private:
