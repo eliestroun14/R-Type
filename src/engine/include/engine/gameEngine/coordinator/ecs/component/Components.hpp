@@ -17,11 +17,14 @@
  */
 
 #include <iostream>
+#include <map>
 #include <common/constants/render/Assets.hpp>
 #include <SFML/Graphics.hpp>
 #include <utility>
 #include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
 
+// Forward declaration for GameAction enum
+enum class GameAction;
 
 // ############################################################################
 // ################################## CORE  ###################################
@@ -258,6 +261,21 @@ struct Drawable {};
  * Used by: InputSystem.
  */
 struct Playable {};
+
+/**
+ * @brief Stores input state for an entity (player).
+ *
+ * Each player entity has its own InputComponent to track active actions.
+ * This allows multiple players to have different inputs simultaneously.
+ * Used by: PlayerSystem, ShootSystem, InputSystem.
+ */
+struct InputComponent
+{
+    uint32_t playerId;                           ///< ID of the player this input belongs to
+    std::map<GameAction, bool> activeActions;    ///< Current active actions for this player
+
+    InputComponent(uint32_t id) : playerId(id), activeActions() {}
+};
 
 /**
  * @brief Represents a projectile fired by an entity.

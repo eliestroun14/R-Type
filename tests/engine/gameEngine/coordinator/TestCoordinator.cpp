@@ -8,12 +8,6 @@
 #include <gtest/gtest.h>
 #include <engine/gameEngine/coordinator/Coordinator.hpp>
 
-struct Transform {
-    float x, y, rotation;
-    Transform(float xx, float yy, float rot)
-        : x(xx), y(yy), rotation(rot) {}
-};
-
 class CoordinatorTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -38,7 +32,7 @@ TEST_F(CoordinatorTest, destroyEntity) {
 
 TEST_F(CoordinatorTest, AddAndAccessComponent) {
     Entity e = coordinator.createEntity("TestEntity");
-    coordinator.emplaceComponent<Transform>(e, 10.f, 20.f, 45.f);
+    coordinator.emplaceComponent<Transform>(e, 10.f, 20.f, 45.f, 1.f);
 
     auto& transform = coordinator.getComponentEntity<Transform>(e);
     ASSERT_TRUE(transform.has_value());
@@ -49,7 +43,7 @@ TEST_F(CoordinatorTest, AddAndAccessComponent) {
 
 TEST_F(CoordinatorTest, removeComponent) {
     Entity e = coordinator.createEntity("TestEntity");
-    coordinator.emplaceComponent<Transform>(e, 10.f, 20.f, 0.f);
+    coordinator.emplaceComponent<Transform>(e, 10.f, 20.f, 0.f, 1.f);
     coordinator.removeComponent<Transform>(e);
 
     auto& transform = coordinator.getComponentEntity<Transform>(e);
@@ -61,9 +55,9 @@ TEST_F(CoordinatorTest, IterateComponents) {
     Entity e2 = coordinator.createEntity("B");
     Entity e3 = coordinator.createEntity("C");
 
-    coordinator.emplaceComponent<Transform>(e1, 1.f, 2.f, 0.f);
-    coordinator.emplaceComponent<Transform>(e2, 3.f, 4.f, 0.f);
-    coordinator.emplaceComponent<Transform>(e3, 5.f, 6.f, 0.f);
+    coordinator.emplaceComponent<Transform>(e1, 1.f, 2.f, 0.f, 1.f);
+    coordinator.emplaceComponent<Transform>(e2, 3.f, 4.f, 0.f, 1.f);
+    coordinator.emplaceComponent<Transform>(e3, 5.f, 6.f, 0.f, 1.f);
 
     auto& transforms = coordinator.getComponents<Transform>();
 
