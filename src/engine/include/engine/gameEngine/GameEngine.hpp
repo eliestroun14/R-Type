@@ -97,6 +97,8 @@ public:
     void processInput();
 
     void handlePacket(NetworkType type, const std::vector<common::protocol::Packet> &packetsToProcess, uint64_t elapsedMs);
+
+    void buildPacketBasedOnStatus(NetworkType type, uint64_t elapsedMs, std::vector<common::protocol::Packet> &outgoingPackets);
 };
 
 } // namespace gameEngine

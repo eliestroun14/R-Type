@@ -493,6 +493,16 @@ class Coordinator {
             }
         }
 
+        void buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
+        {
+            // TODO
+        }
+
+        void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
+        {
+            // TODO
+        }
+
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
         {
             // Parse the player input packet

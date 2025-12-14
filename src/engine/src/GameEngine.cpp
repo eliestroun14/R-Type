@@ -8,6 +8,7 @@
 #include <engine/gameEngine/coordinator/ecs/system/systems/ShootSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/BackgroundSystem.hpp>
 #include <common/constants/render/Assets.hpp>
+#include "GameEngine.hpp"
 
 namespace gameEngine {
 
@@ -185,17 +186,15 @@ namespace gameEngine {
 
         // handlePacket forwarded
 
-        if (type == NetworkType::NETWORK_TYPE_SERVER) {
-            handlePacket(NETWORK_TYPE_SERVER, packetsToProcess, elapsedMs);
-        }
-        else if (type == NetworkType::NETWORK_TYPE_CLIENT) {
-            handlePacket(NETWORK_TYPE_CLIENT, packetsToProcess, elapsedMs);
-        }
+        handlePacket(type, packetsToProcess, elapsedMs);
         this->processInput(type);
         if (type == NetworkType::NETWORK_TYPE_CLIENT || type == NetworkType::NETWORK_TYPE_STANDALONE) {
             this->_coordinator->beginFrame();
         }
-        this->update(dt);
+
+        if (type == NetworkType::NETWORK_TYPE_SERVER)
+            this->update(dt);
+
         this->render(type);
     }
 
@@ -213,6 +212,16 @@ namespace gameEngine {
             // Handle client-specific packet processing
             _coordinator->processCLientPackets(packetsToProcess, elapsedMs);
         }
+    }
+
+    void GameEngine::buildPacketBasedOnStatus(NetworkType type, uint64_t elapsedMs, std::vector<common::protocol::Packet> &outgoingPackets)
+    {
+        // TODO
+        if (type == NetworkType::NETWORK_TYPE_SERVER) {
+            _coordinator->buildSeverPacketBasedOnStatus(outgoingPackets, elapsedMs);
+        }
+        else if (type == NetworkType::NETWORK_TYPE_CLIENT) {
+            _coordinator->buildClientPacketBasedOnStatus(outgoingPackets, elapsedMs);
     }
 
 }

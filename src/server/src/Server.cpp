@@ -92,12 +92,11 @@ void Server::gameLoop() {
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and last heartbeat and time
-        //    outgoingPackets,
-        //    currentTick,
-        //    lastHeartbeatTick,
-        //    NETWORK_TYPE_SERVER
-        //);
+        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
+            NetworkType::NETWORK_TYPE_CLIENT,
+            currentTick * TICK_RATE,
+            outgoingPackets
+        );
 
         for (const auto& packet : outgoingPackets) {
             _networkManager->queueOutgoing(packet);

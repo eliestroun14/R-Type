@@ -141,12 +141,12 @@ void RTypeClient::gameLoop()
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
-        //    outgoingPackets,
-        //    elapsedMs,
-        //    NETWORK_TYPE_CLIENT,
-        //    lastInputSendTime
-        //);
+        
+        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
+            NetworkType::NETWORK_TYPE_CLIENT,
+            elapsedMs,
+            outgoingPackets
+        );
 
         // Send packets directly to network manager
         for (const auto& packet : outgoingPackets) {
