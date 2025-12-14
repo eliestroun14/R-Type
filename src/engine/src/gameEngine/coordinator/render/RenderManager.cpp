@@ -9,6 +9,7 @@
 #include <common/error/Error.hpp>
 #include <common/error/ErrorMessages.hpp>
 #include <common/constants/render/Assets.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/systems/RenderSystem.hpp>
 
 RenderManager::RenderManager()
 {
@@ -173,4 +174,12 @@ std::shared_ptr<sf::Texture> RenderManager::getTexture(Assets id) const
 sf::RenderWindow &RenderManager::getWindow()
 {
     return this->_window;
+}
+
+float RenderManager::getScaleFactor() const
+{
+    sf::Vector2u windowSize = this->_window.getSize();
+    float scaleX = windowSize.x / REFERENCE_RESOLUTION.x;
+    float scaleY = windowSize.y / REFERENCE_RESOLUTION.y;
+    return std::min(scaleX, scaleY);
 }

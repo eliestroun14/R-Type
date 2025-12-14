@@ -14,24 +14,27 @@ void PlayerSystem::onUpdate(float dt)
     auto& velocities = this->_coordinator.getComponents<Velocity>();
     auto& animations = this->_coordinator.getComponents<Animation>();
 
+    float scaleFactor = this->_coordinator.getScaleFactor();
+
     for (size_t e : this->_entities) {
         if (!playables[e] || !velocities[e])
             continue;
 
         auto& vel = velocities[e].value();
 
+        float baseSpeed = 0.3f;
         float vx = 0.0f;
         float vy = 0.0f;
 
         // Check RenderManager actions for continuous movement
         if (this->_coordinator.isActionActive(GameAction::MOVE_LEFT))
-            vx = -0.1f;
+            vx = -baseSpeed * scaleFactor;
         if (this->_coordinator.isActionActive(GameAction::MOVE_RIGHT))
-            vx = 0.1f;
+            vx = baseSpeed * scaleFactor;
         if (this->_coordinator.isActionActive(GameAction::MOVE_UP))
-            vy = -0.1f;
+            vy = -baseSpeed * scaleFactor;
         if (this->_coordinator.isActionActive(GameAction::MOVE_DOWN))
-            vy = 0.1f;
+            vy = baseSpeed * scaleFactor;
 
         vel.vx = vx;
         vel.vy = vy;
