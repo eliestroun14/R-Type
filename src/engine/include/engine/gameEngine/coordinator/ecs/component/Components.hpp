@@ -265,7 +265,7 @@ struct Playable {};
  */
 struct Enemy {};
 
-
+/*
  * @brief Represents a projectile fired by an entity.
  *
  * Stores information about who shot it and what it can hit.
