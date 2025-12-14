@@ -368,6 +368,38 @@ bool PacketManager::assertPlayerInput(const common::protocol::Packet &packet)
     return true;
 }
 
+std::optional<ParsedPlayerInput> PacketManager::parsePlayerInput(const common::protocol::Packet &packet)
+{
+    // Validate packet first
+    if (!assertPlayerInput(packet)) {
+        return std::nullopt;
+    }
+
+    const auto &data = packet.data;
+    ParsedPlayerInput result;
+
+    // Extract player_id (offset 0-3)
+    std::memcpy(&result.playerId, data.data() + 0, sizeof(uint32_t));
+
+    // Extract input_state (offset 4-5)
+    uint16_t input_state;
+    std::memcpy(&input_state, data.data() + 4, sizeof(uint16_t));
+
+    // Map bitfield to GameAction map
+    result.actions[GameAction::MOVE_UP] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP)) != 0;
+    result.actions[GameAction::MOVE_DOWN] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_DOWN)) != 0;
+    result.actions[GameAction::MOVE_LEFT] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_LEFT)) != 0;
+    result.actions[GameAction::MOVE_RIGHT] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_RIGHT)) != 0;
+    result.actions[GameAction::SHOOT] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY)) != 0;
+
+    return result;
+}
+
 // ==============================================================
 //                  WORLD_STATE (0x20-0x3F)
 // ==============================================================

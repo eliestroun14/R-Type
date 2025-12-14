@@ -8,7 +8,6 @@
 #include <engine/gameEngine/coordinator/ecs/system/systems/ShootSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/BackgroundSystem.hpp>
 #include <common/constants/render/Assets.hpp>
-#include "GameEngine.hpp"
 
 namespace gameEngine {
 

@@ -442,8 +442,25 @@ class Coordinator {
 
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
         {
-            // TODO
-            //this->_renderManager->_activeActions[GameAction::]
+            // Parse the player input packet
+            auto parsed = PacketManager::parsePlayerInput(packet);
+            if (!parsed.has_value()) {
+                return;  // Invalid packet, ignore
+            }
+
+            // Find the entity for this player by iterating over all InputComponents
+            auto& inputComponents = this->_entityManager->getComponents<InputComponent>();
+            for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
+                auto& input = inputComponents[entityId];
+                if (input.has_value() && input->playerId == parsed->playerId) {
+                    Entity entity = Entity::fromId(entityId);
+                    // Update all input actions
+                    for (const auto& [action, isPressed] : parsed->actions) {
+                        this->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
+                    }
+                    break;
+                }
+            }
         }
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet)
