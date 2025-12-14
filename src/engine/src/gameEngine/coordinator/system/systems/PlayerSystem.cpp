@@ -22,7 +22,7 @@ void PlayerSystem::onUpdate(float dt)
 
         auto& vel = velocities[e].value();
 
-        float baseSpeed = 0.3f;
+        float baseSpeed = 0.6f;
         float vx = 0.0f;
         float vy = 0.0f;
 
