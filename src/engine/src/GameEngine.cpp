@@ -176,6 +176,9 @@ namespace gameEngine {
         // handlePacket forwarded
 
         handlePacket(type, packetsToProcess, elapsedMs);
+        if (_coordinator->_gameRunning == false) {
+            return;
+        }
         this->processInput(type);
         if (type == NetworkType::NETWORK_TYPE_CLIENT || type == NetworkType::NETWORK_TYPE_STANDALONE) {
             this->_coordinator->beginFrame();
