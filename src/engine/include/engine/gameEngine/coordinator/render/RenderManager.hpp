@@ -10,6 +10,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <common/constants/render/TextureStorage.hpp>
+#include <common/constants/defines.hpp>
 
 // can change on updates
 /**

@@ -1,6 +1,6 @@
 #include <engine/gameEngine/GameEngine.hpp>
 #include <engine/gameEngine/coordinator/ecs/component/Components.hpp>
-#include <engine/gameEngine/coordinator/ecs/system/MovementSystem.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/systems/MovementSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/RenderSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/PlayerSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/AnimationSystem.hpp>
