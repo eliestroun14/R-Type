@@ -15,6 +15,16 @@
 #include <array>
 #include <common/protocol/Protocol.hpp>
 #include <common/protocol/Packet.hpp>
+#include <engine/gameEngine/coordinator/render/RenderManager.hpp>
+
+/**
+ * @struct ParsedPlayerInput
+ * @brief Parsed player input from a network packet
+ */
+struct ParsedPlayerInput {
+    uint32_t playerId;
+    std::map<GameAction, bool> actions;
+};
 
 /**
  * @class PacketManager
@@ -109,6 +119,13 @@ class PacketManager {
          * @return true if packet data is valid, false otherwise
          */
         static bool assertPlayerInput(const common::protocol::Packet &packet);
+
+        /**
+         * @brief Parse a PLAYER_INPUT packet and extract actions
+         * @param packet The packet to parse
+         * @return Parsed player input with all actions mapped, or std::nullopt if invalid
+         */
+        static std::optional<ParsedPlayerInput> parsePlayerInput(const common::protocol::Packet &packet);
 
         // ==============================================================
         //                  WORLD_STATE (0x20-0x3F)
