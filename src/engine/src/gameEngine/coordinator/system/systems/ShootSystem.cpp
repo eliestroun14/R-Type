@@ -25,6 +25,7 @@ void ShootSystem::onUpdate(float dt)
     auto& weapons = this->_coordinator.getComponents<Weapon>();
     auto& playables = this->_coordinator.getComponents<Playable>();
     auto& transforms = this->_coordinator.getComponents<Transform>();
+    auto& inputs = this->_coordinator.getComponents<InputComponent>();
 
     // Process each entity with a weapon
     for (size_t e : this->_entities) {
@@ -39,13 +40,13 @@ void ShootSystem::onUpdate(float dt)
         bool shouldShoot = false;
 
         if (isPlayable) {
-            // Playable entity shoots when shoot action is held or just pressed
-            bool active = this->_coordinator.isActionActive(GameAction::SHOOT);
-            bool justPressed = this->_coordinator.isActionJustPressed(GameAction::SHOOT);
-            shouldShoot = active || justPressed;
-            if (shouldShoot) {
-                std::cout << "[ShootSystem] SHOOT detected (active=" << active
-                          << ", justPressed=" << justPressed << ")" << std::endl;
+            // Playable entity shoots when shoot action is held from InputComponent
+            if (inputs[e]) {
+                auto& input = inputs[e].value();
+                shouldShoot = input.activeActions[GameAction::SHOOT];
+                if (shouldShoot) {
+                    std::cout << "[ShootSystem] SHOOT detected for player " << input.playerId << std::endl;
+                }
             }
         } else {
             // Non-playable entities (enemies) decide to shoot based on AI

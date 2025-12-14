@@ -13,6 +13,7 @@
 
 #include <engine/gameEngine/coordinator/ecs/system/SystemManager.hpp>
 #include <engine/gameEngine/coordinator/ecs/entity/EntityManager.hpp>
+#include <engine/gameEngine/coordinator/ecs/component/Components.hpp>
 #include <engine/gameEngine/coordinator/render/RenderManager.hpp>
 class Coordinator {
     public:
@@ -152,13 +153,77 @@ class Coordinator {
         }
 
         // ==============================================================
+        //                              Input
+        // ==============================================================
+
+        /**
+         * @brief Sets the local player entity for input handling (Client-side only).
+         * * Should be called after the local player entity is created.
+         * * On the server, this does nothing (no RenderManager).
+         *
+         * @param localPlayerEntity The entity ID of the local player
+         * @param playerId The player ID
+         */
+        void setLocalPlayerEntity(Entity localPlayerEntity, uint32_t playerId = 0)
+        {
+            if (this->_renderManager) {
+                this->_renderManager->setLocalPlayer(*this, localPlayerEntity);
+            }
+        }
+
+        /**
+         * @brief Updates input for a specific player entity.
+         * * Used on the server to inject player inputs from network packets.
+         * * Used on the client to update the local player's input component.
+         *
+         * @param entity The player entity to update
+         * @param playerId The player ID
+         * @param action The game action to set
+         * @param isActive Whether the action is active (pressed) or not
+         */
+        void setPlayerInputAction(Entity entity, uint32_t playerId, GameAction action, bool isActive)
+        {
+            auto& inputComp = this->_entityManager->getComponent<InputComponent>(entity);
+            if (inputComp.has_value()) {
+                inputComp.value().activeActions[action] = isActive;
+            }
+        }
+
+        /**
+         * @brief Checks if a specific action is active for a player entity.
+         *
+         * @param entity The player entity
+         * @param action The game action to check
+         * @return true If the action is active for this player
+         */
+        bool isPlayerActionActive(Entity entity, GameAction action) const
+        {
+            const auto& inputComp = this->_entityManager->getComponent<InputComponent>(entity);
+            if (!inputComp.has_value()) return false;
+            auto it = inputComp.value().activeActions.find(action);
+            return it != inputComp.value().activeActions.end() && it->second;
+        }
+
+        /**
+         * @brief Retrieves the active actions map for a player entity.
+         *
+         * @param entity The player entity
+         * @return Reference to the active actions map for this player
+         */
+        std::map<GameAction, bool>& getPlayerActiveActions(Entity entity)
+        {
+            auto& inputComp = this->_entityManager->getComponent<InputComponent>(entity);
+            return inputComp.value().activeActions;  // Will throw if empty, that's intentional
+        }
+
+        // ==============================================================
         //                              Render
         // ==============================================================
 
         /**
-         * @brief Polls all pending input events from the window.
+         * @brief Polls all pending input events from the window and updates InputComponent.
          * * Retrieves events (keyboard, mouse, window close) from SFML
-         * and updates the internal state of GameActions via handleEvent().
+         * and updates the InputComponent of the local player entity.
          * Updates the mouse position.
          */
         void processInput()

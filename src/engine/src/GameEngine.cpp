@@ -90,6 +90,7 @@ namespace gameEngine {
         _coordinator->registerComponent<Velocity>();
         _coordinator->registerComponent<Sprite>();
         _coordinator->registerComponent<Playable>();
+        _coordinator->registerComponent<InputComponent>();
         _coordinator->registerComponent<Animation>();
         _coordinator->registerComponent<HitBox>();
         _coordinator->registerComponent<Weapon>();
@@ -110,7 +111,7 @@ namespace gameEngine {
         _coordinator->setSystemSignature<RenderSystem, Sprite, Transform>();
 
         _coordinator->registerSystem<PlayerSystem>(*_coordinator);
-        _coordinator->setSystemSignature<PlayerSystem, Playable, Velocity>();
+        _coordinator->setSystemSignature<PlayerSystem, Playable, Velocity, InputComponent>();
 
         _coordinator->registerSystem<AnimationSystem>(*_coordinator);
         _coordinator->setSystemSignature<AnimationSystem, Animation, Sprite>();
@@ -119,7 +120,7 @@ namespace gameEngine {
         _coordinator->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
 
         _coordinator->registerSystem<ShootSystem>(*_coordinator);
-        _coordinator->setSystemSignature<ShootSystem, Weapon, Transform>();
+        _coordinator->setSystemSignature<ShootSystem, Weapon, Transform, InputComponent>();
 
         _coordinator->registerSystem<BackgroundSystem>(*_coordinator);
         _coordinator->setSystemSignature<BackgroundSystem, Transform, Sprite, ScrollingBackground>();
@@ -137,6 +138,10 @@ namespace gameEngine {
         _coordinator->addComponent<Animation>(player, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
         _coordinator->addComponent<HitBox>(player, HitBox());
         _coordinator->addComponent<Weapon>(player, Weapon(200, 0, 10, ProjectileType::MISSILE));  // 200ms fire rate, 10 damage
+        _coordinator->addComponent<InputComponent>(player, InputComponent(0));  // Local player has ID 0
+
+        // Tell RenderManager (if it exists) this is the local player for input handling
+        this->_coordinator->setLocalPlayerEntity(player, 0);
     }
 
     void GameEngine::createBackground()
