@@ -146,6 +146,22 @@ struct Text
     Text(std::string text) : data(text) {}
 };
 
+/**
+ * @brief Contain for the game background.
+ *
+ * Used by: BackgroundSystem (UI).
+ */
+struct ScrollingBackground
+{
+    float scrollSpeed;
+    float currentOffset;
+    bool horizontal;
+    bool repeat;
+
+    ScrollingBackground(float speed, bool isHorizontal, bool shouldRepeat)
+        : scrollSpeed(speed), currentOffset(0.0f), horizontal(isHorizontal), repeat(shouldRepeat) {}
+};
+
 
 // ############################################################################
 // ################################# LOGIC  ###################################
