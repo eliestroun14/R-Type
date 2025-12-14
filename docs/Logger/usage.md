@@ -217,7 +217,7 @@ public:
 ### Network Communication
 
 ```cpp
-class NetworkManager {
+class PacketManager {
 public:
     void send_packet(const std::string& data, const std::string& dest) {
         LOG_TRACE_CAT("verbose_network", "Sending {} bytes to {}",

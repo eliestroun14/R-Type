@@ -95,6 +95,7 @@ int main() {
 
 ## Documentation Structure
 
+- **[Design Rationale](design-rationale.md)** - Why spdlog was chosen over other logging libraries
 - **[Getting Started](getting-started.md)** - Quick setup guide and basic examples
 - **[Configuration](configuration.md)** - Detailed settings and customization options
 - **[Usage](usage.md)** - Comprehensive usage examples and best practices

@@ -7,7 +7,7 @@ if(NOT CPM_SOURCE_CACHE)
 endif()
 
 # Define the download location and version
-set(CPM_DOWNLOAD_VERSION 0.38.6)
+set(CPM_DOWNLOAD_VERSION 0.42.0)
 set(CPM_DOWNLOAD_LOCATION "https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake")
 
 # Create cache directory if it doesn't exist

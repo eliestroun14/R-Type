@@ -1,32 +1,44 @@
-# Find Google Test
-find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
-
 # Include your source directories
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/gameEngine)
-include_directories(${CMAKE_SOURCE_DIR}/src/gameEngine/ECS)
 
 # Create test executable for ECS
 add_executable(ecs_tests
-    test_entity.cpp
-    test_component_manager.cpp
-    test_entity_manager.cpp
-    test_game_engine.cpp
-    test_debug.cpp
-    test_system_manager.cpp
-    LoggerTest.cpp
 
-    ${CMAKE_SOURCE_DIR}/src/gameEngine/ECS/System/System.cpp
+   engine/gameEngine/coordinator/ecs/entity/TestEntity.cpp
+   engine/gameEngine/coordinator/ecs/entity/TestEntityManager.cpp
+   engine/gameEngine/coordinator/ecs/component/TestComponentManager.cpp
+   engine/gameEngine/coordinator/ecs/system/TestSystemManager.cpp
+    engine/gameEngine/coordinator/ecs/system/TestSystem.cpp
+
+   engine/gameEngine/coordinator/render/TestRenderManager.cpp
+
+   engine/gameEngine/coordinator/TestCoordinator.cpp
+
+   engine/LoggerTest.cpp
+   engine/coordinator/network/TestPacketManagerAssert.cpp
+   engine/coordinator/network/TestProcessPacket.cpp
+   engine/coordinator/network/TestNetworkManagerCreate.cpp
+   engine/coordinator/network/TestNetworkManagers.cpp
+   common/TestPacket.cpp
+
+   TestDebug.cpp
+    Error_messages_test.cpp
 )
 
 # Link Google Test and your libraries
 target_link_libraries(ecs_tests
-    GTest::GTest
-    GTest::Main
+    GTest::gtest
+    GTest::gtest_main
     pthread
-    logger
+    engine
+    common
+    client_lib
+    server_lib
     spdlog::spdlog
+
+    sfml-graphics
+    sfml-window
+    sfml-system
 )
 
 # Discover tests

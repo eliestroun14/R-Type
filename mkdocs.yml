@@ -28,10 +28,9 @@ theme:
   features:
     # Navigation
     - navigation.sections          # Sections dépliables
-    - navigation.expand            # Auto-expand sections
     - navigation.indexes           # Pages d'index pour sections
     - navigation.top               # Bouton "Back to top"
-    - toc.integrate
+    - navigation.prune             # Hide nav items not on current page
 
     # Recherche
     - search.suggest
@@ -52,6 +51,7 @@ theme:
 plugins:
   - search
   - include-markdown
+  - section-index
 
 markdown_extensions:
   # Code blocks
@@ -86,24 +86,47 @@ markdown_extensions:
 nav:
   - Home: index.md
 
-  - Documentation:
-    - Documentation/index.md
-    - Writing Guide: Documentation/writing-guide.md
-    - Game Engine:
-      - Game Engine: Documentation/GameEngine/game-engine.md
+  - Game Engine & Architecture:
+    - Overview: GameEngine&Architecture/index.md
+    - Game Engine: GameEngine&Architecture/GameEngine/index.md
+    - Coordinator:
+      - Overview: GameEngine&Architecture/GameEngine/Coordinator/index.md
       - ECS:
-        - What is an ECS: Documentation/ECS/ecs.md
-        - Entity: Documentation/ECS/entity.md
-        - Component Manager: Documentation/ECS/component-manager.md
-    - Tests:
-      - Why Google Test ?: Documentation/Test/justification.md
-      - How to add new tests: Documentation/Test/tutorial.md
-    - Logger:
-      - Logger/index.md
-      - Getting Started: Logger/getting-started.md
-      - Configuration: Logger/configuration.md
-      - Usage Guide: Logger/usage.md
-      - API Reference: Logger/api-reference.md
+        - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/index.md
+        - Entity: GameEngine&Architecture/GameEngine/Coordinator/ECS/entity.md
+        - Components: GameEngine&Architecture/GameEngine/Coordinator/ECS/components.md
+        - Component Manager: GameEngine&Architecture/GameEngine/Coordinator/ECS/component-manager.md
+        - System: GameEngine&Architecture/GameEngine/Coordinator/ECS/system.md
+        - Coordinator: GameEngine&Architecture/GameEngine/Coordinator/ECS/coordinator.md
+      - Render: 
 
-  - Contributing: contributing.md
-  - Expectations: Expectations/expectations.md
+  - Logger:
+    - Overview: Logger/index.md
+    - Getting Started: Logger/getting-started.md
+    - Configuration: Logger/configuration.md
+    - Usage Guide: Logger/usage.md
+    - API Reference: Logger/api-reference.md
+    - Design Rationale: Logger/design-rationale.md
+    
+  - Error_messages:
+      - Error_messages/index.md
+      - How to add error messages: Error_messages/how_to.md
+
+  - Tests:
+    - Overview: Test/justification.md
+    - How to add new tests: Test/tutorial.md
+
+  - Build System:
+    - Overview: Cmake/cpm-rationale.md
+
+  - Client:
+    - Overview: Client/index.md
+    - Graphical library: Client/graphical-lib.md
+
+  - Contributing:
+    - Overview: Contributing/index.md
+    - Documentation:
+      - Overview: Contributing/Documentation/index.md
+      - Writing Guide: Contributing/Documentation/writing-guide.md
+    - Contributing Guide: Contributing/contributing.md
+    - Expectations: Contributing/Expectations/expectations.md
