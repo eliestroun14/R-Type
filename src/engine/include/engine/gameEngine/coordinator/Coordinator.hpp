@@ -687,77 +687,25 @@ class Coordinator {
     void handleGameStart(const common::protocol::Packet& packet)
     {
         if (packet.data.size() != sizeof(protocol::GameStart)) {
-            LOG_ERROR_CAT("Coordinator",
-                "GameStart: invalid size %zu",
-                packet.data.size());
+            LOG_ERROR_CAT("Coordinator", "GameStart: invalid size %zu", packet.data.size());
             return;
         }
 
-        protocol::GameStart payload;
-        std::memcpy(&payload, packet.data.data(), sizeof(payload));
-
-        // Reset world state
-        this->clearWorld();          // détruit toutes les entités ECS
-        this->resetSystems();        // reset des systèmes (timer, interpolation, etc.)
-
-        // Init game context
-        _gameInstanceId = payload.game_instance_id;
-        _currentLevelId = payload.level_id;
-        _difficulty     = payload.difficulty;
-        _serverTickrate = payload.server_tickrate;
-
-        _playerIds.clear();
-        for (uint8_t i = 0; i < payload.player_count; ++i) {
-            _playerIds.push_back(payload.player_ids[i]);
-        }
-
         _gameRunning = true;
-
-        LOG_INFO_CAT("Coordinator",
-            "GameStart: instance=%u level=%u difficulty=%u players=%u",
-            _gameInstanceId,
-            _currentLevelId,
-            _difficulty,
-            payload.player_count);
     }
 
     void handleGameEnd(const common::protocol::Packet& packet)
     {
         if (packet.data.size() != sizeof(protocol::GameEnd)) {
-            LOG_ERROR_CAT("Coordinator",
-                "GameEnd: invalid size %zu",
-                packet.data.size());
+            LOG_ERROR_CAT("Coordinator", "GameEnd: invalid size %zu", packet.data.size());
             return;
         }
 
-        protocol::GameEnd payload;
-        std::memcpy(&payload, packet.data.data(), sizeof(payload));
-
         _gameRunning = false;
-
-        _finalScores.clear();
-        for (uint8_t i = 0; i < 4; ++i) {
-            _finalScores.push_back(payload.final_scores[i]);
-        }
-
-        _gameEndReason = payload.end_reason;
-        _winnerId      = payload.winner_id;
-        _playTimeSec   = payload.play_time;
-
-        // Stop simulation but keep ECS state for rendering end screen
-        this->pauseSystems();
-
-        LOG_INFO_CAT("Coordinator",
-            "GameEnd: reason=%u winner=%u playtime=%u",
-            _gameEndReason,
-            _winnerId,
-            _playTimeSec);
     }
 
-
-
-
     private:
+        _gameRunning = false;
         std::unique_ptr<EntityManager> _entityManager;
         std::unique_ptr<SystemManager> _systemManager;
         std::unique_ptr<RenderManager> _renderManager;
