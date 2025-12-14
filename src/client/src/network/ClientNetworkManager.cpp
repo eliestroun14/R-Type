@@ -13,6 +13,8 @@
 #include <iostream>
 #include <cstring>
 #include <thread>
+#include <engine/utils/Logger.hpp>
+#include <common/error/Error.hpp>
 
 using namespace std::chrono_literals;
 
@@ -32,11 +34,13 @@ ClientNetworkManager::~ClientNetworkManager()
 void ClientNetworkManager::start()
 {
     if (_running.exchange(true)) {
+        LOG_WARN("ClientNetworkManager already running");
         return;
     }
     _socket->setNonBlocking(true);
     _socket->bind(0);  // Bind on any available port
     _socket->connect(_host, _port);  // Connect to server
+    LOG_INFO("ClientNetworkManager started, connecting to {}:{}", _host, _port);
     // Thread is now managed by RTypeClient, not here
 }
 
@@ -85,12 +89,12 @@ bool ClientNetworkManager::shouldForward(const common::protocol::Packet& packet)
 void ClientNetworkManager::run()
 {
     // Phase 1: Wait for server connection response
-    std::cout << "[ClientNetworkManager] Waiting for server connection..." << std::endl;
+    LOG_INFO("Waiting for server connection response...");
     while (!_connected && _running.load()) {
         common::protocol::Packet incoming;
         std::string remoteAddress;
         if (_socket->receiveFrom(incoming, remoteAddress)) {
-            std::cout << "[ClientNetworkManager] Phase 1: Received packet type: " << (int)incoming.header.packet_type << std::endl;
+            LOG_DEBUG("Phase 1: Received packet type: {}", static_cast<int>(incoming.header.packet_type));
             handleNetworkPacket(incoming);
         }
         
@@ -104,11 +108,11 @@ void ClientNetworkManager::run()
     }
 
     if (!_connected) {
-        std::cout << "[ClientNetworkManager] Connection failed, stopping" << std::endl;
+        LOG_ERROR("Connection failed, stopping network manager");
         return;
     }
 
-    std::cout << "[ClientNetworkManager] Connected! Starting normal operation" << std::endl;
+    LOG_INFO("Connected! Starting normal operation");
 
     // Phase 2: Normal operation (heartbeats, game packets, etc.)
     auto startEpoch = std::chrono::steady_clock::now();
@@ -152,31 +156,31 @@ void ClientNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
 
     switch (type) {
         case protocol::PacketTypes::TYPE_SERVER_ACCEPT: {
-            std::cout << "[ClientNetworkManager] Connection accepted by server" << std::endl;
+            LOG_INFO("Connection accepted by server");
             handleConnectionAccepted(packet);
             break;
         }
 
         case protocol::PacketTypes::TYPE_SERVER_REJECT: {
-            std::cout << "[ClientNetworkManager] Connection rejected by server" << std::endl;
+            LOG_WARN("Connection rejected by server");
             handleConnectionRejected(packet);
             break;
         }
 
         case protocol::PacketTypes::TYPE_ACK: {
-            std::cout << "[ClientNetworkManager] ACK received from server" << std::endl;
+            LOG_DEBUG("ACK received from server");
             handleAck(packet);
             break;
         }
 
         case protocol::PacketTypes::TYPE_PING: {
-            std::cout << "[ClientNetworkManager] Ping received from server" << std::endl;
+            LOG_DEBUG("Ping received from server");
             handlePing(packet);
             break;
         }
 
         case protocol::PacketTypes::TYPE_PONG: {
-            std::cout << "[ClientNetworkManager] Pong received from server" << std::endl;
+            LOG_DEBUG("Pong received from server");
             handlePong(packet);
             break;
         }
@@ -187,47 +191,46 @@ void ClientNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
         }
 
         default:
-            std::cerr << "[ClientNetworkManager] Unknown network packet type: " 
-                      << static_cast<int>(packet.header.packet_type) << std::endl;
+            LOG_ERROR("Unknown network packet type: {}", static_cast<int>(packet.header.packet_type));
             break;
     }
 }
 
 void ClientNetworkManager::handleConnectionAccepted(const common::protocol::Packet& packet)
 {
-    std::cout << "[handleConnectionAccepted] Connection accepted by server" << std::endl;
-    std::cout << "[handleConnectionAccepted] Packet data size: " << packet.data.size() << std::endl;
+    LOG_INFO("Connection accepted by server");
+    LOG_DEBUG("Packet data size: {}", packet.data.size());
     protocol::ServerAccept payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
-    std::cout << "[handleConnectionAccepted] Assigned player ID: " << payload.assigned_player_id << std::endl;
+    LOG_INFO("Assigned player ID: {}", payload.assigned_player_id);
     _client->setSelfId(payload.assigned_player_id);
     _connected = true;
     _client->setConnected(true);
-    std::cout << "[handleConnectionAccepted] Client connected set to true" << std::endl;
+    LOG_DEBUG("Client connected status set to true");
 }
 
 void ClientNetworkManager::handleConnectionRejected(const common::protocol::Packet& packet)
 {
-    std::cout << "[handleConnectionRejected] Connection rejected by server" << std::endl;
+    LOG_ERROR("Connection rejected by server");
     protocol::ServerReject payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
-    std::cerr << "Reject reason: " << payload.reason_message << std::endl;
+    LOG_ERROR("Reject reason: {}", payload.reason_message);
     _client->setConnected(false);
     _client->stop();
 }
 
 void ClientNetworkManager::handleDisconnect(const common::protocol::Packet& packet)
 {
-    std::cout << "[handleDisconnect] Disconnected by server" << std::endl;
+    LOG_WARN("Disconnected by server");
     protocol::ClientDisconnect payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
-    std::cerr << "Disconnect reason: " << static_cast<int>(payload.reason) << std::endl;
+    LOG_WARN("Disconnect reason: {}", static_cast<int>(payload.reason));
     _client->stop();
 }
 
 void ClientNetworkManager::handleAck(const common::protocol::Packet& packet)
 {
-    std::cout << "[handleAck] ACK received from server" << std::endl;
+    LOG_DEBUG("ACK received from server");
     protocol::Acknowledgment payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
     // TODO we will prob have a ACK queue to manage reliable packets
@@ -235,7 +238,7 @@ void ClientNetworkManager::handleAck(const common::protocol::Packet& packet)
 
 void ClientNetworkManager::handlePong(const common::protocol::Packet& packet)
 {
-    std::cout << "[handlePong] Pong received from server" << std::endl;
+    LOG_DEBUG("Pong received from server");
     protocol::Pong payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 }
@@ -256,7 +259,7 @@ void ClientNetworkManager::sendConnectionRequest()
 
     common::protocol::Packet connect(header, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&payload), reinterpret_cast<uint8_t*>(&payload) + sizeof(payload)));
     queueOutgoing(connect);
-    std::cout << "[ClientNetworkManager] Connection request sent" << std::endl;
+    LOG_INFO("Connection request sent to server");
 }
 
 void ClientNetworkManager::sendHeartbeat()

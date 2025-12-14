@@ -15,6 +15,8 @@
 #include <common/protocol/Protocol.hpp>
 #include <common/constants/defines.hpp>
 #include <client/network/ClientNetworkManager.hpp>
+#include <engine/utils/Logger.hpp>
+#include <common/error/Error.hpp>
 
 
 
@@ -45,28 +47,37 @@ void RTypeClient::run()
     _isRunning = true;
     _networkManager->start();
 
+    LOG_INFO("Starting R-Type Client");
+    
     // Send initial connection request
     _networkManager->sendConnectionRequest();
 
     std::thread networkThread(&client::network::ClientNetworkManager::run, _networkManager.get());
 
+    LOG_INFO("Waiting for connection to server...");
+    
     // Wait for connection to be established
     while (!isConnected() && _isRunning) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     if (isConnected()) {
+        LOG_INFO("Connected to server! Starting game...");
         this->_gameEngine->init();
         this->_gameEngine->initRender();
         
         // Keep gameLoop in main thread for OpenGL context to work properly
         this->gameLoop();
+    } else {
+        LOG_WARN("Failed to connect to server");
     }
+    
     networkThread.join();
 }
 
 void RTypeClient::stop()
 {
+    LOG_INFO("Stopping R-Type Client...");
     if (_networkManager) {
         _networkManager->sendDisconnect(static_cast<uint8_t>(protocol::DisconnectReasons::REASON_NORMAL_DISCONNECT));
     }
@@ -74,6 +85,7 @@ void RTypeClient::stop()
     if (_networkManager) {
         _networkManager->stop();
     }
+    LOG_INFO("Client stopped successfully");
 }
 
 //void RTypeClient::networkLoop()
