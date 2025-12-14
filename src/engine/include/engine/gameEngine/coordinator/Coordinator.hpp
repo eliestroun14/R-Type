@@ -56,6 +56,27 @@ class Coordinator {
             return this->_entityManager->spawnEntity(entityName);
         }
 
+        /**
+         * @brief Create a player entity (local or remote)
+         * @param playerId The network ID of the player
+         * @param isPlayable Whether this is the local playable player (true) or remote (false)
+         * @return The created entity
+         */
+        Entity createPlayerEntity(uint32_t playerId, bool isPlayable)
+        {
+            Entity player = this->createEntity("Player_" + std::to_string(playerId));
+            
+            // All players have InputComponent
+            this->addComponent<InputComponent>(player, InputComponent(playerId));
+            
+            // Only the local player has Playable
+            if (isPlayable) {
+                this->addComponent<Playable>(player, Playable());
+            }
+            
+            return player;
+        }
+
         void destroyEntity(Entity &e)
         {
             this->_entityManager->killEntity(e);
@@ -345,98 +366,130 @@ class Coordinator {
 
         void processCLientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
         {
-            // TODO
-            for (const auto&packet : packetsToProcess) {
+            for (const auto& packet : packetsToProcess) {
+                // Check packet type first, then validate
+                uint8_t packetType = packet.header.packet_type;
 
-                if (PacketManager::assertEntitySpawn(packet)) {
-                    this->handlePacketCreateEntity(packet);
+                switch (packetType) {
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN):
+                        if (PacketManager::assertEntitySpawn(packet)) {
+                            this->handlePacketCreateEntity(packet);
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_DESTROY):
+                        if (PacketManager::assertEntityDestroy(packet)) {
+                            // TODO: handle entity destroy
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT):
+                        if (PacketManager::assertTransformSnapshot(packet)) {
+                            // TODO: handle transform snapshot
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT):
+                        if (PacketManager::assertHealthSnapshot(packet)) {
+                            // TODO: handle health snapshot
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT):
+                        if (PacketManager::assertWeaponSnapshot(packet)) {
+                            // TODO: handle weapon snapshot
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT):
+                        if (PacketManager::assertAnimationSnapshot(packet)) {
+                            // TODO: handle animation snapshot
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_REMOVE):
+                        if (PacketManager::assertComponentRemove(packet)) {
+                            // TODO: handle component remove
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA):
+                        if (PacketManager::assertTransformSnapshotDelta(packet)) {
+                            // TODO: handle transform snapshot delta
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA):
+                        if (PacketManager::assertHealthSnapshotDelta(packet)) {
+                            // TODO: handle health snapshot delta
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_HIT):
+                        if (PacketManager::assertPlayerHit(packet)) {
+                            // TODO: handle player hit
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_DEATH):
+                        if (PacketManager::assertPlayerDeath(packet)) {
+                            // TODO: handle player death
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_SCORE_UPDATE):
+                        if (PacketManager::assertScoreUpdate(packet)) {
+                            // TODO: handle score update
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP):
+                        if (PacketManager::assertPowerupPickup(packet)) {
+                            // TODO: handle powerup pickup
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_FIRE):
+                        if (PacketManager::assertWeaponFire(packet)) {
+                            // TODO: handle weapon fire
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT):
+                        if (PacketManager::assertVisualEffect(packet)) {
+                            // TODO: handle visual effect
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT):
+                        if (PacketManager::assertAudioEffect(packet)) {
+                            // TODO: handle audio effect
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PARTICLE_SPAWN):
+                        if (PacketManager::assertParticleSpawn(packet)) {
+                            // TODO: handle particle spawn
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START):
+                        if (PacketManager::assertGameStart(packet)) {
+                            // TODO: handle game start
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_END):
+                        if (PacketManager::assertGameEnd(packet)) {
+                            // TODO: handle game end
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE):
+                        if (PacketManager::assertLevelComplete(packet)) {
+                            // TODO: handle level complete
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START):
+                        if (PacketManager::assertLevelStart(packet)) {
+                            // TODO: handle level start
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_FORCE_STATE):
+                        if (PacketManager::assertForceState(packet)) {
+                            // TODO: handle force state
+                        }
+                        break;
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_STATE):
+                        if (PacketManager::assertAIState(packet)) {
+                            // TODO: handle AI state
+                        }
+                        break;
+                    default:
+                        // Unknown packet type, ignore
+                        break;
                 }
-                if (PacketManager::assertEntityDestroy(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertEntitySpawn(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertEntityUpdate(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertTransformSnapshot(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertHealthSnapshot(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertWeaponSnapshot(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertComponentRemove(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertAnimationSnapshot(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertTransformSnapshotDelta(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertHealthSnapshotDelta(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-
-                //                  GAME_EVENTS (0x40-0x5F)
-                
-
-                if (PacketManager::assertPlayerHit(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertPlayerDeath(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertScoreUpdate(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertPowerupPickup(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertWeaponFire(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertVisualEffect(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertVisualEffect(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertAudioEffect(packet)) {
-                    //this->hanndleEntitySpawn(packet);
-                }
-                if (PacketManager::assertParticleSpawn(packet)) {
-                    //
-                }
-
-                //                  GAME_CONTROL (0x60-0x6F)
-
-                if (PacketManager::assertGameStart(packet)) {
-                    //
-                }
-                if (PacketManager::assertGameEnd(packet)) {
-                    //
-                }
-                if (PacketManager::assertLevelComplete(packet)) {
-                    //
-                }
-                if (PacketManager::assertLevelStart(packet)) {
-                    //
-                }
-                if (PacketManager::assertForceState(packet)) {
-                    //
-                }
-                if (PacketManager::assertAIState(packet)) {
-                    //
-                }
-
-
-
-
             }
         }
 
