@@ -21,6 +21,7 @@
 #include <common/constants/defines.hpp>
 #include <common/constants/render/Assets.hpp>
 #include <engine/utils/Logger.hpp>
+#include <include/engine/gameEngine/coordinator/render/SpriteAllocator.hpp>
 
 
 class Coordinator {
@@ -385,7 +386,7 @@ class Coordinator {
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT):
                         if (PacketManager::assertTransformSnapshot(packet)) {
-                            // TODO: handle transform snapshot
+                            this->handlePacketTransformSnapshot(packet);
                         }
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT):
@@ -460,12 +461,12 @@ class Coordinator {
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START):
                         if (PacketManager::assertGameStart(packet)) {
-                            // TODO: handle game start
+                            this->handleGameStart();
                         }
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_END):
                         if (PacketManager::assertGameEnd(packet)) {
-                            // TODO: handle game end
+                            this->handleGameEnd();
                         }
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE):
@@ -549,10 +550,12 @@ class Coordinator {
             // Add type-specific components
             switch (payload.entity_type) {
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER): {
+                    Assets spriteAsset = _playerSpriteAllocator.allocate(payload.entity_id);
+
                     addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.5f));
                     addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
                     addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-                    addComponent<Sprite>(newEntity, Sprite(PLAYER_1, 1, sf::IntRect(0, 0, 33, 15)));
+                    addComponent<Sprite>(newEntity, Sprite(spriteAsset, 1, sf::IntRect(0, 0, 33, 15)));
                     addComponent<Animation>(newEntity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
                     addComponent<HitBox>(newEntity, HitBox());
                     addComponent<Weapon>(newEntity, Weapon(200, 0, 10, ProjectileType::MISSILE));
@@ -580,9 +583,19 @@ class Coordinator {
                     // TODO: Initialize boss-specific components
                     break;
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER):
-                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY):
-                    // TODO: Initialize projectile-specific components
+                case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY): {
+                    const bool isPlayerProjectile =
+                        payload.entity_type == static_cast<uint8_t>(
+                            protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER
+                        );
+                    addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 1.f));
+                    addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
+                    addComponent<Sprite>(newEntity, Sprite(DEFAULT_BULLET, 1, sf::IntRect(0, 0, 16, 16)));
+                    addComponent<HitBox>(newEntity, HitBox());
+                    addComponent<Projectile>(newEntity, Projectile(isPlayerProjectile ? ProjectileOwner::PLAYER: ProjectileOwner::ENEMY));
+
                     break;
+                }
                 case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_POWERUP):
                     // TODO: Initialize powerup-specific components
                     break;
@@ -597,6 +610,152 @@ class Coordinator {
                     break;
             }
         }
+
+    void handlePacketTransformSnapshot(const common::protocol::Packet& packet)
+    {
+        constexpr std::size_t HEADER_SIZE =
+            sizeof(protocol::PacketHeader) +
+            sizeof(uint32_t) +   // world_tick
+            sizeof(uint16_t);    // entity_count
+
+        constexpr std::size_t ENTRY_SIZE =
+            sizeof(uint32_t) +   // entity_id
+            sizeof(protocol::ComponentTransform); // 8 bytes
+
+        if (packet.data.size() < HEADER_SIZE) {
+            LOG_ERROR_CAT("Coordinator",
+                "TransformSnapshot: packet too small (%zu)",
+                packet.data.size());
+            return;
+        }
+
+        const uint8_t* ptr = packet.data.data();
+        const uint8_t* end = ptr + packet.data.size();
+
+        protocol::PacketHeader header;
+        std::memcpy(&header, ptr, sizeof(header));
+        ptr += sizeof(header);
+
+        uint32_t world_tick = 0;
+        uint16_t entity_count = 0;
+
+        std::memcpy(&world_tick, ptr, sizeof(world_tick));
+        ptr += sizeof(world_tick);
+
+        std::memcpy(&entity_count, ptr, sizeof(entity_count));
+        ptr += sizeof(entity_count);
+
+        const std::size_t expectedSize =
+            HEADER_SIZE + static_cast<std::size_t>(entity_count) * ENTRY_SIZE;
+
+        if (packet.data.size() != expectedSize) {
+            LOG_ERROR_CAT("Coordinator",
+                "TransformSnapshot: size mismatch (%zu != %zu)",
+                packet.data.size(), expectedSize);
+            return;
+        }
+
+        for (uint16_t i = 0; i < entity_count; ++i) {
+            uint32_t entity_id = 0;
+            protocol::ComponentTransform net;
+
+            std::memcpy(&entity_id, ptr, sizeof(entity_id));
+            ptr += sizeof(entity_id);
+
+            std::memcpy(&net, ptr, sizeof(net));
+            ptr += sizeof(net);
+
+            Entity entity = Entity::fromId(entity_id);
+            if (!this->isAlive(entity))
+                continue;
+
+            auto& opt = this->getComponentEntity<Transform>(entity);
+            if (!opt.has_value())
+                continue;
+
+            Transform& tr = opt.value();
+
+            tr.x = static_cast<float>(net.pos_x);
+            tr.y = static_cast<float>(net.pos_y);
+
+            tr.rotation = (static_cast<float>(net.rotation) / 65535.f) * 360.f;
+
+            tr.scale = static_cast<float>(net.scale) / 1000.f;
+        }
+    }
+
+    void handleGameStart(const common::protocol::Packet& packet)
+    {
+        if (packet.data.size() != sizeof(protocol::GameStart)) {
+            LOG_ERROR_CAT("Coordinator",
+                "GameStart: invalid size %zu",
+                packet.data.size());
+            return;
+        }
+
+        protocol::GameStart payload;
+        std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+        // Reset world state
+        this->clearWorld();          // détruit toutes les entités ECS
+        this->resetSystems();        // reset des systèmes (timer, interpolation, etc.)
+
+        // Init game context
+        _gameInstanceId = payload.game_instance_id;
+        _currentLevelId = payload.level_id;
+        _difficulty     = payload.difficulty;
+        _serverTickrate = payload.server_tickrate;
+
+        _playerIds.clear();
+        for (uint8_t i = 0; i < payload.player_count; ++i) {
+            _playerIds.push_back(payload.player_ids[i]);
+        }
+
+        _gameRunning = true;
+
+        LOG_INFO_CAT("Coordinator",
+            "GameStart: instance=%u level=%u difficulty=%u players=%u",
+            _gameInstanceId,
+            _currentLevelId,
+            _difficulty,
+            payload.player_count);
+    }
+
+    void handleGameEnd(const common::protocol::Packet& packet)
+    {
+        if (packet.data.size() != sizeof(protocol::GameEnd)) {
+            LOG_ERROR_CAT("Coordinator",
+                "GameEnd: invalid size %zu",
+                packet.data.size());
+            return;
+        }
+
+        protocol::GameEnd payload;
+        std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+        _gameRunning = false;
+
+        _finalScores.clear();
+        for (uint8_t i = 0; i < 4; ++i) {
+            _finalScores.push_back(payload.final_scores[i]);
+        }
+
+        _gameEndReason = payload.end_reason;
+        _winnerId      = payload.winner_id;
+        _playTimeSec   = payload.play_time;
+
+        // Stop simulation but keep ECS state for rendering end screen
+        this->pauseSystems();
+
+        LOG_INFO_CAT("Coordinator",
+            "GameEnd: reason=%u winner=%u playtime=%u",
+            _gameEndReason,
+            _winnerId,
+            _playTimeSec);
+    }
+
+
+
 
     private:
         std::unique_ptr<EntityManager> _entityManager;
