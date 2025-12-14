@@ -530,9 +530,9 @@ class Coordinator {
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet)
         {
-            // Payload structure is 16 bytes
-            if (packet.data.size() != sizeof(protocol::EntitySpawnPayload)) {
-                LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: invalid packet size %zu, expected %zu", packet.data.size(), sizeof(protocol::EntitySpawnPayload));
+            // Validate payload size using the protocol define
+            if (packet.data.size() != ENTITY_SPAWN_PAYLOAD_SIZE) {
+                LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: invalid packet size %zu, expected %d", packet.data.size(), ENTITY_SPAWN_PAYLOAD_SIZE);
                 return;
             }
 
@@ -570,9 +570,9 @@ class Coordinator {
                     addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.0f));
                     addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
                     addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-                    addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, 33, 36)));
+                    addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
                     addComponent<HitBox>(newEntity, HitBox());
-                    addComponent<Weapon>(newEntity, Weapon(300, 0, 8, ProjectileType::MISSILE));
+                    addComponent<Weapon>(newEntity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
                     LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
                     break;
                 }
