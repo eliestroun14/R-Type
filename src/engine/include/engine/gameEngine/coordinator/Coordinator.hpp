@@ -22,11 +22,18 @@
 #include <common/constants/render/Assets.hpp>
 #include <engine/utils/Logger.hpp>
 #include <common/protocol/Payload.hpp>
-#include <include/engine/gameEngine/coordinator/render/SpriteAllocator.hpp>
+#include <engine/gameEngine/coordinator/render/SpriteAllocator.hpp>
 
 
 class Coordinator {
     public:
+        struct ProjectileInfo {
+            uint32_t id;
+            float x;
+            float y;
+            float velX;
+            float velY;
+        };
 
         Coordinator() {
             std::cout << "Coordinator constructor START" << std::endl;
@@ -461,12 +468,12 @@ class Coordinator {
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START):
                         if (PacketManager::assertGameStart(packet)) {
-                            this->handleGameStart();
+                            this->handleGameStart(packet);
                         }
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_END):
                         if (PacketManager::assertGameEnd(packet)) {
-                            this->handleGameEnd();
+                            this->handleGameEnd(packet);
                         }
                         break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE):
@@ -592,7 +599,7 @@ class Coordinator {
                     addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
                     addComponent<Sprite>(newEntity, Sprite(DEFAULT_BULLET, 1, sf::IntRect(0, 0, 16, 16)));
                     addComponent<HitBox>(newEntity, HitBox());
-                    addComponent<Projectile>(newEntity, Projectile(isPlayerProjectile ? ProjectileOwner::PLAYER: ProjectileOwner::ENEMY));
+                    addComponent<Projectile>(newEntity, Projectile(Entity::fromId(payload.entity_id), isPlayerProjectile, 10));
 
                     break;
                 }
@@ -613,45 +620,36 @@ class Coordinator {
 
     void handlePacketTransformSnapshot(const common::protocol::Packet& packet)
     {
-        constexpr std::size_t HEADER_SIZE =
-            sizeof(protocol::PacketHeader) +
-            sizeof(uint32_t) +   // world_tick
-            sizeof(uint16_t);    // entity_count
-
-        constexpr std::size_t ENTRY_SIZE =
-            sizeof(uint32_t) +   // entity_id
-            sizeof(protocol::ComponentTransform); // 8 bytes
-
-        if (packet.data.size() < HEADER_SIZE) {
+        // packet.data format:
+        // - world_tick (4 bytes)
+        // - entity_count (2 bytes)
+        // - [entity_id (4 bytes) + ComponentTransform (8 bytes)] * entity_count
+        
+        const auto& data = packet.data;
+        
+        // Minimum size: 6 bytes (world_tick + entity_count)
+        if (data.size() < 6 || (data.size() - 6) % 12 != 0) {
             LOG_ERROR_CAT("Coordinator",
-                "TransformSnapshot: packet too small (%zu)",
-                packet.data.size());
+                "TransformSnapshot: invalid payload size %zu",
+                data.size());
             return;
         }
-
-        const uint8_t* ptr = packet.data.data();
-        const uint8_t* end = ptr + packet.data.size();
-
-        protocol::PacketHeader header;
-        std::memcpy(&header, ptr, sizeof(header));
-        ptr += sizeof(header);
-
+        
+        const uint8_t* ptr = data.data();
+        
         uint32_t world_tick = 0;
-        uint16_t entity_count = 0;
-
         std::memcpy(&world_tick, ptr, sizeof(world_tick));
         ptr += sizeof(world_tick);
-
+        
+        uint16_t entity_count = 0;
         std::memcpy(&entity_count, ptr, sizeof(entity_count));
         ptr += sizeof(entity_count);
-
-        const std::size_t expectedSize =
-            HEADER_SIZE + static_cast<std::size_t>(entity_count) * ENTRY_SIZE;
-
-        if (packet.data.size() != expectedSize) {
+        
+        // Validate total size
+        if (data.size() != 6 + (entity_count * 12)) {
             LOG_ERROR_CAT("Coordinator",
                 "TransformSnapshot: size mismatch (%zu != %zu)",
-                packet.data.size(), expectedSize);
+                data.size(), 6 + (entity_count * 12));
             return;
         }
 
@@ -704,8 +702,14 @@ class Coordinator {
         _gameRunning = false;
     }
 
+    public:
+        bool _gameRunning = false;
+
     private:
-        _gameRunning = false;
+        uint32_t _lastProjectileCount = 0;
+        ProjectileInfo _lastSpawnedProjectileInfo{};
+        
+        PlayerSpriteAllocator _playerSpriteAllocator;
         std::unique_ptr<EntityManager> _entityManager;
         std::unique_ptr<SystemManager> _systemManager;
         std::unique_ptr<RenderManager> _renderManager;
