@@ -79,6 +79,12 @@ private:
     void createEnemies();
 
     /**
+     * @brief Create level for the Game.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void createLevel();
+
+    /**
      * @brief Broadcast Transform component snapshots to all clients (Server-only).
      * @param networkManager Reference to the network manager
      */

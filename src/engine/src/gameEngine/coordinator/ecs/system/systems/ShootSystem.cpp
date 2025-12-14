@@ -92,7 +92,7 @@ void ShootSystem::spawnProjectile(Entity shooterId, float originX, float originY
     // Add components to projectile
     this->_coordinator.addComponent<Transform>(projectile, Transform(originX, originY, 0.0f, 2.0f));
     this->_coordinator.addComponent<Velocity>(projectile, Velocity(velocityX, velocityY));
-    this->_coordinator.addComponent<Sprite>(projectile, Sprite(projectileAsset, 2, sf::IntRect(0, 0, 16, 8)));
+    this->_coordinator.addComponent<Sprite>(projectile, Sprite(projectileAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 8)));
     this->_coordinator.addComponent<HitBox>(projectile, HitBox());
 
     // Add Projectile component to track ownership and target type

@@ -22,6 +22,7 @@
 #include <SFML/Graphics.hpp>
 #include <utility>
 #include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
+#include <vector>
 
 // Forward declaration for GameAction enum
 enum class GameAction;
@@ -96,6 +97,12 @@ struct HitBox
 // ################################ RENDER  ###################################
 // ############################################################################
 
+enum ZIndex {
+    IS_BACKGROUND,
+    IS_GAME,
+    IS_UI_HUD
+};
+
 /**
  * @brief Visual representation of an entity using an asset ID.
  *
@@ -104,14 +111,14 @@ struct HitBox
 struct Sprite
 {
     Assets assetId;
-    int zIndex; // 0 = Background, 1 = Game, 2 = UI/HUD
+    ZIndex zIndex; // 0 = Background, 1 = Game, 2 = UI/HUD
     sf::Rect<int> rect;
     sf::FloatRect globalBounds; // for collisions
 
-    Sprite(Assets id, int z, sf::Rect<int> r)
+    Sprite(Assets id, ZIndex z, sf::Rect<int> r)
         : assetId(id), zIndex(z), rect(r), globalBounds() {}
 
-    Sprite(Assets id, int z) : assetId(id), zIndex(z), rect(), globalBounds() {}
+    Sprite(Assets id, ZIndex z) : assetId(id), zIndex(z), rect(), globalBounds() {}
 };
 
 
@@ -264,6 +271,7 @@ struct Drawable {};
 struct Playable {};
 
 /**
+<<<<<<< HEAD
  * @brief Stores input state for an entity (player).
  *
  * Each player entity has its own InputComponent to track active actions.
@@ -279,6 +287,14 @@ struct InputComponent
 };
 
 /**
+=======
+ * @brief Tag component. Marks the entity as an enemy.
+ *
+ */
+struct Enemy {};
+
+/*
+>>>>>>> dev
  * @brief Represents a projectile fired by an entity.
  *
  * Stores information about who shot it and what it can hit.
@@ -351,8 +367,47 @@ struct AI
     AiBehaviour aiBehaviour;
     float detectionRange;
     float aggroRange;
+    float internalTime = 0.f;
     AI(AiBehaviour behaviour, float detection, float aggro)
         : aiBehaviour(behaviour), detectionRange(detection), aggroRange(aggro) {}
 };
+
+
+// ############################################################################
+// ################################# LEVEL ####################################
+// ############################################################################
+
+enum EnemyType {
+    BASIC,
+    FAST,
+    TANK,
+    BOSS,
+};
+
+struct EnemySpawn
+{
+    EnemyType type;
+    float spawnX;
+    float spawnY;
+    float delayAfterPrevious; // delay after the previous spawn in seconds
+};
+
+struct Wave
+{
+    std::vector<EnemySpawn> enemies;
+    float startTime; // when this wave starts (in second from the start of the level)
+};
+
+struct Level
+{
+    std::vector<Wave> waves;
+    // float levelDuration;
+    int currentWaveIndex;
+    float elapsedTime;
+    bool completed;
+
+    Level() : currentWaveIndex(0), elapsedTime(0.f), completed(false) {}
+};
+
 
 #endif /* !COMPONENTS_HPP_ */

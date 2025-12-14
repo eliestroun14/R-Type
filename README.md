@@ -169,6 +169,7 @@ Comprehensive documentation is available in the `docs/` folder:
 - **[Contributing Guidelines](docs/Contributing/contributing.md)** - Code style and conventions
 - **[Testing Guide](docs/Test/tutorial.md)** - Testing framework and best practices
 - **[Build System](docs/Cmake/cpm-rationale.md)** - CPM dependency management rationale
+- **[Lucid Chart](https://lucid.app/lucidchart/c8c9cb43-9d5c-4849-a528-c49e01eb6f17/edit?viewport_loc=18721%2C10718%2C2604%2C1257%2CpRg_spBGsGTv&invitationId=inv_0b9fda0a-7e5c-4cb4-b34d-cb8bc0f607e2)** - To see our architecture
 
 See all documentation at [ReadTheDocs](https://r-type-rennes.readthedocs.io/en/dev/)
 

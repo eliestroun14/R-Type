@@ -11,10 +11,7 @@
 #include <SFML/Graphics.hpp>
 #include <common/constants/render/TextureStorage.hpp>
 #include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
-
-#define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT 1080
-#define FRAMERATE_LIMIT 60
+#include <common/constants/defines.hpp>
 
 // Forward declaration
 class Coordinator;

@@ -562,7 +562,7 @@ class Coordinator {
                     addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.5f));
                     addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
                     addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-                    addComponent<Sprite>(newEntity, Sprite(spriteAsset, 1, sf::IntRect(0, 0, 33, 15)));
+                    addComponent<Sprite>(newEntity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
                     addComponent<Animation>(newEntity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
                     addComponent<HitBox>(newEntity, HitBox());
                     addComponent<Weapon>(newEntity, Weapon(200, 0, 10, ProjectileType::MISSILE));
@@ -580,7 +580,7 @@ class Coordinator {
                     addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.0f));
                     addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
                     addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-                    addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, 1, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
+                    addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
                     addComponent<HitBox>(newEntity, HitBox());
                     addComponent<Weapon>(newEntity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
                     LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
@@ -597,7 +597,7 @@ class Coordinator {
                         );
                     addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 1.f));
                     addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
-                    addComponent<Sprite>(newEntity, Sprite(DEFAULT_BULLET, 1, sf::IntRect(0, 0, 16, 16)));
+                    addComponent<Sprite>(newEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 16)));
                     addComponent<HitBox>(newEntity, HitBox());
                     addComponent<Projectile>(newEntity, Projectile(Entity::fromId(payload.entity_id), isPlayerProjectile, 10));
 
