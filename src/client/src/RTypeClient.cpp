@@ -136,7 +136,7 @@ void RTypeClient::gameLoop()
 
 
         // Update game state every tick + elapsedMs + packetsToProcess
-        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT);         // engine -> coordinator -> ecs (all systems update) elapsedMS
+        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT, packetsToProcess, elapsedMs);         // engine -> coordinator -> ecs (all systems update) elapsedMS
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
