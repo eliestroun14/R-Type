@@ -24,10 +24,8 @@ RenderManager::RenderManager()
     this->_keyBindings[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
     // this->_keyBindings[sf::Keyboard::D] = GameAction::MOVE_RIGHT; // to support ZQSD
 
-    this->_keyBindings[sf::Keyboard::S] = GameAction::SHOOT;
-    this->_keyBindings[sf::Keyboard::D] = GameAction::SWITCH_WEAPON;
-    this->_keyBindings[sf::Keyboard::Space] = GameAction::USE_POWERUP;
-    this->_keyBindings[sf::Keyboard::F] = GameAction::SPECIAL;
+    // Primary shoot bindings
+    this->_keyBindings[sf::Keyboard::Space] = GameAction::SHOOT;
     // this->_keyBindings[sf::Keyboard::P] = GameAction::OPTIONS;
     this->_keyBindings[sf::Keyboard::Escape] = GameAction::EXIT;
 
@@ -99,12 +97,12 @@ void RenderManager::processInput()
 
     this->_mousePos = sf::Mouse::getPosition(this->_window);
 
+    // Preserve previous state before processing new events (edge detection)
+    this->_previousActions = this->_activeActions;
+
     while(this->_window.pollEvent(event)) {
         handleEvent(event);
     }
-
-    // Save current state as previous for edge detection
-    this->_previousActions = this->_activeActions;
 }
 
 bool RenderManager::isActionActive(GameAction action) const
