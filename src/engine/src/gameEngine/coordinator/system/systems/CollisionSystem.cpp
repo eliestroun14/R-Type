@@ -21,6 +21,8 @@ void CollisionSystem::onUpdate(float dt)
     auto& sprites = this->_coordinator.getComponents<Sprite>();
     auto& healths = this->_coordinator.getComponents<Health>();
     auto& hitboxes = this->_coordinator.getComponents<HitBox>();
+    auto& projectiles = this->_coordinator.getComponents<Projectile>();
+    auto& playables = this->_coordinator.getComponents<Playable>();
 
     std::vector<size_t> entities;
     entities.reserve(this->_entities.size());
@@ -69,22 +71,78 @@ void CollisionSystem::onUpdate(float dt)
                     }
                 }
 
-                if (e2 < healths.size() && healths[e2]) {
-                    auto& health2 = healths[e2].value();
-                    health2.currentHealth -= 10;
-                    std::cout << "Entity " << e2
-                              << " took damage! HP: " << health2.currentHealth
-                              << "/" << health2.maxHp << std::endl;
+            // Projectile-friendly-fire rules:
+            // - Player bullets must not damage playables (including self)
+            // - Enemy bullets should only damage playables
+            bool e1Projectile = e1 < projectiles.size() && projectiles[e1].has_value();
+            bool e2Projectile = e2 < projectiles.size() && projectiles[e2].has_value();
 
-                    if (health2.currentHealth <= 0) {
-                        std::cout << "Entity " << e2
-                                  << " is destroyed!" << std::endl;
-                        Entity entity2 = Entity::fromId(e2);
-                        this->_coordinator.removeComponent<Transform>(entity2);
-                        this->_coordinator.removeComponent<Sprite>(entity2);
-                        this->_coordinator.removeComponent<Health>(entity2);
-                    }
+            auto applyDamage = [&](size_t target, int damage) {
+                if (target >= healths.size() || !healths[target])
+                    return;
+                auto& h = healths[target].value();
+                h.currentHealth -= damage;
+                std::cout << "Entity " << target << " took damage! HP: "
+                          << h.currentHealth << "/" << h.maxHp << std::endl;
+                if (h.currentHealth <= 0) {
+                    std::cout << "Entity " << target << " is destroyed!" << std::endl;
+                    Entity ent = Entity::fromId(target);
+                    this->_coordinator.removeComponent<Transform>(ent);
+                    this->_coordinator.removeComponent<Sprite>(ent);
+                    this->_coordinator.removeComponent<Health>(ent);
+                    this->_coordinator.removeComponent<HitBox>(ent);
                 }
+            };
+
+            auto destroyProjectile = [&](size_t projId) {
+                Entity ent = Entity::fromId(projId);
+                this->_coordinator.removeComponent<Transform>(ent);
+                this->_coordinator.removeComponent<Sprite>(ent);
+                this->_coordinator.removeComponent<HitBox>(ent);
+                this->_coordinator.removeComponent<Projectile>(ent);
+            };
+
+            auto canHit = [&](const Projectile& proj, size_t targetId) {
+                // Prevent hitting shooter
+                if (targetId == static_cast<size_t>(proj.shooterId))
+                    return false;
+                bool targetPlayable = targetId < playables.size() && playables[targetId].has_value();
+                if (proj.isFromPlayable) {
+                    // Player bullets do not hit playables
+                    return !targetPlayable;
+                }
+                // Enemy bullets only hit playables
+                return targetPlayable;
+            };
+
+            // Handle projectile collisions
+            if (e1Projectile && !e2Projectile) {
+                const auto& proj = projectiles[e1].value();
+                if (!canHit(proj, e2)) {
+                    // Ignore collision with shooter or allies; keep projectile alive
+                    continue;
+                }
+                applyDamage(e2, proj.damage);
+                destroyProjectile(e1);
+                continue;
+            }
+            if (e2Projectile && !e1Projectile) {
+                const auto& proj = projectiles[e2].value();
+                if (!canHit(proj, e1)) {
+                    // Ignore collision with shooter or allies; keep projectile alive
+                    continue;
+                }
+                applyDamage(e1, proj.damage);
+                destroyProjectile(e2);
+                continue;
+            }
+
+            // Non-projectile collision fallback: apply symmetric damage
+            if (e1 < healths.size() && healths[e1]) {
+                applyDamage(e1, 10);
+            }
+            if (e2 < healths.size() && healths[e2]) {
+                applyDamage(e2, 10);
             }
         }
     }

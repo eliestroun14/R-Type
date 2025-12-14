@@ -5,6 +5,7 @@
 #include <engine/gameEngine/coordinator/ecs/system/systems/PlayerSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/AnimationSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/CollisionSystem.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/systems/ShootSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/BackgroundSystem.hpp>
 #include <common/constants/render/Assets.hpp>
 
@@ -91,6 +92,8 @@ namespace gameEngine {
         _coordinator->registerComponent<Playable>();
         _coordinator->registerComponent<Animation>();
         _coordinator->registerComponent<HitBox>();
+        _coordinator->registerComponent<Weapon>();
+        _coordinator->registerComponent<Projectile>();
         _coordinator->registerComponent<Health>();
         _coordinator->registerComponent<ScrollingBackground>();
 
@@ -115,6 +118,9 @@ namespace gameEngine {
         _coordinator->registerSystem<CollisionSystem>(*_coordinator);
         _coordinator->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
 
+        _coordinator->registerSystem<ShootSystem>(*_coordinator);
+        _coordinator->setSystemSignature<ShootSystem, Weapon, Transform>();
+
         _coordinator->registerSystem<BackgroundSystem>(*_coordinator);
         _coordinator->setSystemSignature<BackgroundSystem, Transform, Sprite, ScrollingBackground>();
     }
@@ -130,6 +136,7 @@ namespace gameEngine {
         _coordinator->addComponent<Health>(player, Health(100, 100));
         _coordinator->addComponent<Animation>(player, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
         _coordinator->addComponent<HitBox>(player, HitBox());
+        _coordinator->addComponent<Weapon>(player, Weapon(200, 0, 10, ProjectileType::MISSILE));  // 200ms fire rate, 10 damage
     }
 
     void GameEngine::createBackground()
@@ -150,6 +157,8 @@ namespace gameEngine {
         _coordinator->addComponent<Transform>(staticEnemy, Transform(400.f, 200.f, 0.f, 2.0f));
         _coordinator->addComponent<Health>(staticEnemy, Health(50, 50));
         _coordinator->addComponent<HitBox>(staticEnemy, HitBox());
+        _coordinator->addComponent<Velocity>(staticEnemy, Velocity(0.f, 0.f));
+        _coordinator->addComponent<Weapon>(staticEnemy, Weapon(300, 0, 8, ProjectileType::MISSILE));  // 300ms fire rate, 8 damage
     }
 
 

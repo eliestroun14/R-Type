@@ -20,6 +20,7 @@
 #include <common/constants/render/Assets.hpp>
 #include <SFML/Graphics.hpp>
 #include <utility>
+#include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
 
 
 // ############################################################################
@@ -257,6 +258,22 @@ struct Drawable {};
  * Used by: InputSystem.
  */
 struct Playable {};
+
+/**
+ * @brief Represents a projectile fired by an entity.
+ *
+ * Stores information about who shot it and what it can hit.
+ * Used by: ShootSystem, CollisionSystem.
+ */
+struct Projectile
+{
+    Entity shooterId;        ///< ID of the entity that fired this projectile
+    bool isFromPlayable;     ///< True if shot by a playable entity
+    int damage;              ///< Damage dealt on hit
+
+    Projectile(Entity shooter, bool fromPlayable, int dmg)
+        : shooterId(shooter), isFromPlayable(fromPlayable), damage(dmg) {}
+};
 
 
 // ############################################################################
