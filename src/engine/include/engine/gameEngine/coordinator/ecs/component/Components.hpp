@@ -260,6 +260,12 @@ struct Drawable {};
 struct Playable {};
 
 /**
+ * @brief Tag component. Marks the entity as an enemy.
+ *
+ */
+struct Enemy {};
+
+
  * @brief Represents a projectile fired by an entity.
  *
  * Stores information about who shot it and what it can hit.
@@ -332,6 +338,7 @@ struct AI
     AiBehaviour aiBehaviour;
     float detectionRange;
     float aggroRange;
+    float internalTime = 0.f;
     AI(AiBehaviour behaviour, float detection, float aggro)
         : aiBehaviour(behaviour), detectionRange(detection), aggroRange(aggro) {}
 };
