@@ -24,8 +24,7 @@ class CollisionSystem : public System{
     private:
         Coordinator& _coordinator;
         
-        bool checkAABBCollision(const Transform& t1, const Sprite& s1,
-            const Transform& t2, const Sprite& s2);
+        bool checkAABBCollision(const Sprite& s1, const Sprite& s2);
 };
 
 #endif /* !COLLISIONSYSTEM_HPP_ */

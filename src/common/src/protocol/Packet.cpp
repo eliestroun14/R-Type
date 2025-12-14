@@ -21,6 +21,16 @@ Packet::Packet(uint8_t type)
     data.clear();                    // Empty payload
 }
 
+Packet::Packet(uint8_t type, uint8_t flags, uint32_t sequence_number, uint32_t timestamp)
+{
+    header.magic = 0x5254;           // 'RT' magic number
+    header.packet_type = type;       // Set packet type
+    header.flags = flags;            // Set flags
+    header.sequence_number = sequence_number; // Set sequence number
+    header.timestamp = timestamp;    // Set timestamp
+    data.clear();                    // Empty payload
+}
+
 void Packet::serialize(std::vector<uint8_t>& buffer) const
 {
     buffer.clear();

@@ -6,6 +6,7 @@
 #include <engine/gameEngine/coordinator/ecs/system/systems/AnimationSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/CollisionSystem.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/ShootSystem.hpp>
+#include <engine/gameEngine/coordinator/ecs/system/systems/BackgroundSystem.hpp>
 #include <common/constants/render/Assets.hpp>
 
 namespace gameEngine {
@@ -26,7 +27,6 @@ namespace gameEngine {
     void GameEngine::initRender()
     {
         if (!_coordinator) throw std::runtime_error("GameEngine::init() must be called before initRender()");
-    _coordinator->registerComponent<Health>();
 
         _coordinator->initRender();
 
@@ -94,6 +94,8 @@ namespace gameEngine {
         _coordinator->registerComponent<HitBox>();
         _coordinator->registerComponent<Weapon>();
         _coordinator->registerComponent<Projectile>();
+        _coordinator->registerComponent<Health>();
+        _coordinator->registerComponent<ScrollingBackground>();
 
         std::cout << "Components registered" << std::endl;
     }
@@ -118,6 +120,9 @@ namespace gameEngine {
 
         _coordinator->registerSystem<ShootSystem>(*_coordinator);
         _coordinator->setSystemSignature<ShootSystem, Weapon, Transform>();
+
+        _coordinator->registerSystem<BackgroundSystem>(*_coordinator);
+        _coordinator->setSystemSignature<BackgroundSystem, Transform, Sprite, ScrollingBackground>();
     }
 
     void GameEngine::createPlayer()
@@ -138,8 +143,9 @@ namespace gameEngine {
     {
         Entity backgroundStars = _coordinator->createEntity("Stars Background");
 
-        _coordinator->addComponent<Sprite>(backgroundStars, Sprite(STARS_BG, 0, sf::IntRect(0, 0, 755, 448)));
-        _coordinator->addComponent<Transform>(backgroundStars, Transform(0.f, 0.f, 0.f, 2.0f));
+        _coordinator->addComponent<Sprite>(backgroundStars, Sprite(GAME_BG, 0, sf::IntRect(0, 0, 1920, 1080)));
+        _coordinator->addComponent<Transform>(backgroundStars, Transform(0.f, 0.f, 0.f, 1.0f));
+        _coordinator->addComponent<ScrollingBackground>(backgroundStars, ScrollingBackground(0.05f, true, true));
     }
 
     void GameEngine::createEnemies()

@@ -51,6 +51,22 @@ public:
     bool hasData() const override;
 
     /**
+     * @brief Receive packet from any sender and get sender address
+     * @param packet The packet to receive into
+     * @param remoteAddress Output: sender address as "ip:port"
+     * @return true if packet received, false otherwise
+     */
+    bool receiveFrom(protocol::Packet& packet, std::string& remoteAddress);
+
+    /**
+     * @brief Send packet to specific address
+     * @param packet The packet to send
+     * @param remoteAddress Target address as "ip:port"
+     * @return true if packet sent, false otherwise
+     */
+    bool sendTo(const protocol::Packet& packet, const std::string& remoteAddress);
+
+    /**
      * @brief Set socket buffer sizes
      * @param sendBufferSize Send buffer size in bytes
      * @param receiveBufferSize Receive buffer size in bytes

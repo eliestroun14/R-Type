@@ -139,7 +139,7 @@ namespace protocol {
     // Client -> Server or Server -> Client
     struct ClientDisconnect {
         protocol::PacketHeader header;                 // type = 0x04 + FLAG_RELIABLE
-        uint32_t               player_id;              // Unique player identifier
+        uint32_t               client_id;              // Unique client identifier
         uint8_t                reason;                 // Reason for disconnection
     };
     // total size: 17 bytes
@@ -418,12 +418,14 @@ namespace protocol {
         PacketHeader    header;                 // type = 0x70
         uint32_t        acked_sequence;         // Sequence number being ACKed
         uint32_t        received_timestamp;     // When packet was received
+        uint32_t        client_id;              // Unique client identifier
     };
-    // Total size: 20 bytes
+    // Total size 20 + client_id size = 24 bytes
 
     struct Ping {
         PacketHeader    header;                 // type = 0x71
         uint32_t        client_timestamp;       // Client's current timestamp
+        uint32_t        client_id;              // Unique client identifier
     };
     // Total size: 16 bytes
 

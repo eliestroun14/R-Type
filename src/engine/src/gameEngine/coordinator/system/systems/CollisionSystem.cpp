@@ -10,23 +10,9 @@
 #include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
 #include <iostream>
 
-bool CollisionSystem::checkAABBCollision(const Transform& t1, const Sprite& s1,
-    const Transform& t2, const Sprite& s2)
+bool CollisionSystem::checkAABBCollision(const Sprite& s1, const Sprite& s2)
 {
-    float x1 = t1.x;
-    float y1 = t1.y;
-    float w1 = s1.rect.width * t1.scale;
-    float h1 = s1.rect.height * t1.scale;
-
-    float x2 = t2.x;
-    float y2 = t2.y;
-    float w2 = s2.rect.width * t2.scale;
-    float h2 = s2.rect.height * t2.scale;
-
-    return (x1 < x2 + w2 &&
-            x1 + w1 > x2 && 
-            y1 < y2 + h2 &&
-            y1 + h1 > y2);
+    return s1.globalBounds.intersects(s2.globalBounds);
 }
 
 void CollisionSystem::onUpdate(float dt)
@@ -62,8 +48,28 @@ void CollisionSystem::onUpdate(float dt)
             auto& t2 = transforms[e2].value();
             auto& s2 = sprites[e2].value();
 
-            if (!checkAABBCollision(t1, s1, t2, s2))
-                continue;
+            if (checkAABBCollision(s1, s2)) {
+                // For debugging, print collision info
+                std::cout << "Collision detected between Entity " << e1
+                << " and Entity " << e2 << std::endl;
+
+                // Apply damage to both entities if they have Health component
+                if (e1 < healths.size() && healths[e1]) {
+                    auto& health1 = healths[e1].value();
+                    health1.currentHealth -= 10;
+                    std::cout << "Entity " << e1
+                              << " took damage! HP: " << health1.currentHealth
+                              << "/" << health1.maxHp << std::endl;
+
+                    if (health1.currentHealth <= 0) {
+                        std::cout << "Entity " << e1
+                                  << " is destroyed!" << std::endl;
+                        Entity entity1 = Entity::fromId(e1);
+                        this->_coordinator.removeComponent<Transform>(entity1);
+                        this->_coordinator.removeComponent<Sprite>(entity1);
+                        this->_coordinator.removeComponent<Health>(entity1);
+                    }
+                }
 
             // Projectile-friendly-fire rules:
             // - Player bullets must not damage playables (including self)

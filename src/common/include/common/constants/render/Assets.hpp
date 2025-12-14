@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 13
+#define NUMBER_ASSETS 14
 
 #include <array>
 #include <iostream>
@@ -24,6 +24,7 @@ enum Assets {
 
     // BACKGROUND
     STARS_BG,
+    GAME_BG,
 
     // PLAYERS
     PLAYER_1,
@@ -53,6 +54,7 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 
     // BACKGROUND
     "../assets/background/starsBg.png",
+    "../assets/background/gameBg.png",
 
     // PLAYERS
     "../assets/players/player1.png",

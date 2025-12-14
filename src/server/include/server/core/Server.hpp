@@ -52,14 +52,7 @@ namespace server {
 
         void printStatistics() const;
 
-        void networkLoop();
-        
         void gameLoop();
-
-        std::deque<common::protocol::Packet>& getPacketsReceived() { return _packetsReceived; }
-        std::deque<common::protocol::Packet>& getPacketsToSend() { return _packetsToSend; }
-
-        //std::shared_ptr<engine::GameEngine> getGameEngine() const { return _gameEngine; }    // TODO
 
     private:
         // Configuration
@@ -70,10 +63,7 @@ namespace server {
         // State
         std::atomic<bool> _isRunning;
 
-        //std::shared_ptr<engine::GameEngine> _gameEngine;
-
-        std::deque<common::protocol::Packet> _packetsReceived;
-        std::deque<common::protocol::Packet> _packetsToSend;
+        std::shared_ptr<gameEngine::GameEngine> _gameEngine;
 
     };
 
