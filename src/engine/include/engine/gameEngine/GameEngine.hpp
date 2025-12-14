@@ -76,6 +76,12 @@ private:
      */
     void createEnemies();
 
+    /**
+     * @brief Create level for the Game.
+     * @param type Network mode (SERVER, CLIENT, STANDALONE).
+     */
+    void createLevel();
+
 
 public:
     /**

@@ -343,4 +343,33 @@ enum NetworkType {
 #define PONG_PAYLOAD_SIZE                       (PONG_CLIENT_TIMESTAMP_SIZE + PONG_SERVER_TIMESTAMP_SIZE)  // 8 bytes
 #define PONG_MIN_ARGS_SIZE                      (1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PONG_PAYLOAD_SIZE)  // 15 bytes
 
+
+// ==============================================================
+//                          RENDER WINDOW
+// ==============================================================
+
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 450
+#define FRAMERATE_LIMIT 60
+
+// PLAYER
+#define PLAYER_SPRITE_WIDTH 33
+#define PLAYER_SPRITE_HEIGHT 15
+#define PLAYER_SPRITE_SCALE 2.5f
+
+#define PLAYER_ANIMATION_WIDTH 33
+#define PLAYER_ANIMATION_WIDTH 15
+#define PLAYER_ANIMATION_CURRENT 2
+#define PLAYER_ANIMATION_ELAPSED_TIME 0.f
+#define PLAYER_ANIMATION_DURATION 0.1f
+#define PLAYER_ANIMATION_START 2
+#define PLAYER_ANIMATION_END 2
+#define PLAYER_ANIMATION_LOOPING true
+
+#define PLAYER_WEAPON_FIRE_RATE = 200
+#define PLAYER_WEAPON_LAST_SHOT = 0
+#define PLAYER_WEAPON_DAMAGES = 10
+#define PLAYER_WEAPON_TYPE = ProjectileType::MISSILE
+
+
 #endif /* !DEFINES_HPP_ */
