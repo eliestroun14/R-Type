@@ -270,5 +270,71 @@ void AsioSocket::setMaxPacketSize(size_t maxSize)
     _receiveBuffer.resize(_maxPacketSize);
 }
 
+bool AsioSocket::receiveFrom(protocol::Packet& packet, std::string& remoteAddress)
+{
+    if (!_socket || !_socket->is_open()) {
+        return false;
+    }
+
+    try {
+        asio::ip::udp::endpoint sender;
+        size_t bytesRead = _socket->receive_from(
+            asio::buffer(_receiveBuffer.data(), _maxPacketSize),
+            sender,
+            0
+        );
+
+        if (bytesRead > 0) {
+            std::vector<uint8_t> data(_receiveBuffer.begin(), _receiveBuffer.begin() + bytesRead);
+            if (!packet.deserialize(data)) {
+                setError("Failed to deserialize packet");
+                return false;
+            }
+
+            // Format remote address as "ip:port"
+            remoteAddress = sender.address().to_string() + ":" + std::to_string(sender.port());
+            return true;
+        }
+    } catch (const asio::system_error& e) {
+        if (e.code() != asio::error::would_block && e.code() != asio::error::try_again) {
+            setError(std::string("receiveFrom error: ") + e.what());
+        }
+    }
+
+    return false;
+}
+
+bool AsioSocket::sendTo(const protocol::Packet& packet, const std::string& remoteAddress)
+{
+    if (!_socket || !_socket->is_open()) {
+        return false;
+    }
+
+    try {
+        // Parse remote address "ip:port"
+        size_t colonPos = remoteAddress.find_last_of(':');
+        if (colonPos == std::string::npos) {
+            setError("Invalid remote address format");
+            return false;
+        }
+
+        std::string ip = remoteAddress.substr(0, colonPos);
+        uint16_t port = std::stoi(remoteAddress.substr(colonPos + 1));
+
+        asio::ip::udp::endpoint endpoint(asio::ip::address::from_string(ip), port);
+
+        // Serialize packet to buffer
+        std::vector<uint8_t> buffer;
+        packet.serialize(buffer);
+
+        size_t bytesSent = _socket->send_to(asio::buffer(buffer), endpoint);
+        return bytesSent == buffer.size();
+    } catch (const asio::system_error& e) {
+        setError(std::string("sendTo error: ") + e.what());
+    }
+
+    return false;
+}
+
 } // namespace network
 } // namespace common
