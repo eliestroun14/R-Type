@@ -21,6 +21,7 @@
 #include <common/constants/defines.hpp>
 #include <common/constants/render/Assets.hpp>
 #include <engine/utils/Logger.hpp>
+#include <common/protocol/Payload.hpp>
 
 
 class Coordinator {
@@ -75,7 +76,6 @@ class Coordinator {
             if (isPlayable) {
                 this->addComponent<Playable>(player, Playable());
             }
-            
             return player;
         }
 

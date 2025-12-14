@@ -296,64 +296,11 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress,
         LOG_INFO("Server accept sent to client {}", clientId);
     }
 
-    // Create player entity and send ENTITY_SPAWN packet
-    if (_gameEngine) {
-        Coordinator* coordinator = _gameEngine->getCoordinator();
-        if (coordinator) {
-            Entity playerEntity = coordinator->createPlayerEntity(clientId, false);  // false = not playable (remote player)
-
-            // Get the entity ID (cast Entity to size_t)
-            uint32_t entityId = static_cast<uint32_t>(static_cast<size_t>(playerEntity));
-
-            // Create ENTITY_SPAWN packet
-            std::vector<uint8_t> spawnArgs;
-            spawnArgs.push_back(0x01);  // flags_count = 1
-            spawnArgs.push_back(0x01);  // FLAG_RELIABLE
-            // sequence_number (4 bytes)
-            spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0);
-            // timestamp (4 bytes)
-            spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0); spawnArgs.push_back(0);
-            // entity_id (4 bytes, little-endian)
-            spawnArgs.push_back(entityId & 0xFF);
-            spawnArgs.push_back((entityId >> 8) & 0xFF);
-            spawnArgs.push_back((entityId >> 16) & 0xFF);
-            spawnArgs.push_back((entityId >> 24) & 0xFF);
-            // entity_type (1 byte) - PLAYER = 4
-            spawnArgs.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
-            // position_x (2 bytes, little-endian) - default position
-            uint16_t posX = 100;
-            spawnArgs.push_back(posX & 0xFF);
-            spawnArgs.push_back((posX >> 8) & 0xFF);
-            // position_y (2 bytes, little-endian)
-            uint16_t posY = 150;
-            spawnArgs.push_back(posY & 0xFF);
-            spawnArgs.push_back((posY >> 8) & 0xFF);
-            // mob_variant (1 byte)
-            spawnArgs.push_back(0);
-            // initial_health (1 byte)
-            spawnArgs.push_back(100);
-            // initial_velocity_x (2 bytes, little-endian)
-            uint16_t velX = 0;
-            spawnArgs.push_back(velX & 0xFF);
-            spawnArgs.push_back((velX >> 8) & 0xFF);
-            // initial_velocity_y (2 bytes, little-endian)
-            uint16_t velY = 0;
-            spawnArgs.push_back(velY & 0xFF);
-            spawnArgs.push_back((velY >> 8) & 0xFF);
-            // is_playable (1 byte) - 1 = this is the client's playable player
-            spawnArgs.push_back(1);
-
-            auto spawnPacket = PacketManager::createEntitySpawn(spawnArgs);
-            if (spawnPacket) {
-                queueOutgoing(spawnPacket.value(), clientId);
-                LOG_INFO("Player entity spawn packet sent to client {}", clientId);
-            } else {
-                LOG_ERROR_CAT("ServerNetworkManager", "Failed to create ENTITY_SPAWN packet for client {}", clientId);
-            }
-        }
-    } else {
-        LOG_WARN("GameEngine not available for player spawn");
-    }
+    // Spawn player entity with 1-based ID (clientId + 1)
+    uint32_t playerId = clientId + 1;
+    createPlayerEntity(playerId, 100, 150);
+    sendPlayerToClient(playerId, clientId, 100, 150);
+    sendPlayerToOtherClients(playerId, clientId, 100, 150);
 }
 
 void ServerNetworkManager::handleClientDisconnect(const std::string& remoteAddress)
@@ -374,6 +321,252 @@ void ServerNetworkManager::handleHeartbeat(const std::string& remoteAddress, uin
     auto clientId = findClientIdByAddress(remoteAddress);
     if (clientId.has_value()) {
         _clients[clientId.value()].lastHeartbeatTime = currentMs;
+    }
+}
+
+void ServerNetworkManager::spawnEntity(uint8_t entityType, uint32_t entityId, uint16_t posX, uint16_t posY, uint8_t mobVariant, uint8_t initialHealth, int16_t initialVelX, int16_t initialVelY)
+{
+    if (!_gameEngine) {
+        LOG_WARN("GameEngine not available for entity creation");
+        return;
+    }
+
+    Coordinator* coordinator = _gameEngine->getCoordinator();
+    if (!coordinator) {
+        LOG_ERROR("Coordinator not available for entity creation");
+        return;
+    }
+
+    // Create the entity on the server based on type
+    std::string entityName;
+
+    switch (static_cast<protocol::EntityTypes>(entityType)) {
+        case protocol::EntityTypes::ENTITY_TYPE_PLAYER: {
+            Entity entity = coordinator->createEntity("Player_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.5f));
+            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            coordinator->addComponent<HitBox>(entity, HitBox());
+            coordinator->addComponent<Weapon>(entity, Weapon(200, 0, 10, ProjectileType::MISSILE));
+            coordinator->addComponent<InputComponent>(entity, InputComponent(entityId));
+            LOG_DEBUG("Player entity created on server: id={} pos=({}, {})", entityId, posX, posY);
+            break;
+        }
+        case protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER: {
+            Entity entity = coordinator->createEntity("Projectile_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
+            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            coordinator->addComponent<HitBox>(entity, HitBox());
+            LOG_DEBUG("Projectile entity created on server: id={} pos=({}, {})", entityId, posX, posY);
+            break;
+        }
+        case protocol::EntityTypes::ENTITY_TYPE_ENEMY: {
+            Entity entity = coordinator->createEntity("Enemy_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
+            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            coordinator->addComponent<HitBox>(entity, HitBox());
+            coordinator->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+            LOG_DEBUG("Enemy entity created on server: id={} pos=({}, {})", entityId, posX, posY);
+            break;
+        }
+        case protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS: {
+            Entity entity = coordinator->createEntity("EnemyBoss_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 3.0f));
+            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            coordinator->addComponent<HitBox>(entity, HitBox());
+            LOG_DEBUG("Boss entity created on server: id={}", entityId);
+            break;
+        }
+        case protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY: {
+            Entity entity = coordinator->createEntity("EnemyProjectile_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
+            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            coordinator->addComponent<HitBox>(entity, HitBox());
+            LOG_DEBUG("Enemy projectile entity created on server: id={}", entityId);
+            break;
+        }
+        case protocol::EntityTypes::ENTITY_TYPE_POWERUP: {
+            Entity entity = coordinator->createEntity("Powerup_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.5f));
+            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            coordinator->addComponent<HitBox>(entity, HitBox());
+            LOG_DEBUG("Powerup entity created on server: id={}", entityId);
+            break;
+        }
+        case protocol::EntityTypes::ENTITY_TYPE_OBSTACLE: {
+            Entity entity = coordinator->createEntity("Obstacle_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
+            coordinator->addComponent<HitBox>(entity, HitBox());
+            LOG_DEBUG("Obstacle entity created on server: id={}", entityId);
+            break;
+        }
+        case protocol::EntityTypes::ENTITY_TYPE_BG_ELEMENT: {
+            Entity entity = coordinator->createEntity("BGElement_" + std::to_string(entityId));
+            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
+            LOG_DEBUG("Background element entity created on server: id={}", entityId);
+            break;
+        }
+        default:
+            LOG_ERROR("Unknown entity type: {}", static_cast<int>(entityType));
+            return;
+    }
+}
+
+void ServerNetworkManager::createPlayerEntity(uint32_t playerId, uint16_t posX, uint16_t posY)
+{
+    spawnEntity(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER),
+                playerId, posX, posY, 0, 100, 0, 0);
+}
+
+void ServerNetworkManager::createBulletEntity(uint32_t bulletId, uint16_t posX, uint16_t posY,
+                                              int16_t velX, int16_t velY)
+{
+    spawnEntity(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER),
+                bulletId, posX, posY, 0, 1, velX, velY);
+}
+
+void ServerNetworkManager::sendPlayerToClient(uint32_t playerId, uint32_t targetClientId,
+                                              uint16_t posX, uint16_t posY)
+{
+    std::vector<uint8_t> args;
+    args.push_back(0x01);  // flags_count = 1
+    args.push_back(0x01);  // FLAG_RELIABLE
+    // sequence_number (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // timestamp (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // entity_id (4 bytes, little-endian)
+    args.push_back(playerId & 0xFF);
+    args.push_back((playerId >> 8) & 0xFF);
+    args.push_back((playerId >> 16) & 0xFF);
+    args.push_back((playerId >> 24) & 0xFF);
+    // entity_type (1 byte)
+    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
+    // position_x (2 bytes, little-endian)
+    args.push_back(posX & 0xFF);
+    args.push_back((posX >> 8) & 0xFF);
+    // position_y (2 bytes, little-endian)
+    args.push_back(posY & 0xFF);
+    args.push_back((posY >> 8) & 0xFF);
+    // mob_variant (1 byte)
+    args.push_back(0);
+    // initial_health (1 byte)
+    args.push_back(100);
+    // initial_velocity_x (2 bytes, little-endian)
+    args.push_back(0); args.push_back(0);
+    // initial_velocity_y (2 bytes, little-endian)
+    args.push_back(0); args.push_back(0);
+    // is_playable (1 byte)
+    args.push_back(1);  // true
+
+    auto packet = PacketManager::createEntitySpawn(args);
+    if (packet) {
+        queueOutgoing(packet.value(), targetClientId);
+        LOG_DEBUG("Player %u sent to client %u with is_playable=true", playerId, targetClientId);
+    } else {
+        LOG_ERROR("Failed to create ENTITY_SPAWN packet for player %u", playerId);
+    }
+}
+
+void ServerNetworkManager::sendPlayerToOtherClients(uint32_t playerId, uint32_t originatingClientId,
+                                                    uint16_t posX, uint16_t posY)
+{
+    std::vector<uint8_t> args;
+    args.push_back(0x01);  // flags_count = 1
+    args.push_back(0x01);  // FLAG_RELIABLE
+    // sequence_number (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // timestamp (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // entity_id (4 bytes, little-endian)
+    args.push_back(playerId & 0xFF);
+    args.push_back((playerId >> 8) & 0xFF);
+    args.push_back((playerId >> 16) & 0xFF);
+    args.push_back((playerId >> 24) & 0xFF);
+    // entity_type (1 byte)
+    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
+    // position_x (2 bytes, little-endian)
+    args.push_back(posX & 0xFF);
+    args.push_back((posX >> 8) & 0xFF);
+    // position_y (2 bytes, little-endian)
+    args.push_back(posY & 0xFF);
+    args.push_back((posY >> 8) & 0xFF);
+    // mob_variant (1 byte)
+    args.push_back(0);
+    // initial_health (1 byte)
+    args.push_back(100);
+    // initial_velocity_x (2 bytes, little-endian)
+    args.push_back(0); args.push_back(0);
+    // initial_velocity_y (2 bytes, little-endian)
+    args.push_back(0); args.push_back(0);
+    // is_playable (1 byte)
+    args.push_back(0);  // false
+
+    auto packet = PacketManager::createEntitySpawn(args);
+    if (packet) {
+        for (const auto& slot : _clients) {
+            if (slot.active && slot.clientId != originatingClientId) {
+                queueOutgoing(packet.value(), slot.clientId);
+            }
+        }
+        LOG_DEBUG("Player %u sent to all clients except %u with is_playable=false", 
+                  playerId, originatingClientId);
+    } else {
+        LOG_ERROR("Failed to create ENTITY_SPAWN packet for player %u", playerId);
+    }
+}
+
+void ServerNetworkManager::sendBulletToOtherClients(uint32_t bulletId, uint32_t originatingClientId,
+                                                    uint16_t posX, uint16_t posY,
+                                                    int16_t velX, int16_t velY)
+{
+    std::vector<uint8_t> args;
+    args.push_back(0x01);  // flags_count = 1
+    args.push_back(0x01);  // FLAG_RELIABLE
+    // sequence_number (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // timestamp (4 bytes, little-endian)
+    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    // entity_id (4 bytes, little-endian)
+    args.push_back(bulletId & 0xFF);
+    args.push_back((bulletId >> 8) & 0xFF);
+    args.push_back((bulletId >> 16) & 0xFF);
+    args.push_back((bulletId >> 24) & 0xFF);
+    // entity_type (1 byte)
+    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER));
+    // position_x (2 bytes, little-endian)
+    args.push_back(posX & 0xFF);
+    args.push_back((posX >> 8) & 0xFF);
+    // position_y (2 bytes, little-endian)
+    args.push_back(posY & 0xFF);
+    args.push_back((posY >> 8) & 0xFF);
+    // mob_variant (1 byte)
+    args.push_back(0);
+    // initial_health (1 byte)
+    args.push_back(1);
+    // initial_velocity_x (2 bytes, little-endian)
+    args.push_back(velX & 0xFF);
+    args.push_back((velX >> 8) & 0xFF);
+    // initial_velocity_y (2 bytes, little-endian)
+    args.push_back(velY & 0xFF);
+    args.push_back((velY >> 8) & 0xFF);
+    // is_playable (1 byte)
+    args.push_back(0);  // false
+
+    auto packet = PacketManager::createEntitySpawn(args);
+    if (packet) {
+        for (const auto& slot : _clients) {
+            if (slot.active && slot.clientId != originatingClientId) {
+                queueOutgoing(packet.value(), slot.clientId);
+            }
+        }
+        LOG_DEBUG("Bullet %u sent to all clients except %u", bulletId, originatingClientId);
+    } else {
+        LOG_ERROR("Failed to create ENTITY_SPAWN packet for bullet %u", bulletId);
     }
 }
 

@@ -224,20 +224,6 @@ namespace protocol {
     };
     // total size: 28 bytes
 
-    // Payload only (without header) for ENTITY_SPAWN packet
-    struct EntitySpawnPayload {
-        uint32_t               entity_id;              // Unique entity identifier
-        uint8_t                entity_type;            // Entity type
-        uint16_t               position_x;             // X position
-        uint16_t               position_y;             // Y position
-        uint8_t                mob_variant;            // Sub-type for mobs ex : melee, shooting one etc
-        uint8_t                initial_health;         // Initial health
-        int16_t                initial_velocity_x;     // Initial X velocity (signed)
-        int16_t                initial_velocity_y;     // Initial Y velocity (signed)
-        uint8_t                is_playable;            // 0 = no Playable component, 1 = has Playable (local player)
-    };
-    // total size: 16 bytes
-
     // Server -> Client
     struct EntityDestroy {
         protocol::PacketHeader header;                 // type = 0x22 + FLAG_RELIABLE

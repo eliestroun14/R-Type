@@ -110,8 +110,10 @@ void CollisionSystem::onUpdate(float dt)
                 if (targetId == static_cast<size_t>(proj.shooterId))
                     return false;
                 bool targetIsPlayer = targetId < inputs.size() && inputs[targetId].has_value();
-                if (proj.isFromPlayable) {
-                    // Player bullets do not hit players
+                bool shooterIsPlayer = static_cast<size_t>(proj.shooterId) < inputs.size() && inputs[static_cast<size_t>(proj.shooterId)].has_value();
+
+                if (shooterIsPlayer) {
+                    // Player bullets do not hit any players (allies included)
                     return !targetIsPlayer;
                 }
                 // Enemy bullets only hit players
@@ -141,11 +143,15 @@ void CollisionSystem::onUpdate(float dt)
             }
 
             // Non-projectile collision fallback: apply symmetric damage
-            if (e1 < healths.size() && healths[e1]) {
-                applyDamage(e1, 10);
-            }
-            if (e2 < healths.size() && healths[e2]) {
+            // Only apply damage if neither entity is a player (has InputComponent)
+            bool e1IsPlayer = e1 < inputs.size() && inputs[e1].has_value();
+            bool e2IsPlayer = e2 < inputs.size() && inputs[e2].has_value();
+
+            if (!e1IsPlayer && e2 < healths.size() && healths[e2]) {
                 applyDamage(e2, 10);
+            }
+            if (!e2IsPlayer && e1 < healths.size() && healths[e1]) {
+                applyDamage(e1, 10);
             }
         }
     }
