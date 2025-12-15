@@ -60,14 +60,46 @@ void RTypeClient::run()
     while (!isConnected() && _isRunning) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-
+    
     if (isConnected()) {
         LOG_INFO("Connected to server! Starting game...");
         this->_gameEngine->init();
         this->_gameEngine->initRender();
-        
-        // Keep gameLoop in main thread for OpenGL context to work properly
-        this->gameLoop();
+
+        // Wait for GAME_START from server before initializing render/window.
+        // The network thread will keep pushing incoming packets; consume them
+        // here and feed the engine so Coordinator can set _gameRunning.
+        LOG_INFO("Waiting for GAME_START from server...");
+        while (!_isRunning) { /* guard in case stop called */ break; }
+
+        bool started = false;
+        while (!started && _isRunning) {
+            std::vector<common::protocol::Packet> packetsToProcess;
+            auto incomingPackets = _networkManager->fetchIncoming();
+            for (const auto &entry : incomingPackets) {
+                packetsToProcess.push_back(entry.packet);
+            }
+
+            // Feed packets to engine coordinator for processing (this will call handleGameStart)
+            this->_gameEngine->handlePacket(NetworkType::NETWORK_TYPE_CLIENT, packetsToProcess, 0);
+
+            // Check coordinator game state
+            Coordinator* coord = this->_gameEngine->getCoordinator();
+            if (coord && coord->_gameRunning) {
+                started = true;
+                break;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+
+        if (started) {
+            LOG_INFO("Received GAME_START, initializing render and entering game loop");
+            // Keep gameLoop in main thread for OpenGL context to work properly
+            this->gameLoop();
+        } else {
+            LOG_WARN("Client stopped before game start");
+        }
     } else {
         LOG_WARN("Failed to connect to server");
     }
