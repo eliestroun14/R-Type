@@ -92,11 +92,15 @@ void Server::gameLoop() {
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
-            NetworkType::NETWORK_TYPE_CLIENT,
+        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to clients based on game state and elapsed time
+            NetworkType::NETWORK_TYPE_SERVER,
             currentTick * TICK_RATE,
             outgoingPackets
         );
+
+        if (!outgoingPackets.empty()) {
+            LOG_DEBUG("Server sending {} packets to clients", outgoingPackets.size());
+        }
 
         for (const auto& packet : outgoingPackets) {
             _networkManager->queueOutgoing(packet);

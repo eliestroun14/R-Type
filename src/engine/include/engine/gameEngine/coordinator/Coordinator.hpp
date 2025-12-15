@@ -512,6 +512,7 @@ class Coordinator {
             // Build full game state snapshot every tick
             // This contains ALL entities and their Transform, Velocity, Health components
             buildFullGameStatePacket(outgoingPackets, elapsedMs);
+            LOG_DEBUG_CAT("Coordinator", "Server built %zu outgoing packets", outgoingPackets.size());
         }
 
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
@@ -843,6 +844,8 @@ class Coordinator {
      */
     void handleFullGameStatePacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
     {
+        LOG_DEBUG_CAT("Coordinator", "Handling full game state packet (%zu bytes)", packet.data.size());
+
         const auto& data = packet.data;
         
         // Minimum size: 6 bytes (world_tick + entity_count)
