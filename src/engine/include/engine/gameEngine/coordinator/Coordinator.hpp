@@ -509,10 +509,11 @@ class Coordinator {
 
         void buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
         {
+            LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus called, elapsedMs={}", elapsedMs);
             // Build full game state snapshot every tick
             // This contains ALL entities and their Transform, Velocity, Health components
             buildFullGameStatePacket(outgoingPackets, elapsedMs);
-            LOG_DEBUG_CAT("Coordinator", "Server built %zu outgoing packets", outgoingPackets.size());
+            LOG_DEBUG_CAT("Coordinator", "Server built {} outgoing packets", outgoingPackets.size());
         }
 
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
@@ -721,6 +722,8 @@ class Coordinator {
      */
     void buildFullGameStatePacket(std::vector<common::protocol::Packet>& outgoingPackets, uint64_t elapsedMs)
     {
+        LOG_DEBUG_CAT("Coordinator", "buildFullGameStatePacket START, elapsedMs={}", elapsedMs);
+        
         common::protocol::Packet packet;
         packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_FULL_GAME_STATE);
         packet.header.flags = 0;  // Not reliable, sent every frame
@@ -744,6 +747,8 @@ class Coordinator {
                 entity_count++;
             }
         }
+        
+        LOG_DEBUG_CAT("Coordinator", "Found {} entities with Transform", entity_count);
         
         // Entity count (2 bytes)
         payload.insert(payload.end(),
