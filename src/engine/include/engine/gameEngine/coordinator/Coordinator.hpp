@@ -684,7 +684,7 @@ class Coordinator {
 
     void handleGameStart(const common::protocol::Packet& packet)
     {
-        if (packet.data.size() != sizeof(protocol::GameStart)) {
+        if (packet.data.size() != GAME_START_PAYLOAD_SIZE) {
             LOG_ERROR_CAT("Coordinator", "GameStart: invalid size %zu", packet.data.size());
             return;
         }
@@ -694,7 +694,7 @@ class Coordinator {
 
     void handleGameEnd(const common::protocol::Packet& packet)
     {
-        if (packet.data.size() != sizeof(protocol::GameEnd)) {
+        if (packet.data.size() != GAME_END_PAYLOAD_SIZE) {
             LOG_ERROR_CAT("Coordinator", "GameEnd: invalid size %zu", packet.data.size());
             return;
         }
