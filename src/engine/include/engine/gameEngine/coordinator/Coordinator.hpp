@@ -381,6 +381,10 @@ class Coordinator {
                 uint8_t packetType = packet.header.packet_type;
 
                 switch (packetType) {
+                    case static_cast<uint8_t>(protocol::PacketTypes::TYPE_FULL_GAME_STATE):
+                        // Handle full game state snapshot
+                        handleFullGameStatePacket(packet, elapsedMs);
+                        break;
                     case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN):
                         if (PacketManager::assertEntitySpawn(packet)) {
                             this->handlePacketCreateEntity(packet);
@@ -505,12 +509,15 @@ class Coordinator {
 
         void buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
         {
-            // TODO
+            // Build full game state snapshot every tick
+            // This contains ALL entities and their Transform, Velocity, Health components
+            buildFullGameStatePacket(outgoingPackets, elapsedMs);
         }
 
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
         {
-            // TODO
+            // Client sends input packets (already handled by PlayerSystem)
+            // For MVP, we keep this simple - no client-side prediction
         }
 
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
@@ -700,6 +707,269 @@ class Coordinator {
         }
 
         _gameRunning = false;
+    }
+
+    /**
+     * @brief Builds a full game state snapshot packet containing all entities and components
+     * 
+     * This creates a TYPE_FULL_GAME_STATE packet with all active entities and their components.
+     * The packet contains Transform, Velocity, Health, Sprite, and Animation data for each entity.
+     * 
+     * @param outgoingPackets Vector to append the packet to
+     * @param elapsedMs Current elapsed time in milliseconds (used as world tick)
+     */
+    void buildFullGameStatePacket(std::vector<common::protocol::Packet>& outgoingPackets, uint64_t elapsedMs)
+    {
+        common::protocol::Packet packet;
+        packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_FULL_GAME_STATE);
+        packet.header.flags = 0;  // Not reliable, sent every frame
+        packet.header.sequence_number = 0;  // Will be set by network manager
+        packet.header.timestamp = static_cast<uint32_t>(elapsedMs);
+
+        // Build payload: world_tick + entity_count + entity_data[]
+        std::vector<uint8_t> payload;
+        
+        // World tick (4 bytes)
+        uint32_t world_tick = static_cast<uint32_t>(elapsedMs);
+        payload.insert(payload.end(), 
+            reinterpret_cast<uint8_t*>(&world_tick),
+            reinterpret_cast<uint8_t*>(&world_tick) + sizeof(world_tick));
+        
+        // Count alive entities with Transform component
+        auto& transforms = _entityManager->getComponents<Transform>();
+        uint16_t entity_count = 0;
+        for (size_t i = 0; i < transforms.size(); ++i) {
+            if (transforms[i].has_value()) {
+                entity_count++;
+            }
+        }
+        
+        // Entity count (2 bytes)
+        payload.insert(payload.end(),
+            reinterpret_cast<uint8_t*>(&entity_count),
+            reinterpret_cast<uint8_t*>(&entity_count) + sizeof(entity_count));
+        
+        // For each entity, serialize its components
+        auto& velocities = _entityManager->getComponents<Velocity>();
+        auto& healths = _entityManager->getComponents<Health>();
+        auto& sprites = _entityManager->getComponents<Sprite>();
+        auto& animations = _entityManager->getComponents<Animation>();
+        
+        for (size_t entityId = 0; entityId < transforms.size(); ++entityId) {
+            if (!transforms[entityId].has_value()) continue;
+            
+            // Entity ID (4 bytes)
+            uint32_t eid = static_cast<uint32_t>(entityId);
+            payload.insert(payload.end(),
+                reinterpret_cast<uint8_t*>(&eid),
+                reinterpret_cast<uint8_t*>(&eid) + sizeof(eid));
+            
+            // Entity type (1 byte) - default to PLAYER for now, TODO: store entity type
+            uint8_t entity_type = static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER);
+            payload.push_back(entity_type);
+            
+            // Component flags (1 byte)
+            uint8_t flags = 0x01;  // Always has Transform
+            if (velocities[entityId].has_value()) flags |= 0x02;
+            if (healths[entityId].has_value()) flags |= 0x04;
+            if (sprites[entityId].has_value()) flags |= 0x08;
+            if (animations[entityId].has_value()) flags |= 0x10;
+            payload.push_back(flags);
+            
+            // Transform data (8 bytes)
+            auto& transform = transforms[entityId].value();
+            int16_t pos_x = static_cast<int16_t>(transform.x);
+            int16_t pos_y = static_cast<int16_t>(transform.y);
+            uint16_t rotation = static_cast<uint16_t>((transform.rotation / 360.0f) * 65535.0f);
+            uint16_t scale = static_cast<uint16_t>(transform.scale * 1000.0f);
+            
+            payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&pos_x), reinterpret_cast<uint8_t*>(&pos_x) + 2);
+            payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&pos_y), reinterpret_cast<uint8_t*>(&pos_y) + 2);
+            payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&rotation), reinterpret_cast<uint8_t*>(&rotation) + 2);
+            payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&scale), reinterpret_cast<uint8_t*>(&scale) + 2);
+            
+            // Velocity data (4 bytes) if present
+            if (velocities[entityId].has_value()) {
+                auto& velocity = velocities[entityId].value();
+                int16_t vel_x = static_cast<int16_t>(velocity.vx);
+                int16_t vel_y = static_cast<int16_t>(velocity.vy);
+                payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&vel_x), reinterpret_cast<uint8_t*>(&vel_x) + 2);
+                payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&vel_y), reinterpret_cast<uint8_t*>(&vel_y) + 2);
+            }
+            
+            // Health data (2 bytes) if present
+            if (healths[entityId].has_value()) {
+                auto& health = healths[entityId].value();
+                uint8_t current_health = static_cast<uint8_t>(health.currentHealth);
+                uint8_t max_health = static_cast<uint8_t>(health.maxHp);
+                payload.push_back(current_health);
+                payload.push_back(max_health);
+            }
+            
+            // Sprite data (2 bytes) if present
+            if (sprites[entityId].has_value()) {
+                auto& sprite = sprites[entityId].value();
+                uint16_t sprite_id = static_cast<uint16_t>(sprite.assetId);
+                payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&sprite_id), reinterpret_cast<uint8_t*>(&sprite_id) + 2);
+            }
+            
+            // Animation data (4 bytes) if present
+            if (animations[entityId].has_value()) {
+                auto& animation = animations[entityId].value();
+                uint16_t animation_frame = static_cast<uint16_t>(animation.currentFrame);
+                uint16_t animation_id = 0;  // TODO: store animation ID
+                payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&animation_frame), reinterpret_cast<uint8_t*>(&animation_frame) + 2);
+                payload.insert(payload.end(), reinterpret_cast<uint8_t*>(&animation_id), reinterpret_cast<uint8_t*>(&animation_id) + 2);
+            }
+        }
+        
+        // Set packet data
+        packet.data = std::move(payload);
+        
+        outgoingPackets.push_back(std::move(packet));
+        
+        LOG_DEBUG_CAT("Coordinator", "Built full game state packet: %u entities, %zu bytes", 
+            entity_count, packet.data.size());
+    }
+
+    /**
+     * @brief Handles a full game state snapshot packet from the server
+     * 
+     * This updates all entities on the client with the data received from the server.
+     * The client does NOT simulate - it only applies the received state and renders.
+     * 
+     * @param packet The full game state packet
+     * @param elapsedMs Current elapsed time in milliseconds
+     */
+    void handleFullGameStatePacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
+    {
+        const auto& data = packet.data;
+        
+        // Minimum size: 6 bytes (world_tick + entity_count)
+        if (data.size() < 6) {
+            LOG_ERROR_CAT("Coordinator", "FullGameState: packet too small (%zu bytes)", data.size());
+            return;
+        }
+        
+        const uint8_t* ptr = data.data();
+        
+        // Read world tick
+        uint32_t world_tick = 0;
+        std::memcpy(&world_tick, ptr, sizeof(world_tick));
+        ptr += sizeof(world_tick);
+        
+        // Read entity count
+        uint16_t entity_count = 0;
+        std::memcpy(&entity_count, ptr, sizeof(entity_count));
+        ptr += sizeof(entity_count);
+        
+        LOG_DEBUG_CAT("Coordinator", "Received full game state: tick=%u, entities=%u", world_tick, entity_count);
+        
+        // Process each entity
+        for (uint16_t i = 0; i < entity_count; ++i) {
+            // Check if we have enough data
+            if (ptr + 6 > data.data() + data.size()) {
+                LOG_ERROR_CAT("Coordinator", "FullGameState: truncated entity data at entity %u", i);
+                break;
+            }
+            
+            // Read entity ID
+            uint32_t entity_id = 0;
+            std::memcpy(&entity_id, ptr, sizeof(entity_id));
+            ptr += sizeof(entity_id);
+            
+            // Read entity type
+            uint8_t entity_type = *ptr++;
+            
+            // Read component flags
+            uint8_t flags = *ptr++;
+            
+            Entity entity = Entity::fromId(entity_id);
+            
+            // If entity doesn't exist yet, skip (it will be created via ENTITY_SPAWN)
+            if (!this->isAlive(entity)) {
+                // Skip this entity's data based on flags
+                if (flags & 0x01) ptr += 8;  // Transform
+                if (flags & 0x02) ptr += 4;  // Velocity
+                if (flags & 0x04) ptr += 2;  // Health
+                if (flags & 0x08) ptr += 2;  // Sprite
+                if (flags & 0x10) ptr += 4;  // Animation
+                continue;
+            }
+            
+            // Update Transform (always present if flag set)
+            if (flags & 0x01) {
+                if (ptr + 8 > data.data() + data.size()) break;
+                
+                int16_t pos_x, pos_y;
+                uint16_t rotation, scale;
+                std::memcpy(&pos_x, ptr, 2); ptr += 2;
+                std::memcpy(&pos_y, ptr, 2); ptr += 2;
+                std::memcpy(&rotation, ptr, 2); ptr += 2;
+                std::memcpy(&scale, ptr, 2); ptr += 2;
+                
+                auto& transformOpt = this->getComponentEntity<Transform>(entity);
+                if (transformOpt.has_value()) {
+                    Transform& transform = transformOpt.value();
+                    transform.x = static_cast<float>(pos_x);
+                    transform.y = static_cast<float>(pos_y);
+                    transform.rotation = (static_cast<float>(rotation) / 65535.0f) * 360.0f;
+                    transform.scale = static_cast<float>(scale) / 1000.0f;
+                }
+            }
+            
+            // Update Velocity if present
+            if (flags & 0x02) {
+                if (ptr + 4 > data.data() + data.size()) break;
+                
+                int16_t vel_x, vel_y;
+                std::memcpy(&vel_x, ptr, 2); ptr += 2;
+                std::memcpy(&vel_y, ptr, 2); ptr += 2;
+                
+                auto& velocityOpt = this->getComponentEntity<Velocity>(entity);
+                if (velocityOpt.has_value()) {
+                    Velocity& velocity = velocityOpt.value();
+                    velocity.vx = static_cast<float>(vel_x);
+                    velocity.vy = static_cast<float>(vel_y);
+                }
+            }
+            
+            // Update Health if present
+            if (flags & 0x04) {
+                if (ptr + 2 > data.data() + data.size()) break;
+                
+                uint8_t current_health = *ptr++;
+                uint8_t max_health = *ptr++;
+                
+                auto& healthOpt = this->getComponentEntity<Health>(entity);
+                if (healthOpt.has_value()) {
+                    Health& health = healthOpt.value();
+                    health.currentHealth = current_health;
+                    health.maxHp = max_health;
+                }
+            }
+            
+            // Sprite ID (skip for now, already set on entity creation)
+            if (flags & 0x08) {
+                if (ptr + 2 > data.data() + data.size()) break;
+                ptr += 2;  // Skip sprite_id
+            }
+            
+            // Animation frame (update if present)
+            if (flags & 0x10) {
+                if (ptr + 4 > data.data() + data.size()) break;
+                
+                uint16_t animation_frame, animation_id;
+                std::memcpy(&animation_frame, ptr, 2); ptr += 2;
+                std::memcpy(&animation_id, ptr, 2); ptr += 2;
+                
+                auto& animationOpt = this->getComponentEntity<Animation>(entity);
+                if (animationOpt.has_value()) {
+                    Animation& animation = animationOpt.value();
+                    animation.currentFrame = animation_frame;
+                }
+            }
+        }
     }
 
     public:

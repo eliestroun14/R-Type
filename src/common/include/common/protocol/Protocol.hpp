@@ -31,7 +31,7 @@ namespace protocol {
         TYPE_PLAYER_INPUT = 0x10,
 
         //WORLD_STATE         = 0x20-0x3F (Reserved for future use or legacy)
-        // TYPE_WORLD_SNAPSHOT      = 0x20,  // DEPRECATED: Use ECS Component Snapshots instead (0x24-0x2F)
+        TYPE_FULL_GAME_STATE        = 0x20,  // Full game state snapshot (all entities and components)
         TYPE_ENTITY_SPAWN           = 0x21,
         TYPE_ENTITY_DESTROY         = 0x22,
         // TYPE_ENTITY_UPDATE       = 0x23,  // DEPRECATED: Use Component-specific snapshots instead
@@ -208,6 +208,71 @@ namespace protocol {
 
     static constexpr uint8_t ENTITY_TYPE_MIN = static_cast<uint8_t>(EntityTypes::ENTITY_TYPE_PLAYER);
     static constexpr uint8_t ENTITY_TYPE_MAX = static_cast<uint8_t>(EntityTypes::ENTITY_TYPE_BG_ELEMENT);
+
+    // ============================================================================
+    // FULL GAME STATE SNAPSHOT
+    // ============================================================================
+    
+    /**
+     * @brief Complete game state snapshot containing all entities and their components
+     * 
+     * This packet contains the entire game state in a single packet.
+     * It includes all active entities with their Transform, Velocity, Health, and Sprite data.
+     * Used for MVP implementation where clients don't simulate - they just render.
+     * 
+     * The server sends this packet at a fixed interval (e.g., every 16ms for 60Hz).
+     * Clients receive it, update their local state, and render.
+     * 
+     * Structure:
+     * - Header
+     * - World tick
+     * - Entity count
+     * - For each entity:
+     *   - Entity ID
+     *   - Entity type
+     *   - Component flags (which components are present)
+     *   - Component data (Transform, Velocity, Health, Sprite, Animation)
+     */
+    struct FullGameStateEntity {
+        uint32_t  entity_id;
+        uint8_t   entity_type;
+        uint8_t   component_flags;  // Bitfield: 0x01=Transform, 0x02=Velocity, 0x04=Health, 0x08=Sprite, 0x10=Animation
+        
+        // Transform (if flag 0x01 set) - 8 bytes
+        int16_t   pos_x;
+        int16_t   pos_y;
+        uint16_t  rotation;
+        uint16_t  scale;
+        
+        // Velocity (if flag 0x02 set) - 4 bytes
+        int16_t   vel_x;
+        int16_t   vel_y;
+        
+        // Health (if flag 0x04 set) - 2 bytes
+        uint8_t   current_health;
+        uint8_t   max_health;
+        
+        // Sprite (if flag 0x08 set) - 2 bytes
+        uint16_t  sprite_id;
+        
+        // Animation (if flag 0x10 set) - 4 bytes
+        uint16_t  animation_frame;
+        uint16_t  animation_id;
+    };
+    // Max size per entity: 6 + 8 + 4 + 2 + 2 + 4 = 26 bytes
+    
+    struct FullGameState {
+        protocol::PacketHeader header;      // type = 0x20
+        uint32_t        world_tick;         // Server tick number
+        uint16_t        entity_count;       // Number of entities in this snapshot
+        // Followed by entity_count × FullGameStateEntity
+        // Max packet size with 100 entities: 18 + 6 + (100 × 26) = 2624 bytes
+    };
+    // Base size: 18 bytes
+
+    // ============================================================================
+    // ENTITY LIFECYCLE
+    // ============================================================================
 
     // Server -> Client
     struct EntitySpawn {

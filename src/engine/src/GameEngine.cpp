@@ -180,30 +180,27 @@ namespace gameEngine {
        * @param type Network execution mode.
        *
        * Executes:
-       *   - processInput(type)
-       *   - beginFrame(type) [clear buffer]
-       *   - update(dt) [systems draw here]
-       *   - render(type) [display frame]
+       *   - SERVER: handlePacket → update → buildPackets
+       *   - CLIENT: handlePacket (receives full game state) → render
        *
        * This function represents a full iteration of the game loop.
        */
-    void GameEngine::process(float dt, NetworkType type, std::vector<common::protocol::Packet> &packetsToProcess, uint64_t elapsedMs) { // + packetsToProcess + elapsedMs
+    void GameEngine::process(float dt, NetworkType type, std::vector<common::protocol::Packet> &packetsToProcess, uint64_t elapsedMs) {
 
-        // handlePacket forwarded
-
+        // Handle incoming packets
         handlePacket(type, packetsToProcess, elapsedMs);
-        // if (_coordinator->_gameRunning == false) {
-        //     return;
-        // }
-        this->processInput(type);
-        if (type == NetworkType::NETWORK_TYPE_CLIENT || type == NetworkType::NETWORK_TYPE_STANDALONE) {
-            this->_coordinator->beginFrame();
+
+        // SERVER: Simulate the game
+        if (type == NetworkType::NETWORK_TYPE_SERVER) {
+            this->update(dt);
         }
-
-        // Update systems for all network types (CLIENT, STANDALONE, and SERVER)
-        this->update(dt);
-
-        this->render(type);
+        
+        // CLIENT: Only process input and render (no simulation)
+        if (type == NetworkType::NETWORK_TYPE_CLIENT || type == NetworkType::NETWORK_TYPE_STANDALONE) {
+            this->processInput(type);
+            this->_coordinator->beginFrame();
+            this->render(type);
+        }
     }
 
     void GameEngine::processInput()
@@ -224,15 +221,13 @@ namespace gameEngine {
 
     void GameEngine::buildPacketBasedOnStatus(NetworkType type, uint64_t elapsedMs, std::vector<common::protocol::Packet> &outgoingPackets)
     {
-        // TODO
         if (type == NetworkType::NETWORK_TYPE_SERVER) {
             _coordinator->buildSeverPacketBasedOnStatus(outgoingPackets, elapsedMs);
         }
         else if (type == NetworkType::NETWORK_TYPE_CLIENT) {
             _coordinator->buildClientPacketBasedOnStatus(outgoingPackets, elapsedMs);
+        }
     }
-
-}
     void GameEngine::broadcastSnapshots(common::network::INetworkManager& networkManager, NetworkType type)
     {
         // Only broadcast snapshots on the server
