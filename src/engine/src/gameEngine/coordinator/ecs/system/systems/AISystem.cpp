@@ -19,6 +19,8 @@ void AISystem::onUpdate(float dt)
     auto& ais        = _coord.getComponents<AI>();
     auto& playables  = _coord.getComponents<Playable>();
 
+    float scaleFactor = this->_coord.getScaleFactor();
+
     size_t playerId = std::numeric_limits<size_t>::max();
     for (size_t i = 0; i < playables.size() && i < positions.size(); ++i) {
         if (playables[i].has_value() && positions[i].has_value()) {
@@ -32,7 +34,7 @@ void AISystem::onUpdate(float dt)
     const Transform& playerPos = positions[playerId].value();
 
     constexpr float IDLE_DRIFT_X   = -1.0f;
-    constexpr float KAMIKAZE_SPEED = 2.0f;
+    constexpr float KAMIKAZE_SPEED = 0.5f;
 
     for (size_t e : _entities) {
         if (e >= positions.size() || e >= velocities.size() || e >= ais.size())
@@ -51,7 +53,7 @@ void AISystem::onUpdate(float dt)
         float dy = playerPos.y - pos.y;
         float inv = safeInvSqrt(dx * dx + dy * dy);
 
-        vel.vx = dx * inv * KAMIKAZE_SPEED;
-        vel.vy = dy * inv * KAMIKAZE_SPEED;
+        vel.vx = dx * inv * KAMIKAZE_SPEED * scaleFactor;
+        vel.vy = dy * inv * KAMIKAZE_SPEED * scaleFactor;
     }
 }

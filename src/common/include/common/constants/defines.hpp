@@ -30,6 +30,25 @@ enum NetworkType {
 };
 
 // ==============================================================
+//              GAME VARIABLE DEFINITIONS
+// ==============================================================
+
+// BASE_ENEMY
+#define BASE_ENEMY_SPRITE_WIDTH 33
+#define BASE_ENEMY_SPRITE_HEIGHT 36
+
+#define BASE_ENEMY_HEALTH_START 50
+#define BASE_ENEMY_HEALTH_MAX 50
+
+#define BASE_ENEMY_VELOCITY_X 0.0f
+#define BASE_ENEMY_VELOCITY_Y 0.0f
+
+
+// base weapon for enemies
+#define BASE_ENEMY_WEAPON_DAMAGE 8
+#define BASE_ENEMY_WEAPON_FIRE_RATE 300
+
+// ==============================================================
 //              PACKET SIZE DEFINITIONS (Network Protocol)
 // ==============================================================
 
@@ -101,8 +120,9 @@ enum NetworkType {
 #define ENTITY_SPAWN_INITIAL_HEALTH_SIZE        1   // uint8_t
 #define ENTITY_SPAWN_INITIAL_VELOCITY_X_SIZE    2   // uint16_t
 #define ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE    2   // uint16_t
-#define ENTITY_SPAWN_PAYLOAD_SIZE               (ENTITY_SPAWN_ENTITY_ID_SIZE + ENTITY_SPAWN_ENTITY_TYPE_SIZE + ENTITY_SPAWN_POSITION_X_SIZE + ENTITY_SPAWN_POSITION_Y_SIZE + ENTITY_SPAWN_MOB_VARIANT_SIZE + ENTITY_SPAWN_INITIAL_HEALTH_SIZE + ENTITY_SPAWN_INITIAL_VELOCITY_X_SIZE + ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE)  // 15 bytes
-#define ENTITY_SPAWN_MIN_ARGS_SIZE              (1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE)  // 24 bytes
+#define ENTITY_SPAWN_IS_PLAYABLE_SIZE           1   // uint8_t (0 = no Playable, 1 = has Playable)
+#define ENTITY_SPAWN_PAYLOAD_SIZE               (ENTITY_SPAWN_ENTITY_ID_SIZE + ENTITY_SPAWN_ENTITY_TYPE_SIZE + ENTITY_SPAWN_POSITION_X_SIZE + ENTITY_SPAWN_POSITION_Y_SIZE + ENTITY_SPAWN_MOB_VARIANT_SIZE + ENTITY_SPAWN_INITIAL_HEALTH_SIZE + ENTITY_SPAWN_INITIAL_VELOCITY_X_SIZE + ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE + ENTITY_SPAWN_IS_PLAYABLE_SIZE)  // 16 bytes
+#define ENTITY_SPAWN_MIN_ARGS_SIZE              (1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE)  // 25 bytes
 
 // ENTITY_DESTROY packet (0x22)
 #define ENTITY_DESTROY_ENTITY_ID_SIZE           4   // uint32_t
@@ -342,5 +362,34 @@ enum NetworkType {
 #define PONG_SERVER_TIMESTAMP_SIZE              4   // uint32_t
 #define PONG_PAYLOAD_SIZE                       (PONG_CLIENT_TIMESTAMP_SIZE + PONG_SERVER_TIMESTAMP_SIZE)  // 8 bytes
 #define PONG_MIN_ARGS_SIZE                      (1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PONG_PAYLOAD_SIZE)  // 15 bytes
+
+
+// ==============================================================
+//                          RENDER WINDOW
+// ==============================================================
+
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 450
+#define FRAMERATE_LIMIT 60
+
+// PLAYER
+#define PLAYER_SPRITE_WIDTH 33
+#define PLAYER_SPRITE_HEIGHT 15
+#define PLAYER_SPRITE_SCALE 2.5f
+
+#define PLAYER_ANIMATION_WIDTH 33
+#define PLAYER_ANIMATION_HEIGHT 15
+#define PLAYER_ANIMATION_CURRENT 2
+#define PLAYER_ANIMATION_ELAPSED_TIME 0.f
+#define PLAYER_ANIMATION_DURATION 0.1f
+#define PLAYER_ANIMATION_START 2
+#define PLAYER_ANIMATION_END 2
+#define PLAYER_ANIMATION_LOOPING true
+
+#define PLAYER_WEAPON_FIRE_RATE = 200
+#define PLAYER_WEAPON_LAST_SHOT = 0
+#define PLAYER_WEAPON_DAMAGES = 10
+#define PLAYER_WEAPON_TYPE = ProjectileType::MISSILE
+
 
 #endif /* !DEFINES_HPP_ */

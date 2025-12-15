@@ -15,6 +15,16 @@
 #include <array>
 #include <common/protocol/Protocol.hpp>
 #include <common/protocol/Packet.hpp>
+#include <engine/gameEngine/coordinator/render/RenderManager.hpp>
+
+/**
+ * @struct ParsedPlayerInput
+ * @brief Parsed player input from a network packet
+ */
+struct ParsedPlayerInput {
+    uint32_t playerId;
+    std::map<GameAction, bool> actions;
+};
 
 /**
  * @class PacketManager
@@ -109,6 +119,13 @@ class PacketManager {
          * @return true if packet data is valid, false otherwise
          */
         static bool assertPlayerInput(const common::protocol::Packet &packet);
+
+        /**
+         * @brief Parse a PLAYER_INPUT packet and extract actions
+         * @param packet The packet to parse
+         * @return Parsed player input with all actions mapped, or std::nullopt if invalid
+         */
+        static std::optional<ParsedPlayerInput> parsePlayerInput(const common::protocol::Packet &packet);
 
         // ==============================================================
         //                  WORLD_STATE (0x20-0x3F)
@@ -487,10 +504,11 @@ class PacketManager {
          *   - [flags_count+19]: initial_health (uint8_t)
          *   - [flags_count+20..flags_count+21]: initial_velocity_x (uint16_t, little-endian)
          *   - [flags_count+22..flags_count+23]: initial_velocity_y (uint16_t, little-endian)
+         *   - [flags_count+24]: is_playable (uint8_t, 0 = no Playable component, 1 = has Playable)
          *
-         * Total minimum size: 24 bytes (when flags_count = 0)
+         * Total minimum size: 25 bytes (when flags_count = 0)
          *
-         * @return The created ENTITY_SPAWN packet with 15 bytes payload
+         * @return The created ENTITY_SPAWN packet with 16 bytes payload
          */
         static std::optional<common::protocol::Packet> createEntitySpawn(const std::vector<uint8_t> &args);
 

@@ -24,6 +24,7 @@ struct EntitySpawn {
     uint32_t entityId;
     uint8_t entityType;
     float x, y;
+    uint8_t isPlayable;  // 0 = no Playable, 1 = has Playable
 };
 
 struct EntityDestroy {

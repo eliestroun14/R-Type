@@ -368,6 +368,38 @@ bool PacketManager::assertPlayerInput(const common::protocol::Packet &packet)
     return true;
 }
 
+std::optional<ParsedPlayerInput> PacketManager::parsePlayerInput(const common::protocol::Packet &packet)
+{
+    // Validate packet first
+    if (!assertPlayerInput(packet)) {
+        return std::nullopt;
+    }
+
+    const auto &data = packet.data;
+    ParsedPlayerInput result;
+
+    // Extract player_id (offset 0-3)
+    std::memcpy(&result.playerId, data.data() + 0, sizeof(uint32_t));
+
+    // Extract input_state (offset 4-5)
+    uint16_t input_state;
+    std::memcpy(&input_state, data.data() + 4, sizeof(uint16_t));
+
+    // Map bitfield to GameAction map
+    result.actions[GameAction::MOVE_UP] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP)) != 0;
+    result.actions[GameAction::MOVE_DOWN] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_DOWN)) != 0;
+    result.actions[GameAction::MOVE_LEFT] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_LEFT)) != 0;
+    result.actions[GameAction::MOVE_RIGHT] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_RIGHT)) != 0;
+    result.actions[GameAction::SHOOT] = 
+        (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY)) != 0;
+
+    return result;
+}
+
 // ==============================================================
 //                  WORLD_STATE (0x20-0x3F)
 // ==============================================================
@@ -415,20 +447,21 @@ bool PacketManager::assertEntitySpawn(const common::protocol::Packet &packet)
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // Payload: 15 bytes (EntityState)
-    if (data.size() != 15) {
-        LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: payload size != 15, got %zu", data.size());
+    // Payload: 16 bytes (EntityState + is_playable)
+    if (data.size() != 16) {
+        LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: payload size != 16, got %zu", data.size());
         return false;
     }
 
-    // Validate EntityState structure
+    // Validate EntityState structure (first 15 bytes)
     if (!validateEntityState(data, 0)) {
         return false;
     }
 
     // For spawning, health must be > 0 (cannot spawn dead entity)
+    // Health is at offset 10 (after entity_id, entity_type, position_x, position_y, mob_variant)
     uint8_t health;
-    std::memcpy(&health, data.data() + 13, sizeof(uint8_t));
+    std::memcpy(&health, data.data() + 10, sizeof(uint8_t));
     if (health == 0) {
         LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: cannot spawn entity with health == 0");
         return false;
@@ -2135,6 +2168,10 @@ std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const s
 
     // initial_velocity_y (2 bytes)
     std::memcpy(packet.data.data() + 13, args.data() + offset, ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE);
+    offset += ENTITY_SPAWN_INITIAL_VELOCITY_Y_SIZE;
+
+    // is_playable (1 byte)
+    packet.data[15] = args[offset++];
 
     return packet;
 }
