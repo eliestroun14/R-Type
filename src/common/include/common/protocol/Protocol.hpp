@@ -220,8 +220,9 @@ namespace protocol {
         uint8_t                initial_health;         // Initial health
         uint16_t               initial_velocity_x;     // Initial X velocity
         uint16_t               initial_velocity_y;     // Initial Y velocity
+        uint8_t                is_playable;            // 0 = no Playable component, 1 = has Playable (local player)
     };
-    // total size: 27 bytes
+    // total size: 28 bytes
 
     // Server -> Client
     struct EntityDestroy {

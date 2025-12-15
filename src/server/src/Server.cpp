@@ -31,6 +31,8 @@ bool Server::init() {
 void Server::run() {
     _isRunning = true;
     _gameEngine = std::make_shared<gameEngine::GameEngine>();
+    _gameEngine->init();  // Initialize engine BEFORE network manager starts
+    _networkManager->setGameEngine(_gameEngine);
     _networkManager->start();
 
     LOG_INFO("Server running on port {}", _config.port);
@@ -59,7 +61,7 @@ void Server::stop() {
 
 void Server::gameLoop() {
 
-    _gameEngine->init();
+    // Engine already initialized in run()
     
     auto next = std::chrono::steady_clock::now();
     const std::chrono::milliseconds tick(std::chrono::milliseconds(TICK_RATE));
@@ -84,20 +86,17 @@ void Server::gameLoop() {
             packetsToProcess.push_back(entry.packet);
         }
 
-        //this->_gameEngine->coordinator->processPackets(packetsToProcess);       // process all received packets with the coordinator -> PacketManager -> EntityManager
-
         // Update game state every tick
-        _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_SERVER);
+        _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_SERVER, packetsToProcess, currentTick * TICK_RATE);
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and last heartbeat and time
-        //    outgoingPackets,
-        //    currentTick,
-        //    lastHeartbeatTick,
-        //    NETWORK_TYPE_SERVER
-        //);
+        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
+            NetworkType::NETWORK_TYPE_CLIENT,
+            currentTick * TICK_RATE,
+            outgoingPackets
+        );
 
         for (const auto& packet : outgoingPackets) {
             _networkManager->queueOutgoing(packet);

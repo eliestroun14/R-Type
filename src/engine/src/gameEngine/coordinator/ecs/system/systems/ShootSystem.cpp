@@ -23,8 +23,8 @@ void ShootSystem::onUpdate(float dt)
     uint32_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
     auto& weapons = this->_coordinator.getComponents<Weapon>();
-    auto& playables = this->_coordinator.getComponents<Playable>();
     auto& transforms = this->_coordinator.getComponents<Transform>();
+    auto& inputs = this->_coordinator.getComponents<InputComponent>();
 
     // Process each entity with a weapon
     for (size_t e : this->_entities) {
@@ -33,22 +33,22 @@ void ShootSystem::onUpdate(float dt)
 
         auto& weapon = weapons[e].value();
         auto& transform = transforms[e].value();
-        bool isPlayable = playables[e].has_value();
+        
+        // Check if entity has InputComponent (is a player)
+        bool isPlayer = inputs[e].has_value();
 
         // Check if the entity wants to shoot
         bool shouldShoot = false;
 
-        if (isPlayable) {
-            // Playable entity shoots when shoot action is held or just pressed
-            bool active = this->_coordinator.isActionActive(GameAction::SHOOT);
-            bool justPressed = this->_coordinator.isActionJustPressed(GameAction::SHOOT);
-            shouldShoot = active || justPressed;
+        if (isPlayer) {
+            // Player entity shoots when shoot action is held from InputComponent
+            auto& input = inputs[e].value();
+            shouldShoot = input.activeActions[GameAction::SHOOT];
             if (shouldShoot) {
-                std::cout << "[ShootSystem] SHOOT detected (active=" << active
-                          << ", justPressed=" << justPressed << ")" << std::endl;
+                std::cout << "[ShootSystem] SHOOT detected for player " << input.playerId << std::endl;
             }
         } else {
-            // Non-playable entities (enemies) decide to shoot based on AI
+            // Non-player entities (enemies) decide to shoot based on AI
             // For now, we'll use a simple pattern: shoot periodically
             // TODO: Integrate with AISystem for smarter shooting patterns
             shouldShoot = (currentTime % 2000) < 100;  // Shoot for 100ms every 2 seconds
@@ -58,9 +58,9 @@ void ShootSystem::onUpdate(float dt)
         if (shouldShoot && canShoot(weapon, currentTime)) {
             auto [dirX, dirY] = calculateDirection(Entity::fromId(e));
             weapon.lastShotTime = currentTime;
-            spawnProjectile(Entity::fromId(e), transform.x, transform.y, dirX, dirY, isPlayable, weapon);
-            if (isPlayable) {
-                std::cout << "[ShootSystem] Projectile spawned from playable at ("
+            spawnProjectile(Entity::fromId(e), transform.x, transform.y, dirX, dirY, isPlayer, weapon);
+            if (isPlayer) {
+                std::cout << "[ShootSystem] Projectile spawned from player at ("
                           << transform.x << ", " << transform.y << ")" << std::endl;
             }
         }
@@ -107,16 +107,16 @@ bool ShootSystem::canShoot(const Weapon& weapon, uint32_t currentTime) const
 std::pair<float, float> ShootSystem::calculateDirection(Entity shooterId)
 {
     auto& transforms = this->_coordinator.getComponents<Transform>();
-    auto& playables = this->_coordinator.getComponents<Playable>();
+    auto& inputs = this->_coordinator.getComponents<InputComponent>();
 
     // Default: shoot to the right
     float dirX = 1.0f;
     float dirY = 0.0f;
 
-    bool isPlayable = playables[shooterId].has_value();
+    bool isPlayer = inputs[shooterId].has_value();
 
-    if (isPlayable) {
-        // For playable: always shoot to the right
+    if (isPlayer) {
+        // For players: always shoot to the right
         dirX = 1.0f;
         dirY = 0.0f;
     } else {

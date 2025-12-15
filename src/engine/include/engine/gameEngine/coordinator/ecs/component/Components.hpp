@@ -17,12 +17,15 @@
  */
 
 #include <iostream>
+#include <map>
 #include <common/constants/render/Assets.hpp>
 #include <SFML/Graphics.hpp>
 #include <utility>
 #include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
 #include <vector>
 
+// Forward declaration for GameAction enum
+enum class GameAction;
 
 // ############################################################################
 // ################################## CORE  ###################################
@@ -262,17 +265,36 @@ struct Drawable {};
 /**
  * @brief Tag component. Marks the entity as the local player controlled character.
  *
- * Used by: InputSystem.
+ * Used to distinguish the local player from remote players.
+ * The local player is the one controlled by the keyboard/input on THIS client.
  */
 struct Playable {};
 
 /**
+<<<<<<< HEAD
+ * @brief Stores input state for an entity (player).
+ *
+ * Each player entity has its own InputComponent to track active actions.
+ * This allows multiple players to have different inputs simultaneously.
+ * Used by: PlayerSystem, ShootSystem, InputSystem.
+ */
+struct InputComponent
+{
+    uint32_t playerId;                           ///< ID of the player this input belongs to
+    std::map<GameAction, bool> activeActions;    ///< Current active actions for this player
+
+    InputComponent(uint32_t id) : playerId(id), activeActions() {}
+};
+
+/**
+=======
  * @brief Tag component. Marks the entity as an enemy.
  *
  */
 struct Enemy {};
 
 /*
+>>>>>>> dev
  * @brief Represents a projectile fired by an entity.
  *
  * Stores information about who shot it and what it can hit.

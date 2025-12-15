@@ -11,7 +11,7 @@
 #include <common/constants/render/Assets.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/systems/RenderSystem.hpp>
 
-RenderManager::RenderManager()
+RenderManager::RenderManager() : _coordinator(nullptr), _localPlayerEntity(Entity::fromId(0))
 {
     this->_keyBindings[sf::Keyboard::Up] = GameAction::MOVE_UP;
     // this->_keyBindings[sf::Keyboard::Z] = GameAction::MOVE_UP; // to support ZQSD
@@ -74,6 +74,12 @@ void RenderManager::init()
     
     // load every textures for the game.
     this->_textures.init();
+}
+
+void RenderManager::setLocalPlayer(Coordinator& coordinator, Entity localPlayerEntity)
+{
+    this->_coordinator = &coordinator;
+    this->_localPlayerEntity = localPlayerEntity;
 }
 
 void RenderManager::beginFrame()
@@ -146,7 +152,19 @@ void RenderManager::handleEvent(const sf::Event& event)
 
         if (this->_keyBindings.count(event.key.code)) {
             GameAction action = this->_keyBindings[event.key.code];
+            
+            // Update local _activeActions (for legacy code compatibility)
             this->_activeActions[action] = isPressed;
+            
+            // Also update the local player's InputComponent if it exists and is Playable
+            if (this->_coordinator && static_cast<std::size_t>(this->_localPlayerEntity) != 0) {
+                auto& playables = this->_coordinator->getComponents<Playable>();
+                size_t entityId = static_cast<std::size_t>(this->_localPlayerEntity);
+                // Only apply input to the local playable player
+                if (entityId < playables.size() && playables[entityId].has_value()) {
+                    this->_coordinator->setPlayerInputAction(this->_localPlayerEntity, 0, action, isPressed);
+                }
+            }
         }
     }
 

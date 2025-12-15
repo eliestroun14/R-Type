@@ -10,7 +10,11 @@
 
 #include <SFML/Graphics.hpp>
 #include <common/constants/render/TextureStorage.hpp>
+#include <engine/gameEngine/coordinator/ecs/entity/Entity.hpp>
 #include <common/constants/defines.hpp>
+
+// Forward declaration
+class Coordinator;
 
 // can change on updates
 /**
@@ -53,6 +57,15 @@ class RenderManager {
          * sets the framerate limit, and centers the window on the desktop.
          */
         void init();
+
+        /**
+         * @brief Sets the local player entity for input handling.
+         * * Should be called after the local player entity is created.
+         * 
+         * @param coordinator Reference to the Coordinator
+         * @param localPlayerEntity The entity ID of the local player
+         */
+        void setLocalPlayer(Coordinator& coordinator, Entity localPlayerEntity);
 
         /**
          * @brief Clears the window buffer to prepare for new frame drawing.
@@ -139,6 +152,9 @@ class RenderManager {
         float getScaleFactor() const;
 
     private:
+        Coordinator* _coordinator;
+        Entity _localPlayerEntity;
+
         sf::RenderWindow _window;
         TextureStorage _textures;
 

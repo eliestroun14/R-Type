@@ -131,22 +131,22 @@ void RTypeClient::gameLoop()
 
         // // Poll inputs every tick
         // this->_gameEngine->input->poll();                                       // poll inputs from engine input system (SFML)
-        this->_gameEngine->processInput();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
+        //this->_gameEngine->processInput();                        // process inputs w coordinator -> Redermanager -> (we user SFML for input handling)
 
 
 
-        // Update game state every tick
-        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT);         // engine -> coordinator -> ecs (all systems update) elapsedMS
+        // Update game state every tick + elapsedMs + packetsToProcess
+        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT, packetsToProcess, elapsedMs);         // engine -> coordinator -> ecs (all systems update) elapsedMS
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        //this->_gameEngine->coordinator->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
-        //    outgoingPackets,
-        //    elapsedMs,
-        //    NETWORK_TYPE_CLIENT,
-        //    lastInputSendTime
-        //);
+        
+        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
+            NetworkType::NETWORK_TYPE_CLIENT,
+            elapsedMs,
+            outgoingPackets
+        );
 
         // Send packets directly to network manager
         for (const auto& packet : outgoingPackets) {

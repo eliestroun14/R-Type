@@ -22,7 +22,7 @@ void CollisionSystem::onUpdate(float dt)
     auto& healths = this->_coordinator.getComponents<Health>();
     auto& hitboxes = this->_coordinator.getComponents<HitBox>();
     auto& projectiles = this->_coordinator.getComponents<Projectile>();
-    auto& playables = this->_coordinator.getComponents<Playable>();
+    auto& inputs = this->_coordinator.getComponents<InputComponent>();
 
     std::vector<size_t> entities;
     entities.reserve(this->_entities.size());
@@ -52,8 +52,8 @@ void CollisionSystem::onUpdate(float dt)
                 continue;
 
             // Projectile-friendly-fire rules:
-            // - Player bullets must not damage playables (including self)
-            // - Enemy bullets should only damage playables
+            // - Player bullets must not damage players (including self)
+            // - Enemy bullets should only damage players
             bool e1Projectile = e1 < projectiles.size() && projectiles[e1].has_value();
             bool e2Projectile = e2 < projectiles.size() && projectiles[e2].has_value();
 
@@ -86,13 +86,15 @@ void CollisionSystem::onUpdate(float dt)
                 // Prevent hitting shooter
                 if (targetId == static_cast<size_t>(proj.shooterId))
                     return false;
-                bool targetPlayable = targetId < playables.size() && playables[targetId].has_value();
-                if (proj.isFromPlayable) {
-                    // Player bullets do not hit playables
-                    return !targetPlayable;
+                bool targetIsPlayer = targetId < inputs.size() && inputs[targetId].has_value();
+                bool shooterIsPlayer = static_cast<size_t>(proj.shooterId) < inputs.size() && inputs[static_cast<size_t>(proj.shooterId)].has_value();
+
+                if (shooterIsPlayer) {
+                    // Player bullets do not hit any players (allies included)
+                    return !targetIsPlayer;
                 }
-                // Enemy bullets only hit playables
-                return targetPlayable;
+                // Enemy bullets only hit players
+                return targetIsPlayer;
             };
 
             // Handle projectile collisions
@@ -118,11 +120,15 @@ void CollisionSystem::onUpdate(float dt)
             }
 
             // Non-projectile collision fallback: apply symmetric damage
-            if (e1 < healths.size() && healths[e1]) {
-                applyDamage(e1, 10);
-            }
-            if (e2 < healths.size() && healths[e2]) {
+            // Only apply damage if neither entity is a player (has InputComponent)
+            bool e1IsPlayer = e1 < inputs.size() && inputs[e1].has_value();
+            bool e2IsPlayer = e2 < inputs.size() && inputs[e2].has_value();
+
+            if (!e1IsPlayer && e2 < healths.size() && healths[e2]) {
                 applyDamage(e2, 10);
+            }
+            if (!e2IsPlayer && e1 < healths.size() && healths[e1]) {
+                applyDamage(e1, 10);
             }
         }
     }
