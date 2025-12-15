@@ -22,7 +22,7 @@ namespace server {
      */
     struct ServerConfig {
         uint16_t port = 4242;
-        uint32_t maxPlayers = 16;
+        uint32_t maxPlayers = 2;
         uint32_t tickRate = 60;  // Hz
         std::chrono::milliseconds heartbeatTimeout = std::chrono::milliseconds(TIMEOUT_MS);
         bool enableLogging = true;

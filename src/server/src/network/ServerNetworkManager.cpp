@@ -296,11 +296,78 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress,
         LOG_INFO("Server accept sent to client {}", clientId);
     }
 
-    // Spawn player entity with 1-based ID (clientId + 1)
-    uint32_t playerId = clientId + 1;
-    createPlayerEntity(playerId, 100, 150);
-    sendPlayerToClient(playerId, clientId, 100, 150);
-    sendPlayerToOtherClients(playerId, clientId, 100, 150);
+    // Do NOT spawn player entities immediately. Wait for all clients to connect
+    // before starting the game. When all clients are active, send GAME_START
+    // and then spawn all player entities and notify clients.
+
+    // Count active clients
+    uint32_t activeCount = 0;
+    for (const auto &slot : _clients) {
+        if (slot.active) ++activeCount;
+    }
+
+    if (activeCount == _maxPlayers) {
+        LOG_INFO("All clients connected ({}). Starting game instance.", _maxPlayers);
+
+        // Build GAME_START packet args
+        std::vector<uint8_t> startArgs;
+        startArgs.push_back(0x01); // flags_count
+        startArgs.push_back(0x01); // FLAG_RELIABLE
+
+        // sequence_number (4 bytes)
+        startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0);
+        // timestamp (4 bytes)
+        startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0);
+
+        // game_instance_id (4 bytes) - use 1 for now
+        uint32_t gameInstanceId = 1;
+        startArgs.push_back(gameInstanceId & 0xFF);
+        startArgs.push_back((gameInstanceId >> 8) & 0xFF);
+        startArgs.push_back((gameInstanceId >> 16) & 0xFF);
+        startArgs.push_back((gameInstanceId >> 24) & 0xFF);
+
+        // player_count (1 byte) -> number of active players
+        startArgs.push_back(static_cast<uint8_t>(activeCount));
+
+        // player_ids (16 bytes: 4 x uint32_t). Always include 4 entries (pad with 0)
+        for (uint32_t i = 0; i < 4; ++i) {
+            uint32_t pid = 0;
+            if (i < _clients.size() && _clients[i].active) {
+                pid = i + 1; // 1-based player id
+            }
+            startArgs.push_back(pid & 0xFF);
+            startArgs.push_back((pid >> 8) & 0xFF);
+            startArgs.push_back((pid >> 16) & 0xFF);
+            startArgs.push_back((pid >> 24) & 0xFF);
+        }
+
+        // level_id (1 byte)
+        startArgs.push_back(0);
+        // difficulty (1 byte)
+        startArgs.push_back(0);
+
+        auto startPacket = PacketManager::createGameStart(startArgs);
+        if (startPacket) {
+            // Send GAME_START to each client individually to guarantee per-client ordering
+            for (const auto &slot : _clients) {
+                if (slot.active) {
+                    queueOutgoing(startPacket.value(), slot.clientId);
+                }
+            }
+            LOG_INFO("GAME_START sent to all clients (per-client)");
+        } else {
+            LOG_ERROR("Failed to create GAME_START packet");
+        }
+
+        // Now spawn players server-side and send ENTITY_SPAWN to each client
+        for (uint32_t i = 0; i < _maxPlayers; ++i) {
+            uint32_t playerId = i + 1;
+            uint32_t clientForPlayer = i; // mapping one-to-one
+            createPlayerEntity(playerId, 100, 150);
+            sendPlayerToClient(playerId, clientForPlayer, 100, 150);
+            sendPlayerToOtherClients(playerId, clientForPlayer, 100, 150);
+        }
+    }
 }
 
 void ServerNetworkManager::handleClientDisconnect(const std::string& remoteAddress)
