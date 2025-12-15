@@ -60,10 +60,11 @@ void RTypeClient::run()
     while (!isConnected() && _isRunning) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-
+    
     if (isConnected()) {
         LOG_INFO("Connected to server! Starting game...");
         this->_gameEngine->init();
+        this->_gameEngine->initRender();
 
         // Wait for GAME_START from server before initializing render/window.
         // The network thread will keep pushing incoming packets; consume them
@@ -94,7 +95,6 @@ void RTypeClient::run()
 
         if (started) {
             LOG_INFO("Received GAME_START, initializing render and entering game loop");
-            this->_gameEngine->initRender();
             // Keep gameLoop in main thread for OpenGL context to work properly
             this->gameLoop();
         } else {
