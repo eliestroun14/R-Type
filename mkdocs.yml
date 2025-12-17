@@ -98,8 +98,10 @@ nav:
         - Systems:
           - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/index.md
           - AI System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/AI-system.md
-          - Animation System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/AI-system.md
-          - Background System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/AI-system.md
+          - Animation System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/animation-system.md
+          - Background System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/background-system.md
+          - Collision System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/collision-system.md
+
 
         - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/index.md
         - Entity: GameEngine&Architecture/GameEngine/Coordinator/ECS/entity.md
