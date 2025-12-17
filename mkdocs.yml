@@ -92,11 +92,17 @@ nav:
     - Coordinator:
       - Overview: GameEngine&Architecture/GameEngine/Coordinator/index.md
       - ECS:
+        - Components:
+          - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/Components/index.md
+          - Components: GameEngine&Architecture/GameEngine/Coordinator/ECS/Components/components.md
+        - Systems:
+          - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/index.md
+          - AI System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/AI-system.md
+          - Animation System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/AI-system.md
+          - Background System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/AI-system.md
+
         - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/index.md
         - Entity: GameEngine&Architecture/GameEngine/Coordinator/ECS/entity.md
-        - Components: GameEngine&Architecture/GameEngine/Coordinator/ECS/components.md
-        - Component Manager: GameEngine&Architecture/GameEngine/Coordinator/ECS/component-manager.md
-        - System: GameEngine&Architecture/GameEngine/Coordinator/ECS/system.md
       - Render: GameEngine&Architecture/GameEngine/Coordinator/Render/index.md
 
   - Logger:
