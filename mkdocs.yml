@@ -98,7 +98,7 @@ nav:
         - Component Manager: GameEngine&Architecture/GameEngine/Coordinator/ECS/component-manager.md
         - System: GameEngine&Architecture/GameEngine/Coordinator/ECS/system.md
         - Coordinator: GameEngine&Architecture/GameEngine/Coordinator/ECS/coordinator.md
-      - Render: 
+      # - Render: 
 
   - Logger:
     - Overview: Logger/index.md
