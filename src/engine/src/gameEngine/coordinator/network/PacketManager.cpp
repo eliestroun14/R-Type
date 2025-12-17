@@ -1720,18 +1720,9 @@ std::optional<common::protocol::Packet> PacketManager::createClientConnect(const
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_CONNECT));
 
-    // Parse args structure:
-    // [0]: flags_count (uint8_t)
-    // [1..flags_count]: flag values (uint8_t each)
-    // [flags_count+1..flags_count+4]: sequence_number (uint32_t)
-    // [flags_count+5..flags_count+8]: timestamp (uint32_t)
-    // [flags_count+9]: protocol_version (1 byte)
-    // [flags_count+10..flags_count+41]: player_name (32 bytes)
-    // [flags_count+42..flags_count+45]: client_id (4 bytes, uint32_t)
-
     if (args.size() < CLIENT_CONNECT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createClientConnect: args too small, minimum %d bytes needed (1 flags_count + %d seq + %d ts + %d payload), got %zu",
-                     CLIENT_CONNECT_MIN_ARGS_SIZE, HEADER_FIELD_SEQUENCE_NUMBER_SIZE, HEADER_FIELD_TIMESTAMP_SIZE, CLIENT_CONNECT_PAYLOAD_SIZE, args.size());
+        LOG_ERROR_CAT("NetworkManager", "createClientConnect: args too small, minimum {} bytes needed (1 flags_count + {} header + {} payload), got {}",
+                      CLIENT_CONNECT_MIN_ARGS_SIZE, HEADER_SIZE, CLIENT_CONNECT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -1740,7 +1731,7 @@ std::optional<common::protocol::Packet> PacketManager::createClientConnect(const
 
     // Validate we have enough data for flags
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createClientConnect: not enough data for flags, expected %zu got %zu", offset + flags_count, args.size());
+        LOG_ERROR_CAT("NetworkManager", "createClientConnect: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -1750,9 +1741,9 @@ std::optional<common::protocol::Packet> PacketManager::createClientConnect(const
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + CLIENT_CONNECT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createClientConnect: not enough data for header + payload, expected %zu got %zu",
-                     offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + CLIENT_CONNECT_PAYLOAD_SIZE, args.size());
+    if (args.size() < offset + HEADER_SIZE + CLIENT_CONNECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createClientConnect: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + CLIENT_CONNECT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -1797,18 +1788,8 @@ std::optional<common::protocol::Packet> PacketManager::createServerAccept(const 
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_ACCEPT));
 
-    // Parse args structure:
-    // [0]: flags_count (uint8_t)
-    // [1..flags_count]: flag values (uint8_t each)
-    // [flags_count+1..flags_count+4]: sequence_number (uint32_t, little-endian)
-    // [flags_count+5..flags_count+8]: timestamp (uint32_t, little-endian)
-    // [flags_count+9..flags_count+12]: assigned_player_id (uint32_t, little-endian)
-    // [flags_count+13]: max_players (uint8_t)
-    // [flags_count+14..flags_count+17]: game_instance_id (uint32_t, little-endian)
-    // [flags_count+18..flags_count+19]: server_tickrate (uint16_t, little-endian)
-
     if (args.size() < SERVER_ACCEPT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createServerAccept: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createServerAccept: args too small, minimum {} bytes needed, got {}",
                      SERVER_ACCEPT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -1817,7 +1798,7 @@ std::optional<common::protocol::Packet> PacketManager::createServerAccept(const 
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createServerAccept: not enough data for flags, expected %zu got %zu", offset + flags_count, args.size());
+        LOG_ERROR_CAT("NetworkManager", "createServerAccept: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -1826,8 +1807,9 @@ std::optional<common::protocol::Packet> PacketManager::createServerAccept(const 
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + SERVER_ACCEPT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createServerAccept: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + SERVER_ACCEPT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createServerAccept: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + SERVER_ACCEPT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -1869,7 +1851,7 @@ std::optional<common::protocol::Packet> PacketManager::createServerReject(const 
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_REJECT));
 
     if (args.size() < SERVER_REJECT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createServerReject: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createServerReject: args too small, minimum {} bytes needed, got {}",
                      SERVER_REJECT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -1878,7 +1860,7 @@ std::optional<common::protocol::Packet> PacketManager::createServerReject(const 
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createServerReject: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createServerReject: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -1887,8 +1869,9 @@ std::optional<common::protocol::Packet> PacketManager::createServerReject(const 
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + SERVER_REJECT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createServerReject: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + SERVER_REJECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createServerReject: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + SERVER_REJECT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -1922,7 +1905,7 @@ std::optional<common::protocol::Packet> PacketManager::createClientDisconnect(co
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_CLIENT_DISCONNECT));
 
     if (args.size() < CLIENT_DISCONNECT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: args too small, minimum {} bytes needed, got {}",
                      CLIENT_DISCONNECT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -1931,7 +1914,7 @@ std::optional<common::protocol::Packet> PacketManager::createClientDisconnect(co
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -1940,8 +1923,9 @@ std::optional<common::protocol::Packet> PacketManager::createClientDisconnect(co
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + CLIENT_DISCONNECT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + CLIENT_DISCONNECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createClientDisconnect: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + CLIENT_DISCONNECT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -1976,7 +1960,7 @@ std::optional<common::protocol::Packet> PacketManager::createHeartBeat(const std
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEARTBEAT));
 
     if (args.size() < HEARTBEAT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: args too small, minimum {} bytes needed, got {}",
                      HEARTBEAT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -1985,7 +1969,7 @@ std::optional<common::protocol::Packet> PacketManager::createHeartBeat(const std
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -1994,8 +1978,9 @@ std::optional<common::protocol::Packet> PacketManager::createHeartBeat(const std
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + HEARTBEAT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + HEARTBEAT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createHeartBeat: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + HEARTBEAT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2030,7 +2015,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const s
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT));
 
     if (args.size() < PLAYER_INPUT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: args too small, minimum {} bytes needed, got {}",
                      PLAYER_INPUT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2039,7 +2024,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const s
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2048,8 +2033,9 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const s
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_INPUT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + PLAYER_INPUT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + PLAYER_INPUT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2102,7 +2088,7 @@ std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const s
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN));
 
     if (args.size() < ENTITY_SPAWN_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: args too small, minimum {} bytes needed, got {}",
                      ENTITY_SPAWN_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2111,7 +2097,7 @@ std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const s
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2120,8 +2106,9 @@ std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const s
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2181,7 +2168,7 @@ std::optional<common::protocol::Packet> PacketManager::createEntityDestroy(const
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_DESTROY));
 
     if (args.size() < ENTITY_DESTROY_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: args too small, minimum {} bytes needed, got {}",
                      ENTITY_DESTROY_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2190,7 +2177,7 @@ std::optional<common::protocol::Packet> PacketManager::createEntityDestroy(const
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2199,8 +2186,9 @@ std::optional<common::protocol::Packet> PacketManager::createEntityDestroy(const
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_DESTROY_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + ENTITY_DESTROY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntityDestroy: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + ENTITY_DESTROY_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2247,8 +2235,9 @@ std::optional<common::protocol::Packet> PacketManager::createTransformSnapshot(c
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + TRANSFORM_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshot: args too small");
+    if (args.size() < TRANSFORM_SNAPSHOT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshot: args too small got {} bytes, minimum {} bytes needed",
+                     args.size(), TRANSFORM_SNAPSHOT_MIN_ARGS_SIZE);
         return std::nullopt;
     }
 
@@ -2256,7 +2245,7 @@ std::optional<common::protocol::Packet> PacketManager::createTransformSnapshot(c
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshot: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshot: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2279,7 +2268,8 @@ std::optional<common::protocol::Packet> PacketManager::createTransformSnapshot(c
     packet.header.sequence_number = sequence_number;
     packet.header.timestamp = timestamp;
 
-    // Copy remaining data (world_tick + entity_count + entity data)
+    // Copy remaining data (entity_count + entity data)
+    // Note: current tick is in packet.header.tick
     size_t remaining = args.size() - offset;
     packet.data.resize(remaining);
     std::memcpy(packet.data.data(), args.data() + offset, remaining);
@@ -2291,8 +2281,9 @@ std::optional<common::protocol::Packet> PacketManager::createVelocitySnapshot(co
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_VELOCITY_SNAPSHOT));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + VELOCITY_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createVelocitySnapshot: args too small");
+    if (args.size() < 1 + VELOCITY_SNAPSHOT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createVelocitySnapshot: args too small got {} bytes, minimum {} bytes needed",
+                     args.size(), 1 + VELOCITY_SNAPSHOT_MIN_ARGS_SIZE);
         return std::nullopt;
     }
 
@@ -2300,7 +2291,7 @@ std::optional<common::protocol::Packet> PacketManager::createVelocitySnapshot(co
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createVelocitySnapshot: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createVelocitySnapshot: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2334,8 +2325,9 @@ std::optional<common::protocol::Packet> PacketManager::createHealthSnapshot(cons
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + HEALTH_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshot: args too small");
+    if (args.size() < 1 + HEALTH_SNAPSHOT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshot: args too small got {} bytes, minimum {} bytes needed",
+                     args.size(), 1 + HEALTH_SNAPSHOT_MIN_ARGS_SIZE);
         return std::nullopt;
     }
 
@@ -2343,7 +2335,7 @@ std::optional<common::protocol::Packet> PacketManager::createHealthSnapshot(cons
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshot: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshot: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2377,8 +2369,9 @@ std::optional<common::protocol::Packet> PacketManager::createWeaponSnapshot(cons
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + WEAPON_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createWeaponSnapshot: args too small");
+    if (args.size() < 1 + WEAPON_SNAPSHOT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createWeaponSnapshot: args too small got {} bytes, minimum {} bytes needed",
+                     args.size(), 1 + WEAPON_SNAPSHOT_MIN_ARGS_SIZE);
         return std::nullopt;
     }
 
@@ -2386,7 +2379,7 @@ std::optional<common::protocol::Packet> PacketManager::createWeaponSnapshot(cons
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createWeaponSnapshot: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createWeaponSnapshot: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2420,8 +2413,9 @@ std::optional<common::protocol::Packet> PacketManager::createAISnapshot(const st
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_SNAPSHOT));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + AI_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createAISnapshot: args too small");
+    if (args.size() < 1 + AI_SNAPSHOT_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createAISnapshot: args too small got {} bytes, minimum {} bytes needed",
+                     args.size(), 1 + AI_SNAPSHOT_MIN_ARGS_SIZE);
         return std::nullopt;
     }
 
@@ -2429,7 +2423,7 @@ std::optional<common::protocol::Packet> PacketManager::createAISnapshot(const st
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createAISnapshot: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createAISnapshot: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2506,8 +2500,9 @@ std::optional<common::protocol::Packet> PacketManager::createComponentAdd(const 
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_ADD));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + COMPONENT_ADD_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createComponentAdd: args too small");
+    if (args.size() < 1 + COMPONENT_ADD_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createComponentAdd: args too small got {} bytes, minimum {} bytes needed",
+                     args.size(), 1 + COMPONENT_ADD_MIN_ARGS_SIZE);
         return std::nullopt;
     }
 
@@ -2515,7 +2510,7 @@ std::optional<common::protocol::Packet> PacketManager::createComponentAdd(const 
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createComponentAdd: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createComponentAdd: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2550,7 +2545,7 @@ std::optional<common::protocol::Packet> PacketManager::createComponentRemove(con
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_REMOVE));
 
     if (args.size() < COMPONENT_REMOVE_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: args too small, minimum {} bytes needed, got {}",
                      COMPONENT_REMOVE_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2559,7 +2554,7 @@ std::optional<common::protocol::Packet> PacketManager::createComponentRemove(con
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2568,8 +2563,9 @@ std::optional<common::protocol::Packet> PacketManager::createComponentRemove(con
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + COMPONENT_REMOVE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: not enough data for header + payload");
+    if (args.size() < offset + HEADER_SIZE + COMPONENT_REMOVE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createComponentRemove: not enough data for header + payload, expected {} got {}",
+                     offset + HEADER_SIZE + COMPONENT_REMOVE_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2603,8 +2599,9 @@ std::optional<common::protocol::Packet> PacketManager::createTransformSnapshotDe
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + TRANSFORM_SNAPSHOT_DELTA_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshotDelta: args too small");
+    if (args.size() < 1 + TRANSFORM_SNAPSHOT_DELTA_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshotDelta: args too small, minimum {} bytes needed, got {}",
+            TRANSFORM_SNAPSHOT_DELTA_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2612,7 +2609,7 @@ std::optional<common::protocol::Packet> PacketManager::createTransformSnapshotDe
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshotDelta: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createTransformSnapshotDelta: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2646,8 +2643,9 @@ std::optional<common::protocol::Packet> PacketManager::createHealthSnapshotDelta
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + HEALTH_SNAPSHOT_DELTA_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshotDelta: args too small");
+    if (args.size() < 1 + HEALTH_SNAPSHOT_DELTA_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshotDelta: args too small, minimum {} bytes needed, got {}",
+            HEALTH_SNAPSHOT_DELTA_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2655,7 +2653,7 @@ std::optional<common::protocol::Packet> PacketManager::createHealthSnapshotDelta
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshotDelta: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createHealthSnapshotDelta: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2689,8 +2687,9 @@ std::optional<common::protocol::Packet> PacketManager::createEntityFullState(con
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_FULL_STATE));
 
-    if (args.size() < 1 + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ENTITY_FULL_STATE_BASE_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createEntityFullState: args too small");
+    if (args.size() < 1 + ENTITY_FULL_STATE_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createEntityFullState: args too small, minimum {} bytes needed, got {}",
+            ENTITY_FULL_STATE_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
 
@@ -2698,7 +2697,7 @@ std::optional<common::protocol::Packet> PacketManager::createEntityFullState(con
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createEntityFullState: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createEntityFullState: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2737,7 +2736,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerHit(const std
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_HIT));
 
     if (args.size() < PLAYER_HIT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerHit: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createPlayerHit: args too small, minimum {} bytes needed, got {}",
                      PLAYER_HIT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2746,7 +2745,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerHit(const std
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerHit: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createPlayerHit: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2755,7 +2754,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerHit(const std
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_HIT_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + PLAYER_HIT_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createPlayerHit: not enough data for header + payload");
         return std::nullopt;
     }
@@ -2808,7 +2807,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerDeath(const s
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_DEATH));
 
     if (args.size() < PLAYER_DEATH_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: args too small, minimum {} bytes needed, got {}",
                      PLAYER_DEATH_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2817,7 +2816,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerDeath(const s
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2826,7 +2825,7 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerDeath(const s
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_DEATH_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + PLAYER_DEATH_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createPlayerDeath: not enough data for header + payload");
         return std::nullopt;
     }
@@ -2874,7 +2873,7 @@ std::optional<common::protocol::Packet> PacketManager::createScoreUpdate(const s
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SCORE_UPDATE));
 
     if (args.size() < SCORE_UPDATE_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: args too small, minimum {} bytes needed, got {}",
                      SCORE_UPDATE_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2883,7 +2882,7 @@ std::optional<common::protocol::Packet> PacketManager::createScoreUpdate(const s
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2892,7 +2891,7 @@ std::optional<common::protocol::Packet> PacketManager::createScoreUpdate(const s
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + SCORE_UPDATE_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + SCORE_UPDATE_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createScoreUpdate: not enough data for header + payload");
         return std::nullopt;
     }
@@ -2936,7 +2935,7 @@ std::optional<common::protocol::Packet> PacketManager::createPowerupPickup(const
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP));
 
     if (args.size() < POWER_PICKUP_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: args too small, minimum {} bytes needed, got {}",
                      POWER_PICKUP_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -2945,7 +2944,7 @@ std::optional<common::protocol::Packet> PacketManager::createPowerupPickup(const
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -2954,7 +2953,7 @@ std::optional<common::protocol::Packet> PacketManager::createPowerupPickup(const
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + POWER_PICKUP_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + POWER_PICKUP_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createPowerupPickup: not enough data for header + payload");
         return std::nullopt;
     }
@@ -2997,7 +2996,7 @@ std::optional<common::protocol::Packet> PacketManager::createWeaponFire(const st
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_FIRE));
 
     if (args.size() < WEAPON_FIRE_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: args too small, minimum {} bytes needed, got {}",
                      WEAPON_FIRE_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3006,7 +3005,7 @@ std::optional<common::protocol::Packet> PacketManager::createWeaponFire(const st
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3015,7 +3014,7 @@ std::optional<common::protocol::Packet> PacketManager::createWeaponFire(const st
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + WEAPON_FIRE_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + WEAPON_FIRE_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createWeaponFire: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3071,7 +3070,7 @@ std::optional<common::protocol::Packet> PacketManager::createVisualEffect(const 
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT));
 
     if (args.size() < VISUAL_EFFECT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createVisualEffect: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createVisualEffect: args too small, minimum {} bytes needed, got {}",
                      VISUAL_EFFECT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3080,7 +3079,7 @@ std::optional<common::protocol::Packet> PacketManager::createVisualEffect(const 
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createVisualEffect: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createVisualEffect: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3089,7 +3088,7 @@ std::optional<common::protocol::Packet> PacketManager::createVisualEffect(const 
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + VISUAL_EFFECT_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + VISUAL_EFFECT_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createVisualEffect: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3145,7 +3144,7 @@ std::optional<common::protocol::Packet> PacketManager::createAudioEffect(const s
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT));
 
     if (args.size() < AUDIO_EFFECT_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createAudioEffect: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createAudioEffect: args too small, minimum {} bytes needed, got {}",
                      AUDIO_EFFECT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3154,7 +3153,7 @@ std::optional<common::protocol::Packet> PacketManager::createAudioEffect(const s
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createAudioEffect: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createAudioEffect: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3163,7 +3162,7 @@ std::optional<common::protocol::Packet> PacketManager::createAudioEffect(const s
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + AUDIO_EFFECT_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + AUDIO_EFFECT_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createAudioEffect: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3209,7 +3208,7 @@ std::optional<common::protocol::Packet> PacketManager::createParticleSpawn(const
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PARTICLE_SPAWN));
 
     if (args.size() < PARTICLE_SPAWN_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: args too small, minimum {} bytes needed, got {}",
                      PARTICLE_SPAWN_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3218,7 +3217,7 @@ std::optional<common::protocol::Packet> PacketManager::createParticleSpawn(const
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3227,7 +3226,7 @@ std::optional<common::protocol::Packet> PacketManager::createParticleSpawn(const
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PARTICLE_SPAWN_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + PARTICLE_SPAWN_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createParticleSpawn: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3302,7 +3301,7 @@ std::optional<common::protocol::Packet> PacketManager::createGameStart(const std
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START));
 
     if (args.size() < GAME_START_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createGameStart: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createGameStart: args too small, minimum {} bytes needed, got {}",
                      GAME_START_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3311,7 +3310,7 @@ std::optional<common::protocol::Packet> PacketManager::createGameStart(const std
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createGameStart: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createGameStart: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3320,7 +3319,7 @@ std::optional<common::protocol::Packet> PacketManager::createGameStart(const std
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + GAME_START_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + GAME_START_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createGameStart: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3370,7 +3369,7 @@ std::optional<common::protocol::Packet> PacketManager::createGameEnd(const std::
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_END));
 
     if (args.size() < GAME_END_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createGameEnd: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createGameEnd: args too small, minimum {} bytes needed, got {}",
                      GAME_END_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3379,7 +3378,7 @@ std::optional<common::protocol::Packet> PacketManager::createGameEnd(const std::
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createGameEnd: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createGameEnd: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3388,7 +3387,7 @@ std::optional<common::protocol::Packet> PacketManager::createGameEnd(const std::
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + GAME_END_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + GAME_END_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createGameEnd: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3433,7 +3432,7 @@ std::optional<common::protocol::Packet> PacketManager::createLevelComplete(const
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE));
 
     if (args.size() < LEVEL_COMPLETE_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createLevelComplete: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createLevelComplete: args too small, minimum {} bytes needed, got {}",
                      LEVEL_COMPLETE_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3442,7 +3441,7 @@ std::optional<common::protocol::Packet> PacketManager::createLevelComplete(const
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createLevelComplete: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createLevelComplete: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3451,7 +3450,7 @@ std::optional<common::protocol::Packet> PacketManager::createLevelComplete(const
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + LEVEL_COMPLETE_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + LEVEL_COMPLETE_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createLevelComplete: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3493,7 +3492,7 @@ std::optional<common::protocol::Packet> PacketManager::createLevelStart(const st
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START));
 
     if (args.size() < LEVEL_START_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createLevelStart: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createLevelStart: args too small, minimum {} bytes needed, got {}",
                      LEVEL_START_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3502,7 +3501,7 @@ std::optional<common::protocol::Packet> PacketManager::createLevelStart(const st
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createLevelStart: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createLevelStart: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3511,7 +3510,7 @@ std::optional<common::protocol::Packet> PacketManager::createLevelStart(const st
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + LEVEL_START_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + LEVEL_START_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createLevelStart: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3550,7 +3549,7 @@ std::optional<common::protocol::Packet> PacketManager::createForceState(const st
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_FORCE_STATE));
 
     if (args.size() < FORCE_STATE_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createForceState: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createForceState: args too small, minimum {} bytes needed, got {}",
                      FORCE_STATE_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3559,7 +3558,7 @@ std::optional<common::protocol::Packet> PacketManager::createForceState(const st
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createForceState: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createForceState: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3568,7 +3567,7 @@ std::optional<common::protocol::Packet> PacketManager::createForceState(const st
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + FORCE_STATE_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + FORCE_STATE_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createForceState: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3617,7 +3616,7 @@ std::optional<common::protocol::Packet> PacketManager::createAIState(const std::
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_STATE));
 
     if (args.size() < AI_STATE_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createAIState: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createAIState: args too small, minimum {} bytes needed, got {}",
                      AI_STATE_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3626,7 +3625,7 @@ std::optional<common::protocol::Packet> PacketManager::createAIState(const std::
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createAIState: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createAIState: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3635,7 +3634,7 @@ std::optional<common::protocol::Packet> PacketManager::createAIState(const std::
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + AI_STATE_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + AI_STATE_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createAIState: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3693,7 +3692,7 @@ std::optional<common::protocol::Packet> PacketManager::createAcknowledgment(cons
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ACK));
 
     if (args.size() < ACK_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: args too small, minimum {} bytes needed, got {}",
                      ACK_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3702,7 +3701,7 @@ std::optional<common::protocol::Packet> PacketManager::createAcknowledgment(cons
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3711,7 +3710,7 @@ std::optional<common::protocol::Packet> PacketManager::createAcknowledgment(cons
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + ACK_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + ACK_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createAcknowledgment: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3747,7 +3746,7 @@ std::optional<common::protocol::Packet> PacketManager::createPing(const std::vec
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PING));
 
     if (args.size() < PING_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPing: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createPing: args too small, minimum {} bytes needed, got {}",
                      PING_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3756,7 +3755,7 @@ std::optional<common::protocol::Packet> PacketManager::createPing(const std::vec
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createPing: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createPing: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3765,7 +3764,7 @@ std::optional<common::protocol::Packet> PacketManager::createPing(const std::vec
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PING_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + PING_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createPing: not enough data for header + payload");
         return std::nullopt;
     }
@@ -3797,7 +3796,7 @@ std::optional<common::protocol::Packet> PacketManager::createPong(const std::vec
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PONG));
 
     if (args.size() < PONG_MIN_ARGS_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPong: args too small, minimum %d bytes needed, got %zu",
+        LOG_ERROR_CAT("NetworkManager", "createPong: args too small, minimum {} bytes needed, got {}",
                      PONG_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
     }
@@ -3806,7 +3805,7 @@ std::optional<common::protocol::Packet> PacketManager::createPong(const std::vec
     uint8_t flags_count = args[offset++];
 
     if (args.size() < offset + flags_count) {
-        LOG_ERROR_CAT("NetworkManager", "createPong: not enough data for flags");
+        LOG_ERROR_CAT("NetworkManager", "createPong: not enough data for flags , expected {} got {}", offset + flags_count, args.size());
         return std::nullopt;
     }
 
@@ -3815,7 +3814,7 @@ std::optional<common::protocol::Packet> PacketManager::createPong(const std::vec
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PONG_PAYLOAD_SIZE) {
+    if (args.size() < offset + HEADER_SIZE + PONG_PAYLOAD_SIZE) {
         LOG_ERROR_CAT("NetworkManager", "createPong: not enough data for header + payload");
         return std::nullopt;
     }
