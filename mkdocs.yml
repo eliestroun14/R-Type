@@ -101,7 +101,11 @@ nav:
           - Animation System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/animation-system.md
           - Background System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/background-system.md
           - Collision System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/collision-system.md
-
+          - Level System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/level-system.md
+          - Movement System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/movement-system.md
+          - Player System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/player-system.md
+          - Render System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/render-system.md
+          - Shoot System: GameEngine&Architecture/GameEngine/Coordinator/ECS/Systems/shoot-system.md
 
         - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/index.md
         - Entity: GameEngine&Architecture/GameEngine/Coordinator/ECS/entity.md
