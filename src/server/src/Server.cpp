@@ -87,16 +87,19 @@ void Server::gameLoop() {
         }
 
         // Update game state every tick
-        _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_SERVER, packetsToProcess, currentTick * TICK_RATE);
+         //FIXME: game engine has been refactor so need to be changed
+        // _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_SERVER, packetsToProcess, currentTick * TICK_RATE);
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
-            NetworkType::NETWORK_TYPE_CLIENT,
-            currentTick * TICK_RATE,
-            outgoingPackets
-        );
+
+         //FIXME: game engine has been refactor so need to be changed
+        // this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
+        //     NetworkType::NETWORK_TYPE_CLIENT,
+        //     currentTick * TICK_RATE,
+        //     outgoingPackets
+        // );
 
         for (const auto& packet : outgoingPackets) {
             _networkManager->queueOutgoing(packet);
