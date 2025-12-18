@@ -374,8 +374,8 @@ enum NetworkType {
 //                          RENDER WINDOW
 // ==============================================================
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 450
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1080
 #define FRAMERATE_LIMIT 60
 
 // PLAYER

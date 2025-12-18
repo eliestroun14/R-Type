@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <game/coordinator/Coordinator.hpp>
 
 class CoordinatorTest : public ::testing::Test {
 protected:

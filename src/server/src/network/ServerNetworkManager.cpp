@@ -10,10 +10,10 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
-#include <engine/gameEngine/coordinator/network/PacketManager.hpp>
+#include <common/protocol/PacketManager.hpp>
 #include <sstream>
-#include <engine/utils/Logger.hpp>
-#include <engine/gameEngine/GameEngine.hpp>
+#include <common/logger/Logger.hpp>
+#include <engine/GameEngine.hpp>
 #include <common/error/Error.hpp>
 
 using namespace std::chrono_literals;
