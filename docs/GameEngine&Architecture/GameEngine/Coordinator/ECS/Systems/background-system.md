@@ -38,10 +38,10 @@ Entities processed by this system must have the following components:
 
 ```c++
 // Example: Background moving horizontally
-Entity bg = coordinator.createEntity("SpaceBackground");
-coordinator.addComponent<Transform>(bg, Transform(x, y, SPACE_ROT, SPACE_SCALE));
-coordinator.addComponent<Sprite>(bg, Sprite(ASSET_ID, Z_INDEX, sf::IntRect(0, 0, RECT_WIDTH, RECT_HEIGHT))); // Z-Index 0 (Back)
-coordinator.addComponent<ScrollingBackground>(bg, ScrollingBackground(
+Entity bg = gameEngine.createEntity("SpaceBackground");
+gameEngine.addComponent<Transform>(bg, Transform(x, y, SPACE_ROT, SPACE_SCALE));
+gameEngine.addComponent<Sprite>(bg, Sprite(ASSET_ID, Z_INDEX, sf::IntRect(0, 0, RECT_WIDTH, RECT_HEIGHT))); // Z-Index 0 (Back)
+gameEngine.addComponent<ScrollingBackground>(bg, ScrollingBackground(
     BACKGROUND_SPEED, // Speed
     true,  // Horizontal
     true   // Repeat

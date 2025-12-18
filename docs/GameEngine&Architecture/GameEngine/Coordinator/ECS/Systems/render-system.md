@@ -21,7 +21,7 @@ The system performs a full render pass every frame:
     * Ensures the game looks correct on any screen size.
 
 3.  **Drawing:**
-    * Retrieves the texture from the Coordinator (Asset Manager).
+    * Retrieves the texture from the `GameEngine` (Render Manager).
     * **Standard Sprite:** Applies Position, Rotation, and Scale, then draws.
     * **Scrolling Background:**
         * If `ScrollingBackground.repeat` is true, it sets the texture to `Repeated` mode.

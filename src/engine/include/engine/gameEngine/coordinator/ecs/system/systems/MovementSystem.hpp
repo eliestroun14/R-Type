@@ -3,12 +3,12 @@
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 #include <engine/gameEngine/coordinator/ecs/entity/EntityManager.hpp>
 #include <engine/gameEngine/coordinator/ecs/component/Components.hpp>
-#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
 
 class MovementSystem : public System {
 public:
-    MovementSystem(Coordinator& coord)
-        : _coord(coord)
+    MovementSystem(gameEngine::GameEngine& engine)
+        : _engine(engine)
     {}
 
     void onCreate() override {}
@@ -16,5 +16,5 @@ public:
     void onUpdate(float dt) override;
 
 private:
-    Coordinator& _coord;
+    gameEngine::GameEngine& _engine;
 };

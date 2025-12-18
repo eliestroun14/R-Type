@@ -64,7 +64,9 @@ void RTypeClient::run()
     if (isConnected()) {
         LOG_INFO("Connected to server! Starting game...");
         this->_gameEngine->init();
-        this->_gameEngine->initRender();
+
+        //FIXME: game engine has been refactor so need to be changed
+        // this->_gameEngine->initRender();
 
         // Wait for GAME_START from server before initializing render/window.
         // The network thread will keep pushing incoming packets; consume them
@@ -81,14 +83,17 @@ void RTypeClient::run()
             }
 
             // Feed packets to engine coordinator for processing (this will call handleGameStart)
-            this->_gameEngine->handlePacket(NetworkType::NETWORK_TYPE_CLIENT, packetsToProcess, 0);
+            //FIXME: game engine has been refactor so need to be changed
+            // this->_gameEngine->handlePacket(NetworkType::NETWORK_TYPE_CLIENT, packetsToProcess, 0);
 
             // Check coordinator game state
-            Coordinator* coord = this->_gameEngine->getCoordinator();
-            if (coord && coord->_gameRunning) {
-                started = true;
-                break;
-            }
+
+            //FIXME: game engine has been refactor so need to be changed
+            // Coordinator* coord = this->_gameEngine->getCoordinator();
+            // if (coord && coord->_gameRunning) {
+            //     started = true;
+            //     break;
+            // }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
@@ -168,17 +173,18 @@ void RTypeClient::gameLoop()
 
 
         // Update game state every tick + elapsedMs + packetsToProcess
-        this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT, packetsToProcess, elapsedMs);         // engine -> coordinator -> ecs (all systems update) elapsedMS
+        //FIXME: game engine has been refactor so need to be changed
+        // this->_gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_CLIENT, packetsToProcess, elapsedMs);         // engine -> coordinator -> ecs (all systems update) elapsedMS
 
         // Build and send packets based on tick intervals
         std::vector<common::protocol::Packet> outgoingPackets;
 
-        
-        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
-            NetworkType::NETWORK_TYPE_CLIENT,
-            elapsedMs,
-            outgoingPackets
-        );
+        //FIXME: game engine has been refactor so need to be changed
+        // this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
+        //     NetworkType::NETWORK_TYPE_CLIENT,
+        //     elapsedMs,
+        //     outgoingPackets
+        // );
 
         // Send packets directly to network manager
         for (const auto& packet : outgoingPackets) {

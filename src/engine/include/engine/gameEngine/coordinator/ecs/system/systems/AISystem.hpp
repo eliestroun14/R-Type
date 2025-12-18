@@ -8,13 +8,13 @@
 #pragma once
 
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
-#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
 
 class AISystem : public System {
 public:
-    AISystem(Coordinator& coord) : _coord(coord) {}
+    AISystem(gameEngine::GameEngine engine) : _engine(engine) {}
     void onUpdate(float dt) override;
 
 private:
-    Coordinator& _coord;
+    gameEngine::GameEngine& _engine;
 };

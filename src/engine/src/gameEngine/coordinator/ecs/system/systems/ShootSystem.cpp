@@ -22,9 +22,9 @@ void ShootSystem::onUpdate(float dt)
     auto duration = now.time_since_epoch();
     uint32_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
-    auto& weapons = this->_coordinator.getComponents<Weapon>();
-    auto& transforms = this->_coordinator.getComponents<Transform>();
-    auto& inputs = this->_coordinator.getComponents<InputComponent>();
+    auto& weapons = this->_engine.getComponents<Weapon>();
+    auto& transforms = this->_engine.getComponents<Transform>();
+    auto& inputs = this->_engine.getComponents<InputComponent>();
 
     // Process each entity with a weapon
     for (size_t e : this->_entities) {
@@ -73,7 +73,7 @@ void ShootSystem::spawnProjectile(Entity shooterId, float originX, float originY
 {
     // Create projectile entity
     std::string projectileName = isFromPlayable ? "PlayerProjectile" : "EnemyProjectile";
-    Entity projectile = this->_coordinator.createEntity(projectileName);
+    Entity projectile = this->_engine.createEntity(projectileName);
 
     // Calculate projectile velocity (units per millisecond)
     float projectileSpeed = 1.5f;  // tuned for visible travel with dt in ms
@@ -90,13 +90,13 @@ void ShootSystem::spawnProjectile(Entity shooterId, float originX, float originY
     Assets projectileAsset = getProjectileAsset(weapon.projectileType, isFromPlayable);
 
     // Add components to projectile
-    this->_coordinator.addComponent<Transform>(projectile, Transform(originX, originY, 0.0f, 2.0f));
-    this->_coordinator.addComponent<Velocity>(projectile, Velocity(velocityX, velocityY));
-    this->_coordinator.addComponent<Sprite>(projectile, Sprite(projectileAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 8)));
-    this->_coordinator.addComponent<HitBox>(projectile, HitBox());
+    this->_engine.addComponent<Transform>(projectile, Transform(originX, originY, 0.0f, 2.0f));
+    this->_engine.addComponent<Velocity>(projectile, Velocity(velocityX, velocityY));
+    this->_engine.addComponent<Sprite>(projectile, Sprite(projectileAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 8)));
+    this->_engine.addComponent<HitBox>(projectile, HitBox());
 
     // Add Projectile component to track ownership and target type
-    this->_coordinator.addComponent<Projectile>(projectile, Projectile(shooterId, isFromPlayable, weapon.damage));
+    this->_engine.addComponent<Projectile>(projectile, Projectile(shooterId, isFromPlayable, weapon.damage));
 }
 
 bool ShootSystem::canShoot(const Weapon& weapon, uint32_t currentTime) const
@@ -106,8 +106,8 @@ bool ShootSystem::canShoot(const Weapon& weapon, uint32_t currentTime) const
 
 std::pair<float, float> ShootSystem::calculateDirection(Entity shooterId)
 {
-    auto& transforms = this->_coordinator.getComponents<Transform>();
-    auto& inputs = this->_coordinator.getComponents<InputComponent>();
+    auto& transforms = this->_engine.getComponents<Transform>();
+    auto& inputs = this->_engine.getComponents<InputComponent>();
 
     // Default: shoot to the right
     float dirX = 1.0f;

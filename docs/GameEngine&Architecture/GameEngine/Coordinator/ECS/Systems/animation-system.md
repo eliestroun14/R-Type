@@ -43,10 +43,10 @@ Assuming a sprite sheet where frames are aligned horizontally:
 ## Usage
 
 ```c++
-Entity entity = coordinator.createEntity("Entity");
+Entity entity = gameEngine.createEntity("Entity");
 
-coordinator.addComponent<Sprite(entity, Sprite(ASSET_ID, Z_INDEX, sf::IntRect(0, 0, RECT_WIDTH, RECT_HEIGHT)));
-coordinator.addComponent<Animation>(entity, Animation(
+gameEngine.addComponent<Sprite(entity, Sprite(ASSET_ID, Z_INDEX, sf::IntRect(0, 0, RECT_WIDTH, RECT_HEIGHT)));
+gameEngine.addComponent<Animation>(entity, Animation(
     RECT_WIDTH,
     RECT_HEIGHT,
     CURRENT,

@@ -42,7 +42,7 @@ Time: 0s        5s              10s
 
 ```c++
 // Example: Configuring a simple level
-Entity levelEntity = _coordinator->createEntity("Level1");
+Entity levelEntity = gameEngine->createEntity("Level1");
 
 Level level;
 
@@ -70,6 +70,6 @@ level.waves.push_back(wave1);
 level.waves.push_back(wave2);
 level.waves.push_back(wave3);
 
-_coordinator->addComponent<Level>(levelEntity, level);
+gameEngine->addComponent<Level>(levelEntity, level);
 ```
 

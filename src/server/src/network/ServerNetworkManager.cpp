@@ -398,82 +398,100 @@ void ServerNetworkManager::spawnEntity(uint8_t entityType, uint32_t entityId, ui
         return;
     }
 
-    Coordinator* coordinator = _gameEngine->getCoordinator();
-    if (!coordinator) {
-        LOG_ERROR("Coordinator not available for entity creation");
-        return;
-    }
+    //FIXME: game engine has been refactor so need to be changed
+
+    // Coordinator* coordinator = _gameEngine->getCoordinator();
+    // if (!coordinator) {
+    //     LOG_ERROR("Coordinator not available for entity creation");
+    //     return;
+    // }
 
     // Create the entity on the server based on type
     std::string entityName;
 
     switch (static_cast<protocol::EntityTypes>(entityType)) {
         case protocol::EntityTypes::ENTITY_TYPE_PLAYER: {
-            Entity entity = coordinator->createEntity("Player_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.5f));
-            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            coordinator->addComponent<HitBox>(entity, HitBox());
-            coordinator->addComponent<Weapon>(entity, Weapon(200, 0, 10, ProjectileType::MISSILE));
-            coordinator->addComponent<InputComponent>(entity, InputComponent(entityId));
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("Player_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.5f));
+            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            // coordinator->addComponent<HitBox>(entity, HitBox());
+            // coordinator->addComponent<Weapon>(entity, Weapon(200, 0, 10, ProjectileType::MISSILE));
+            // coordinator->addComponent<InputComponent>(entity, InputComponent(entityId));
             LOG_DEBUG("Player entity created on server: id={} pos=({}, {})", entityId, posX, posY);
             break;
         }
         case protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER: {
-            Entity entity = coordinator->createEntity("Projectile_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
-            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            coordinator->addComponent<HitBox>(entity, HitBox());
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("Projectile_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
+            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            // coordinator->addComponent<HitBox>(entity, HitBox());
             LOG_DEBUG("Projectile entity created on server: id={} pos=({}, {})", entityId, posX, posY);
             break;
         }
         case protocol::EntityTypes::ENTITY_TYPE_ENEMY: {
-            Entity entity = coordinator->createEntity("Enemy_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
-            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            coordinator->addComponent<HitBox>(entity, HitBox());
-            coordinator->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("Enemy_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
+            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            // coordinator->addComponent<HitBox>(entity, HitBox());
+            // coordinator->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
             LOG_DEBUG("Enemy entity created on server: id={} pos=({}, {})", entityId, posX, posY);
             break;
         }
         case protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS: {
-            Entity entity = coordinator->createEntity("EnemyBoss_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 3.0f));
-            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            coordinator->addComponent<HitBox>(entity, HitBox());
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("EnemyBoss_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 3.0f));
+            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            // coordinator->addComponent<HitBox>(entity, HitBox());
             LOG_DEBUG("Boss entity created on server: id={}", entityId);
             break;
         }
         case protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY: {
-            Entity entity = coordinator->createEntity("EnemyProjectile_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
-            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            coordinator->addComponent<HitBox>(entity, HitBox());
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("EnemyProjectile_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
+            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+            // coordinator->addComponent<HitBox>(entity, HitBox());
             LOG_DEBUG("Enemy projectile entity created on server: id={}", entityId);
             break;
         }
         case protocol::EntityTypes::ENTITY_TYPE_POWERUP: {
-            Entity entity = coordinator->createEntity("Powerup_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.5f));
-            coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            coordinator->addComponent<HitBox>(entity, HitBox());
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("Powerup_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.5f));
+            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
+            // coordinator->addComponent<HitBox>(entity, HitBox());
             LOG_DEBUG("Powerup entity created on server: id={}", entityId);
             break;
         }
         case protocol::EntityTypes::ENTITY_TYPE_OBSTACLE: {
-            Entity entity = coordinator->createEntity("Obstacle_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
-            coordinator->addComponent<HitBox>(entity, HitBox());
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("Obstacle_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
+            // coordinator->addComponent<HitBox>(entity, HitBox());
             LOG_DEBUG("Obstacle entity created on server: id={}", entityId);
             break;
         }
         case protocol::EntityTypes::ENTITY_TYPE_BG_ELEMENT: {
-            Entity entity = coordinator->createEntity("BGElement_" + std::to_string(entityId));
-            coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
+            //FIXME: game engine has been refactor so need to be changed
+
+            // Entity entity = coordinator->createEntity("BGElement_" + std::to_string(entityId));
+            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
             LOG_DEBUG("Background element entity created on server: id={}", entityId);
             break;
         }

@@ -18,7 +18,7 @@ void RenderSystem::onUpdate(float dt)
         this->_sortedEntities.push_back(entity);
     }
 
-    auto& sprites = this->_coordinator.getComponents<Sprite>();
+    auto& sprites = this->_engine.getComponents<Sprite>();
 
     // we need to sort here cuz Z = 0 (background) and Z = 1 (player) and Z = 2 (HUD/UI), to display in the right order
     std::sort(this->_sortedEntities.begin(), this->_sortedEntities.end(),
@@ -30,8 +30,8 @@ void RenderSystem::onUpdate(float dt)
         }
     );
 
-    sf::RenderWindow& window = this->_coordinator.getWindow();
-    auto& transforms = this->_coordinator.getComponents<Transform>();
+    sf::RenderWindow& window = this->_engine.getWindow();
+    auto& transforms = this->_engine.getComponents<Transform>();
 
     // this part is to render propely in function of the window size
     sf::Vector2u windowSize = window.getSize();
@@ -40,13 +40,13 @@ void RenderSystem::onUpdate(float dt)
 
     float scale = std::min(scaleX, scaleY);
 
-    auto& backgrounds = this->_coordinator.getComponents<ScrollingBackground>();
+    auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();
 
     for (const auto& entity : this->_sortedEntities) {
         auto& trans = transforms[entity].value();
         auto& sprite = sprites[entity].value();
 
-        std::shared_ptr<sf::Texture> texture = this->_coordinator.getTexture(sprite.assetId);
+        std::shared_ptr<sf::Texture> texture = this->_engine.getTexture(sprite.assetId);
 
         if (texture) {
 

@@ -8,7 +8,7 @@
 #ifndef COLLISIONSYSTEM_HPP_
 #define COLLISIONSYSTEM_HPP_
 
-#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 
 struct Transform;
@@ -16,13 +16,13 @@ struct Sprite;
 
 class CollisionSystem : public System{
     public:
-        CollisionSystem(Coordinator& coordinator) : _coordinator(coordinator) {}
+        CollisionSystem(gameEngine::GameEngine& engine) : _engine(engine) {}
 
         void onCreate() override {}
         void onUpdate(float dt) override;
 
     private:
-        Coordinator& _coordinator;
+        gameEngine::GameEngine& _engine;
         
         bool checkAABBCollision(const Sprite& s1, const Sprite& s2);
 };

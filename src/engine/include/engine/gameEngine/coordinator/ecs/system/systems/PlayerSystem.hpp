@@ -8,19 +8,19 @@
 #ifndef PLAYERSYSTEM_HPP_
 #define PLAYERSYSTEM_HPP_
 
-#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 
 class PlayerSystem : public System{
     public:
-        PlayerSystem(Coordinator& coordinator) : _coordinator(coordinator), _lastDirection(2) {}
+        PlayerSystem(gameEngine::GameEngine& engine) : _engine(engine), _lastDirection(2) {}
 
         void onCreate() override {}
 
         void onUpdate(float dt) override;
 
     private:
-        Coordinator& _coordinator;
+        gameEngine::GameEngine& _engine;
         int _lastDirection;  // Track previous direction to detect changes
 };
 

@@ -8,21 +8,21 @@
 #ifndef LEVELSYSTEM_HPP_
 #define LEVELSYSTEM_HPP_
 
-#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 #include <engine/gameEngine/coordinator/ecs/component/Components.hpp>
 #include <vector>
 
 class LevelSystem : public System{
     public:
-        LevelSystem(Coordinator& coord) : _coordinator(coord) {}
+        LevelSystem(gameEngine::GameEngine& engine) : _engine(engine) {}
 
         void onCreate() override {}
 
         void onUpdate(float dt) override;
 
     private:
-        Coordinator& _coordinator;
+        gameEngine::GameEngine& _engine;
 
         std::vector<std::vector<bool>> _spawnedEnemies;
 

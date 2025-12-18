@@ -33,11 +33,11 @@ The system runs on every frame (`onUpdate`) and performs the following steps:
 Simply attach an `AI` component to an entity to have it chase the player.
 
 ```cpp
-Entity enemy = coordinator.createEntity("Enemy");
+Entity enemy = gameEngine.createEntity("Enemy");
 
-coordinator.addComponent<Transform>(enemy, Transform(x, y, ENEMY_ROT, ENEMY_SCALE));
-coordinator.addComponent<Velocity>(enemy, Velocity(0.f, 0.f));
-coordinator.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, KAMIKAZE_DETECTION, KAMIKAZE_RANGE.f));
+gameEngine.addComponent<Transform>(enemy, Transform(x, y, ENEMY_ROT, ENEMY_SCALE));
+gameEngine.addComponent<Velocity>(enemy, Velocity(0.f, 0.f));
+gameEngine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, KAMIKAZE_DETECTION, KAMIKAZE_RANGE.f));
 ```
 
 
