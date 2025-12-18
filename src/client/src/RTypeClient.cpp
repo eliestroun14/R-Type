@@ -8,14 +8,14 @@
 #include <client/RTypeClient.hpp>
 #include <string.h>
 #include <arpa/inet.h>
-#include <client/utils/ClientUtils.hpp>
+#include <game/utils/ClientUtils.hpp>
 #include <thread>
 #include <chrono>
 #include <iostream>
 #include <common/protocol/Protocol.hpp>
 #include <common/constants/defines.hpp>
 #include <client/network/ClientNetworkManager.hpp>
-#include <engine/utils/Logger.hpp>
+#include <common/logger/Logger.hpp>
 #include <common/error/Error.hpp>
 
 

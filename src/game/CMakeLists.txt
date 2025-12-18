@@ -20,6 +20,7 @@ add_library(game STATIC ${GAME_SOURCES} ${GAME_HEADERS})
 
 target_include_directories(game PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/engine/include
 )
 
 # Link dependencies

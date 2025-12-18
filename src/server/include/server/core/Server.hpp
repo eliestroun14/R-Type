@@ -11,7 +11,7 @@
 #include <deque>
 #include <common/protocol/Packet.hpp>
 #include <common/constants/defines.hpp>
-#include <engine/gameEngine/GameEngine.hpp>
+#include <engine/GameEngine.hpp>
 #include <server/network/ServerNetworkManager.hpp>
 
 

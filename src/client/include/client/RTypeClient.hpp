@@ -14,7 +14,7 @@
 #include <netinet/in.h>
 #include <common/protocol/Protocol.hpp>
 #include <client/network/ClientNetworkManager.hpp>
-#include <engine/gameEngine/GameEngine.hpp>                   // TODO:
+#include <engine/GameEngine.hpp>
 #include <atomic>
 #include <deque>
 #include <common/protocol/Packet.hpp>
