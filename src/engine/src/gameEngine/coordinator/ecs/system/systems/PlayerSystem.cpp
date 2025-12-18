@@ -10,11 +10,11 @@
 
 void PlayerSystem::onUpdate(float dt)
 {
-    auto& velocities = this->_coordinator.getComponents<Velocity>();
-    auto& animations = this->_coordinator.getComponents<Animation>();
-    auto& inputs = this->_coordinator.getComponents<InputComponent>();
+    auto& velocities = this->_engine.getComponents<Velocity>();
+    auto& animations = this->_engine.getComponents<Animation>();
+    auto& inputs = this->_engine.getComponents<InputComponent>();
 
-    float scaleFactor = this->_coordinator.getScaleFactor();
+    float scaleFactor = this->_engine.getScaleFactor();
 
     for (size_t e : this->_entities) {
         if (!velocities[e] || !inputs[e])

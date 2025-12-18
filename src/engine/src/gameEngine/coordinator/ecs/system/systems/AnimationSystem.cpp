@@ -10,8 +10,8 @@
 
 void AnimationSystem::onUpdate(float dt)
 {
-    auto& animations = this->_coordinator.getComponents<Animation>();
-    auto& sprites = this->_coordinator.getComponents<Sprite>();
+    auto& animations = this->_engine.getComponents<Animation>();
+    auto& sprites = this->_engine.getComponents<Sprite>();
 
     //std::cout << "[AnimationSystem] Processing " << this->_entities.size() << " entities" << std::endl;
 

@@ -10,11 +10,11 @@
 
 void BackgroundSystem::onUpdate(float dt)
 {
-    auto& transforms = _coordinator.getComponents<Transform>();
-    auto& sprites = _coordinator.getComponents<Sprite>();
-    auto& backgrounds = _coordinator.getComponents<ScrollingBackground>();
+    auto& transforms = this->_engine.getComponents<Transform>();
+    auto& sprites = this->_engine.getComponents<Sprite>();
+    auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();
 
-    float scaleFactor = _coordinator.getScaleFactor();
+    float scaleFactor = this->_engine.getScaleFactor();
 
     for (size_t e : _entities) {
         if (!transforms[e] || !sprites[e] || !backgrounds[e])

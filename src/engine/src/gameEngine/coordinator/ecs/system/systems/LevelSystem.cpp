@@ -10,7 +10,7 @@
 
 void LevelSystem::onUpdate(float dt)
 {
-    auto& levels = this->_coordinator.getComponents<Level>();
+    auto& levels = this->_engine.getComponents<Level>();
 
     for (size_t e : this->_entities) {
         if (!levels[e])
@@ -99,40 +99,40 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
         break;
     }
 
-    Entity enemy = this->_coordinator.createEntity(enemyName);
+    Entity enemy = this->_engine.createEntity(enemyName);
 
     switch (type)
     {
     case EnemyType::BASIC : {
-        this->_coordinator.addComponent<Sprite>(enemy, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 36)));
-        _coordinator.addComponent<Transform>(enemy, Transform(x, y, 0.f, 2.0f));
-        _coordinator.addComponent<Health>(enemy, Health(50, 50));
-        _coordinator.addComponent<HitBox>(enemy, HitBox());
-        _coordinator.addComponent<Velocity>(enemy, Velocity(0.0f, 0.f));
-        _coordinator.addComponent<Weapon>(enemy, Weapon(1000, 0, 8, ProjectileType::MISSILE));
-        _coordinator.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
+        this->_engine.addComponent<Sprite>(enemy, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 36)));
+        _engine.addComponent<Transform>(enemy, Transform(x, y, 0.f, 2.0f));
+        _engine.addComponent<Health>(enemy, Health(50, 50));
+        _engine.addComponent<HitBox>(enemy, HitBox());
+        _engine.addComponent<Velocity>(enemy, Velocity(0.0f, 0.f));
+        _engine.addComponent<Weapon>(enemy, Weapon(1000, 0, 8, ProjectileType::MISSILE));
+        _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
         break;
     }
 
     case EnemyType::FAST: {
-        _coordinator.addComponent<Sprite>(enemy, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 36)));
-        _coordinator.addComponent<Transform>(enemy, Transform(x, y, 0.f, 2.0f));
-        _coordinator.addComponent<Health>(enemy, Health(30, 30));
-        _coordinator.addComponent<HitBox>(enemy, HitBox());
-        _coordinator.addComponent<Velocity>(enemy, Velocity(-0.3f, 0.f));  // Move left faster
-        _coordinator.addComponent<Weapon>(enemy, Weapon(800, 0, 5, ProjectileType::MISSILE));
-        _coordinator.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
+        _engine.addComponent<Sprite>(enemy, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 36)));
+        _engine.addComponent<Transform>(enemy, Transform(x, y, 0.f, 2.0f));
+        _engine.addComponent<Health>(enemy, Health(30, 30));
+        _engine.addComponent<HitBox>(enemy, HitBox());
+        _engine.addComponent<Velocity>(enemy, Velocity(-0.3f, 0.f));  // Move left faster
+        _engine.addComponent<Weapon>(enemy, Weapon(800, 0, 5, ProjectileType::MISSILE));
+        _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
         break;
     }
 
     case EnemyType::TANK: {
-        _coordinator.addComponent<Sprite>(enemy, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 36)));
-        _coordinator.addComponent<Transform>(enemy, Transform(x, y, 0.f, 3.0f));  // Bigger
-        _coordinator.addComponent<Health>(enemy, Health(150, 150));
-        _coordinator.addComponent<HitBox>(enemy, HitBox());
-        _coordinator.addComponent<Velocity>(enemy, Velocity(-0.05f, 0.f));  // Move left very slowly
-        _coordinator.addComponent<Weapon>(enemy, Weapon(500, 0, 15, ProjectileType::MISSILE));
-        _coordinator.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
+        _engine.addComponent<Sprite>(enemy, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 36)));
+        _engine.addComponent<Transform>(enemy, Transform(x, y, 0.f, 3.0f));  // Bigger
+        _engine.addComponent<Health>(enemy, Health(150, 150));
+        _engine.addComponent<HitBox>(enemy, HitBox());
+        _engine.addComponent<Velocity>(enemy, Velocity(-0.05f, 0.f));  // Move left very slowly
+        _engine.addComponent<Weapon>(enemy, Weapon(500, 0, 15, ProjectileType::MISSILE));
+        _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
         break;
     }
 

@@ -14,12 +14,12 @@ void AISystem::onUpdate(float dt)
     if (dt <= 0.0f)
         return;
 
-    auto& positions  = _coord.getComponents<Transform>();
-    auto& velocities = _coord.getComponents<Velocity>();
-    auto& ais        = _coord.getComponents<AI>();
-    auto& playables  = _coord.getComponents<Playable>();
+    auto& positions  = _engine.getComponents<Transform>();
+    auto& velocities = _engine.getComponents<Velocity>();
+    auto& ais        = _engine.getComponents<AI>();
+    auto& playables  = _engine.getComponents<Playable>();
 
-    float scaleFactor = this->_coord.getScaleFactor();
+    float scaleFactor = this->_engine.getScaleFactor();
 
     size_t playerId = std::numeric_limits<size_t>::max();
     for (size_t i = 0; i < playables.size() && i < positions.size(); ++i) {

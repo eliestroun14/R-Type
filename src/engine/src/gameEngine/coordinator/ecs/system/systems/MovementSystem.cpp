@@ -2,10 +2,10 @@
 
 void MovementSystem::onUpdate(float dt)
 {
-    auto& positions = _coord.getComponents<Transform>();
-    auto& velocities = _coord.getComponents<Velocity>();
+    auto& positions = _engine.getComponents<Transform>();
+    auto& velocities = _engine.getComponents<Velocity>();
 
-    float scaleFactor = this->_coord.getScaleFactor();
+    float scaleFactor = this->_engine.getScaleFactor();
 
     for (size_t e : _entities) {
         if (!positions[e].has_value() || !velocities[e].has_value())

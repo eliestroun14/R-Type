@@ -8,7 +8,7 @@
 #ifndef SHOOTSYSTEM_HPP_
 #define SHOOTSYSTEM_HPP_
 
-#include <engine/gameEngine/coordinator/Coordinator.hpp>
+#include <engine/gameEngine/GameEngine.hpp>
 #include <engine/gameEngine/coordinator/ecs/system/System.hpp>
 #include <engine/gameEngine/coordinator/ecs/component/Components.hpp>
 #include <common/constants/render/Assets.hpp>
@@ -28,9 +28,9 @@ class ShootSystem : public System {
 public:
     /**
      * @brief Constructor.
-     * @param coordinator Reference to the Coordinator.
+     * @param engine Reference to the Coordinator.
      */
-    ShootSystem(Coordinator& coordinator) : _coordinator(coordinator) {}
+    ShootSystem(gameEngine::GameEngine& engine) : _engine(engine) {}
 
     /**
      * @brief Called when the system starts running.
@@ -44,7 +44,7 @@ public:
     void onUpdate(float dt) override;
 
 private:
-    Coordinator& _coordinator;
+    gameEngine::GameEngine& _engine;
 
     /**
      * @brief Spawns a projectile entity.

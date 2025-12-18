@@ -17,12 +17,12 @@ bool CollisionSystem::checkAABBCollision(const Sprite& s1, const Sprite& s2)
 
 void CollisionSystem::onUpdate(float dt)
 {
-    auto& transforms = this->_coordinator.getComponents<Transform>();
-    auto& sprites = this->_coordinator.getComponents<Sprite>();
-    auto& healths = this->_coordinator.getComponents<Health>();
-    auto& hitboxes = this->_coordinator.getComponents<HitBox>();
-    auto& projectiles = this->_coordinator.getComponents<Projectile>();
-    auto& inputs = this->_coordinator.getComponents<InputComponent>();
+    auto& transforms = this->_engine.getComponents<Transform>();
+    auto& sprites = this->_engine.getComponents<Sprite>();
+    auto& healths = this->_engine.getComponents<Health>();
+    auto& hitboxes = this->_engine.getComponents<HitBox>();
+    auto& projectiles = this->_engine.getComponents<Projectile>();
+    auto& inputs = this->_engine.getComponents<InputComponent>();
 
     std::vector<size_t> entities;
     entities.reserve(this->_entities.size());
@@ -67,19 +67,19 @@ void CollisionSystem::onUpdate(float dt)
                 if (h.currentHealth <= 0) {
                     std::cout << "Entity " << target << " is destroyed!" << std::endl;
                     Entity ent = Entity::fromId(target);
-                    this->_coordinator.removeComponent<Transform>(ent);
-                    this->_coordinator.removeComponent<Sprite>(ent);
-                    this->_coordinator.removeComponent<Health>(ent);
-                    this->_coordinator.removeComponent<HitBox>(ent);
+                    this->_engine.removeComponent<Transform>(ent);
+                    this->_engine.removeComponent<Sprite>(ent);
+                    this->_engine.removeComponent<Health>(ent);
+                    this->_engine.removeComponent<HitBox>(ent);
                 }
             };
 
             auto destroyProjectile = [&](size_t projId) {
                 Entity ent = Entity::fromId(projId);
-                this->_coordinator.removeComponent<Transform>(ent);
-                this->_coordinator.removeComponent<Sprite>(ent);
-                this->_coordinator.removeComponent<HitBox>(ent);
-                this->_coordinator.removeComponent<Projectile>(ent);
+                this->_engine.removeComponent<Transform>(ent);
+                this->_engine.removeComponent<Sprite>(ent);
+                this->_engine.removeComponent<HitBox>(ent);
+                this->_engine.removeComponent<Projectile>(ent);
             };
 
             auto canHit = [&](const Projectile& proj, size_t targetId) {
