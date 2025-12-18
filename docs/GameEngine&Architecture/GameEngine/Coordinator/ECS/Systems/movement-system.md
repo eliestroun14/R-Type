@@ -10,7 +10,7 @@ Entities processed by this system must have:
 
 ## ⚙️ Logic & Algorithm
 
-The system uses explicit Euler integration. It also applies a global `ScaleFactor` retrieved from the Coordinator to ensure movement speed remains consistent regardless of window resizing or resolution scaling.
+The system uses explicit Euler integration. It also applies a global `ScaleFactor` retrieved from the `GameEngine` to ensure movement speed remains consistent regardless of window resizing or resolution scaling.
 
 ### Formula
 
@@ -30,8 +30,8 @@ Simply add `Velocity` to any entity with a `Transform`.
 
 ```cpp
 // Example: Moving a bullet
-Entity bullet = coordinator.createEntity("Bullet");
-coordinator.addComponent(bullet, Transform(x, y, BULLET_ROT, BULLET_SCALE));
+Entity bullet = gameEngine.createEntity("Bullet");
+gameEngine.addComponent(bullet, Transform(x, y, BULLET_ROT, BULLET_SCALE));
 // Move 500 pixels/sec to the right
-coordinator.addComponent(bullet, Velocity(0.f, 0.f));
+gameEngine.addComponent(bullet, Velocity(0.f, 0.f));
 ```

@@ -48,14 +48,14 @@ The system checks every collidable entity against every other.
 
 ```c++
 // Example: Creating a collidable entity
-Entity e = coordinator.createEntity("Asteroid");
-coordinator.addComponent(e, Transform(x, y, E_ROT, E_SCALE));
-coordinator.addComponent(e, Sprite(ASSET_ID, Z_INDEX, sf::IntRect(
+Entity e = gameEngine.createEntity("Asteroid");
+gameEngine.addComponent(e, Transform(x, y, E_ROT, E_SCALE));
+gameEngine.addComponent(e, Sprite(ASSET_ID, Z_INDEX, sf::IntRect(
     0,
     0,
     RECT_WIDTH,
     RECT_HEIGHT
     )));
-coordinator.addComponent(e, HitBox()); // Essential tag
-coordinator.addComponent(e, Health(CURRENT, MAX));
+gameEngine.addComponent(e, HitBox()); // Essential tag
+gameEngine.addComponent(e, Health(CURRENT, MAX));
 ```

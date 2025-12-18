@@ -35,7 +35,7 @@ Attach a `Weapon` component to any entity to give it shooting capabilities.
 
 ```cpp
 // Example: Giving a weapon to a player
-coordinator.addComponent(player, Weapon(
+gameEngine.addComponent(player, Weapon(
     200,                // Fire Rate (ms)
     0,                  // Last Shot Time
     10,                 // Damage
