@@ -57,11 +57,29 @@ class Coordinator {
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs);
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet);
-
+        void handlePacketDestroyEntity(const common::protocol::Packet& packet);
         void handlePacketTransformSnapshot(const common::protocol::Packet& packet);
-
+        void handlePacketHealthSnapshot(const common::protocol::Packet& packet);
+        void handlePacketWeaponSnapshot(const common::protocol::Packet& packet);
+        void handlePacketAnimationSnapshot(const common::protocol::Packet& packet);
+        void handlePacketComponentRemove(const common::protocol::Packet& packet);
+        void handlePacketTransformSnapshotDelta(const common::protocol::Packet& packet);
+        void handlePacketHealthSnapshotDelta(const common::protocol::Packet& packet);
+        void handlePacketPlayerHit(const common::protocol::Packet& packet);
+        void handlePacketPlayerDeath(const common::protocol::Packet& packet);
+        void handlePacketScoreUpdate(const common::protocol::Packet& packet);
+        void handlePacketPowerupPickup(const common::protocol::Packet& packet);
+        void handlePacketWeaponFire(const common::protocol::Packet& packet);
+        void handlePacketVisualEffect(const common::protocol::Packet& packet);
+        void handlePacketAudioEffect(const common::protocol::Packet& packet);
+        void handlePacketParticleSpawn(const common::protocol::Packet& packet);
         void handleGameStart(const common::protocol::Packet& packet);
         void handleGameEnd(const common::protocol::Packet& packet);
+        void handlePacketLevelComplete(const common::protocol::Packet& packet);
+        void handlePacketLevelStart(const common::protocol::Packet& packet);
+        void handlePacketForceState(const common::protocol::Packet& packet);
+        void handlePacketAIState(const common::protocol::Packet& packet);
+
 
     public:
         bool _gameRunning = false;

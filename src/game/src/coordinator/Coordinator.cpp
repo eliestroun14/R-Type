@@ -6,6 +6,7 @@
 */
 
 #include "game/coordinator/Coordinator.hpp"
+#include "Coordinator.hpp"
 
 void Coordinator::initEngine()
 {
@@ -276,7 +277,13 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     }
 }
 
-void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& packet)
+void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &packet)
+{
+    //TODO: implement here
+}
+
+
+void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet &packet)
 {
     // packet.data format:
     // - world_tick (4 bytes)
@@ -340,6 +347,62 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
     }
 }
 
+void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketComponentRemove(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketTransformSnapshotDelta(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketHealthSnapshotDelta(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketScoreUpdate(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &packet)
+{
+}
+
 void Coordinator::handleGameStart(const common::protocol::Packet& packet)
 {
     if (packet.data.size() != GAME_START_PAYLOAD_SIZE) {
@@ -358,4 +421,20 @@ void Coordinator::handleGameEnd(const common::protocol::Packet& packet)
     }
 
     _gameRunning = false;
+}
+
+void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
+{
+}
+
+void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
+{
 }
