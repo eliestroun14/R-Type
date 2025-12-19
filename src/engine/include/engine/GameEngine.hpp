@@ -51,7 +51,15 @@ namespace gameEngine {
                 this->_entityManager = std::make_unique<EntityManager>();
                 this->_systemManager = std::make_unique<SystemManager>();
                 this->_entityManager->setSystemManager(this->_systemManager.get());
+            }
 
+
+            /**
+             * @brief Initializes RenderManager for the gameEngine, client side.
+             * * This method must be called before any other operation.
+             */
+            void initRender()
+            {
                 this->_renderManager = std::make_unique<RenderManager>();
                 this->_renderManager->init();
             }
