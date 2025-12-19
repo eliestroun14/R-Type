@@ -15,6 +15,7 @@
 #include <common/logger/Logger.hpp>
 #include <engine/GameEngine.hpp>
 #include <common/error/Error.hpp>
+#include <common/constants/defines.hpp>
 
 using namespace std::chrono_literals;
 
@@ -63,8 +64,7 @@ void ServerNetworkManager::stop()
     }
 }
 
-void ServerNetworkManager::queueOutgoing(const common::protocol::Packet& packet,
-                                         std::optional<uint32_t> targetClient)
+void ServerNetworkManager::queueOutgoing(const common::protocol::Packet& packet, std::optional<uint32_t> targetClient)
 {
     std::lock_guard<std::mutex> lock(_outMutex);
     _outgoing.emplace_back(packet, targetClient);
@@ -100,28 +100,19 @@ std::optional<uint32_t> ServerNetworkManager::findFreeSlot()
 void ServerNetworkManager::run()
 {
     while (_running.load()) {
-        auto currentTime = std::chrono::steady_clock::now();
-        uint64_t currentMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-            currentTime.time_since_epoch()).count();
-
-        // Check for client timeouts
-        checkClientTimeouts();
-
         // Receive packets from the acceptor socket
         common::protocol::Packet incoming;
         std::string remoteAddress;
 
         if (_acceptorSocket->receiveFrom(incoming, remoteAddress)) {
             LOG_DEBUG("Received packet from {}", remoteAddress);
-            if (shouldForward(incoming)) {
-                std::lock_guard<std::mutex> lock(_inMutex);
-                auto clientId = findClientIdByAddress(remoteAddress);
-                if (clientId.has_value()) {
-                    _incoming.push_back({incoming, clientId.value()});
-                }
-            } else {
-                // Handle network-level packets (connection, heartbeat, etc.)
-                handleNetworkPacket(incoming, remoteAddress, currentMs);
+            std::lock_guard<std::mutex> lock(_inMutex);
+            auto clientId = findClientIdByAddress(remoteAddress);
+            if (clientId.has_value()) {
+                _incoming.push_back({incoming, clientId.value()});
+            }
+            if (!shouldForward(incoming)) {
+                handleNetworkPacket(incoming, remoteAddress);
             }
         }
 
@@ -154,45 +145,21 @@ bool ServerNetworkManager::shouldForward(const common::protocol::Packet& packet)
     const auto type = static_cast<protocol::PacketTypes>(packet.header.packet_type);
     switch (type) {
         case protocol::PacketTypes::TYPE_CLIENT_CONNECT:
-        case protocol::PacketTypes::TYPE_SERVER_ACCEPT:
-        case protocol::PacketTypes::TYPE_SERVER_REJECT:
         case protocol::PacketTypes::TYPE_CLIENT_DISCONNECT:
-        case protocol::PacketTypes::TYPE_HEARTBEAT:
-        case protocol::PacketTypes::TYPE_ACK:
-        case protocol::PacketTypes::TYPE_PING:
-        case protocol::PacketTypes::TYPE_PONG:
             return false;
         default:
             return true;
     }
 }
 
-void ServerNetworkManager::checkClientTimeouts()
-{
-    uint64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
-
-        for (uint32_t i = 0; i < _maxPlayers; ++i) {
-        auto& slot = _clients[i];
-        if (slot.active && slot.lastHeartbeatTime > 0) {
-            uint64_t timeSinceLastHeartbeat = currentTime - slot.lastHeartbeatTime;
-            if (timeSinceLastHeartbeat > TIMEOUT_MS) {
-                LOG_WARN("Client {} timeout (no heartbeat for {}ms)", i, timeSinceLastHeartbeat);
-                slot.active = false;
-                _addressToClientId.erase(slot.remoteAddress);
-            }
-        }
-    }
-}
-
-void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& packet, const std::string& remoteAddress, uint64_t currentMs)
+void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& packet, const std::string& remoteAddress)
 {
     const auto type = static_cast<protocol::PacketTypes>(packet.header.packet_type);
 
     switch (type) {
         case protocol::PacketTypes::TYPE_CLIENT_CONNECT: {
             LOG_INFO("Client connection request received from {}", remoteAddress);
-            handleClientConnect(remoteAddress, currentMs);
+            handleClientConnect(remoteAddress);
             break;
         }
 
@@ -201,52 +168,21 @@ void ServerNetworkManager::handleNetworkPacket(const common::protocol::Packet& p
             handleClientDisconnect(remoteAddress);
             break;
         }
-
-        case protocol::PacketTypes::TYPE_HEARTBEAT: {
-            auto clientId = findClientIdByAddress(remoteAddress);
-            if (clientId.has_value()) {
-                LOG_DEBUG("Heartbeat received from client {}", clientId.value());
-                handleHeartbeat(remoteAddress, currentMs);
-            }
-            break;
-        }
-
-        case protocol::PacketTypes::TYPE_PING: {
-            auto clientId = findClientIdByAddress(remoteAddress);
-            if (clientId.has_value()) {
-                LOG_DEBUG("Ping received from client {}", clientId.value());
-                handlePing(packet, remoteAddress);
-            }
-            break;
-        }
-
-        case protocol::PacketTypes::TYPE_ACK:
-        case protocol::PacketTypes::TYPE_PONG:
-            // Acknowledgment received, no action needed
-            break;
-
-            case protocol::PacketTypes::TYPE_SERVER_ACCEPT:
-        case protocol::PacketTypes::TYPE_SERVER_REJECT:
-            // These should only be sent by server, not received
-            LOG_WARN("Unexpected packet type from client at {}", remoteAddress);
-            break;
-
-            default:
+        default: {
             LOG_ERROR("Unknown network packet type: {}", static_cast<int>(packet.header.packet_type));
             break;
+        }
     }
 }
 
-void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress, uint64_t currentMs)
+void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress)
 {
     LOG_INFO("Client connecting from {}", remoteAddress);
 
-    // Check if this client is already connected
     auto existingId = findClientIdByAddress(remoteAddress);
     if (existingId.has_value()) {
         LOG_INFO("Client reconnection from same address, updating...");
         uint32_t clientId = existingId.value();
-        _clients[clientId].lastHeartbeatTime = currentMs;
         return;
     }
 
@@ -254,12 +190,37 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress,
     auto freeSlot = findFreeSlot();
     if (!freeSlot.has_value()) {
         LOG_WARN("No free slots for new client from {}", remoteAddress);
+        // Send server reject (reason: server full = 0x01)
+        std::vector<uint8_t> args;
+        // flags_count = 1, FLAG_RELIABLE
+        args.push_back(0x01);
+        args.push_back(0x01);
+        // sequence_number (4 bytes, little-endian) - use 0
+        args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+        // timestamp (4 bytes, little-endian) - use 0
+        args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+        // reject_code (1 byte) - 0x01 = server full
+        args.push_back(0x01);
+        // reason_message (64 bytes) - ASCII string, padded with zeros
+        const std::string reason = "Server full";
+        for (size_t i = 0; i < reason.size() && i < 64; ++i) {
+            args.push_back(static_cast<uint8_t>(reason[i]));
+        }
+        for (size_t i = reason.size(); i < 64; ++i) {
+            args.push_back(0);
+        }
+        auto reject = PacketManager::createServerReject(args);
+        if (reject) {
+            _acceptorSocket->sendTo(reject.value(), remoteAddress);
+            LOG_INFO("Server reject sent to {}", remoteAddress);
+        } else {
+            LOG_ERROR("Failed to create ServerReject packet for {}", remoteAddress);
+        }
         return;
     }
 
     uint32_t clientId = freeSlot.value();
     _clients[clientId].remoteAddress = remoteAddress;
-    _clients[clientId].lastHeartbeatTime = currentMs;
     _clients[clientId].active = true;
 
     // Track the mapping
@@ -271,102 +232,44 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress,
     std::vector<uint8_t> args;
     args.push_back(0x01);  // flags_count = 1
     args.push_back(0x01);  // FLAG_RELIABLE
+
+    auto push32 = [&](uint32_t v) {
+        args.push_back(static_cast<uint8_t>(v & 0xFF));
+        args.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+        args.push_back(static_cast<uint8_t>((v >> 16) & 0xFF));
+        args.push_back(static_cast<uint8_t>((v >> 24) & 0xFF));
+    };
+
     // sequence_number (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    uint32_t sequence_number = 0;
+    push32(sequence_number);
+
     // timestamp (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
+    uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP & 0xFFFFFFFF);
+    push32(timestamp);
+
     // assigned_player_id (4 bytes, little-endian)
     uint32_t id = clientId;
-    args.push_back(id & 0xFF);
-    args.push_back((id >> 8) & 0xFF);
-    args.push_back((id >> 16) & 0xFF);
-    args.push_back((id >> 24) & 0xFF);
+    push32(id);
+
     // max_players (1 byte)
-    args.push_back(_maxPlayers);
+    args.push_back(static_cast<uint8_t>(_maxPlayers & 0xFF));
+
     // game_instance_id (4 bytes, little-endian) - use 1 for now
-    args.push_back(1); args.push_back(0); args.push_back(0); args.push_back(0);
+    uint32_t game_instance_id = 1;
+    push32(game_instance_id);
+
     // server_tickrate (2 bytes, little-endian)
     uint16_t tickrate = 60;
-    args.push_back(tickrate & 0xFF);
-    args.push_back((tickrate >> 8) & 0xFF);
+    args.push_back(static_cast<uint8_t>(tickrate & 0xFF));
+    args.push_back(static_cast<uint8_t>((tickrate >> 8) & 0xFF));
 
     auto packet = PacketManager::createServerAccept(args);
     if (packet) {
         queueOutgoing(packet.value(), clientId);
         LOG_INFO("Server accept sent to client {}", clientId);
-    }
-
-    // Do NOT spawn player entities immediately. Wait for all clients to connect
-    // before starting the game. When all clients are active, send GAME_START
-    // and then spawn all player entities and notify clients.
-
-    // Count active clients
-    uint32_t activeCount = 0;
-    for (const auto &slot : _clients) {
-        if (slot.active) ++activeCount;
-    }
-
-    if (activeCount == _maxPlayers) {
-        LOG_INFO("All clients connected ({}). Starting game instance.", _maxPlayers);
-
-        // Build GAME_START packet args
-        std::vector<uint8_t> startArgs;
-        startArgs.push_back(0x01); // flags_count
-        startArgs.push_back(0x01); // FLAG_RELIABLE
-
-        // sequence_number (4 bytes)
-        startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0);
-        // timestamp (4 bytes)
-        startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0); startArgs.push_back(0);
-
-        // game_instance_id (4 bytes) - use 1 for now
-        uint32_t gameInstanceId = 1;
-        startArgs.push_back(gameInstanceId & 0xFF);
-        startArgs.push_back((gameInstanceId >> 8) & 0xFF);
-        startArgs.push_back((gameInstanceId >> 16) & 0xFF);
-        startArgs.push_back((gameInstanceId >> 24) & 0xFF);
-
-        // player_count (1 byte) -> number of active players
-        startArgs.push_back(static_cast<uint8_t>(activeCount));
-
-        // player_ids (16 bytes: 4 x uint32_t). Always include 4 entries (pad with 0)
-        for (uint32_t i = 0; i < 4; ++i) {
-            uint32_t pid = 0;
-            if (i < _clients.size() && _clients[i].active) {
-                pid = i + 1; // 1-based player id
-            }
-            startArgs.push_back(pid & 0xFF);
-            startArgs.push_back((pid >> 8) & 0xFF);
-            startArgs.push_back((pid >> 16) & 0xFF);
-            startArgs.push_back((pid >> 24) & 0xFF);
-        }
-
-        // level_id (1 byte)
-        startArgs.push_back(0);
-        // difficulty (1 byte)
-        startArgs.push_back(0);
-
-        auto startPacket = PacketManager::createGameStart(startArgs);
-        if (startPacket) {
-            // Send GAME_START to each client individually to guarantee per-client ordering
-            for (const auto &slot : _clients) {
-                if (slot.active) {
-                    queueOutgoing(startPacket.value(), slot.clientId);
-                }
-            }
-            LOG_INFO("GAME_START sent to all clients (per-client)");
-        } else {
-            LOG_ERROR("Failed to create GAME_START packet");
-        }
-
-        // Now spawn players server-side and send ENTITY_SPAWN to each client
-        for (uint32_t i = 0; i < _maxPlayers; ++i) {
-            uint32_t playerId = i + 1;
-            uint32_t clientForPlayer = i; // mapping one-to-one
-            createPlayerEntity(playerId, 100, 150);
-            sendPlayerToClient(playerId, clientForPlayer, 100, 150);
-            sendPlayerToOtherClients(playerId, clientForPlayer, 100, 150);
-        }
+    } else {
+        LOG_ERROR("Failed to create ServerAccept packet for client {}", clientId);
     }
 }
 
@@ -380,314 +283,6 @@ void ServerNetworkManager::handleClientDisconnect(const std::string& remoteAddre
             _clients[id].active = false;
             _addressToClientId.erase(remoteAddress);
         }
-    }
-}
-
-void ServerNetworkManager::handleHeartbeat(const std::string& remoteAddress, uint64_t currentMs)
-{
-    auto clientId = findClientIdByAddress(remoteAddress);
-    if (clientId.has_value()) {
-        _clients[clientId.value()].lastHeartbeatTime = currentMs;
-    }
-}
-
-void ServerNetworkManager::spawnEntity(uint8_t entityType, uint32_t entityId, uint16_t posX, uint16_t posY, uint8_t mobVariant, uint8_t initialHealth, int16_t initialVelX, int16_t initialVelY)
-{
-    if (!_gameEngine) {
-        LOG_WARN("GameEngine not available for entity creation");
-        return;
-    }
-
-    //FIXME: game engine has been refactor so need to be changed
-
-    // Coordinator* coordinator = _gameEngine->getCoordinator();
-    // if (!coordinator) {
-    //     LOG_ERROR("Coordinator not available for entity creation");
-    //     return;
-    // }
-
-    // Create the entity on the server based on type
-    std::string entityName;
-
-    switch (static_cast<protocol::EntityTypes>(entityType)) {
-        case protocol::EntityTypes::ENTITY_TYPE_PLAYER: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("Player_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.5f));
-            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            // coordinator->addComponent<HitBox>(entity, HitBox());
-            // coordinator->addComponent<Weapon>(entity, Weapon(200, 0, 10, ProjectileType::MISSILE));
-            // coordinator->addComponent<InputComponent>(entity, InputComponent(entityId));
-            LOG_DEBUG("Player entity created on server: id={} pos=({}, {})", entityId, posX, posY);
-            break;
-        }
-        case protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("Projectile_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
-            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            // coordinator->addComponent<HitBox>(entity, HitBox());
-            LOG_DEBUG("Projectile entity created on server: id={} pos=({}, {})", entityId, posX, posY);
-            break;
-        }
-        case protocol::EntityTypes::ENTITY_TYPE_ENEMY: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("Enemy_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
-            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            // coordinator->addComponent<HitBox>(entity, HitBox());
-            // coordinator->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
-            LOG_DEBUG("Enemy entity created on server: id={} pos=({}, {})", entityId, posX, posY);
-            break;
-        }
-        case protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("EnemyBoss_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 3.0f));
-            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            // coordinator->addComponent<HitBox>(entity, HitBox());
-            LOG_DEBUG("Boss entity created on server: id={}", entityId);
-            break;
-        }
-        case protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_ENEMY: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("EnemyProjectile_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
-            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            // coordinator->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-            // coordinator->addComponent<HitBox>(entity, HitBox());
-            LOG_DEBUG("Enemy projectile entity created on server: id={}", entityId);
-            break;
-        }
-        case protocol::EntityTypes::ENTITY_TYPE_POWERUP: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("Powerup_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.5f));
-            // coordinator->addComponent<Velocity>(entity, Velocity(static_cast<float>(initialVelX), static_cast<float>(initialVelY)));
-            // coordinator->addComponent<HitBox>(entity, HitBox());
-            LOG_DEBUG("Powerup entity created on server: id={}", entityId);
-            break;
-        }
-        case protocol::EntityTypes::ENTITY_TYPE_OBSTACLE: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("Obstacle_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 2.0f));
-            // coordinator->addComponent<HitBox>(entity, HitBox());
-            LOG_DEBUG("Obstacle entity created on server: id={}", entityId);
-            break;
-        }
-        case protocol::EntityTypes::ENTITY_TYPE_BG_ELEMENT: {
-            //FIXME: game engine has been refactor so need to be changed
-
-            // Entity entity = coordinator->createEntity("BGElement_" + std::to_string(entityId));
-            // coordinator->addComponent<Transform>(entity, Transform(static_cast<float>(posX), static_cast<float>(posY), 0.f, 1.0f));
-            LOG_DEBUG("Background element entity created on server: id={}", entityId);
-            break;
-        }
-        default:
-            LOG_ERROR("Unknown entity type: {}", static_cast<int>(entityType));
-            return;
-    }
-}
-
-void ServerNetworkManager::createPlayerEntity(uint32_t playerId, uint16_t posX, uint16_t posY)
-{
-    spawnEntity(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER),
-                playerId, posX, posY, 0, 100, 0, 0);
-}
-
-void ServerNetworkManager::createBulletEntity(uint32_t bulletId, uint16_t posX, uint16_t posY,
-                                              int16_t velX, int16_t velY)
-{
-    spawnEntity(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER),
-                bulletId, posX, posY, 0, 1, velX, velY);
-}
-
-void ServerNetworkManager::sendPlayerToClient(uint32_t playerId, uint32_t targetClientId,
-                                              uint16_t posX, uint16_t posY)
-{
-    std::vector<uint8_t> args;
-    args.push_back(0x01);  // flags_count = 1
-    args.push_back(0x01);  // FLAG_RELIABLE
-    // sequence_number (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
-    // timestamp (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
-    // entity_id (4 bytes, little-endian)
-    args.push_back(playerId & 0xFF);
-    args.push_back((playerId >> 8) & 0xFF);
-    args.push_back((playerId >> 16) & 0xFF);
-    args.push_back((playerId >> 24) & 0xFF);
-    // entity_type (1 byte)
-    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
-    // position_x (2 bytes, little-endian)
-    args.push_back(posX & 0xFF);
-    args.push_back((posX >> 8) & 0xFF);
-    // position_y (2 bytes, little-endian)
-    args.push_back(posY & 0xFF);
-    args.push_back((posY >> 8) & 0xFF);
-    // mob_variant (1 byte)
-    args.push_back(0);
-    // initial_health (1 byte)
-    args.push_back(100);
-    // initial_velocity_x (2 bytes, little-endian)
-    args.push_back(0); args.push_back(0);
-    // initial_velocity_y (2 bytes, little-endian)
-    args.push_back(0); args.push_back(0);
-    // is_playable (1 byte)
-    args.push_back(1);  // true
-
-    auto packet = PacketManager::createEntitySpawn(args);
-    if (packet) {
-        queueOutgoing(packet.value(), targetClientId);
-        LOG_DEBUG("Player %u sent to client %u with is_playable=true", playerId, targetClientId);
-    } else {
-        LOG_ERROR("Failed to create ENTITY_SPAWN packet for player %u", playerId);
-    }
-}
-
-void ServerNetworkManager::sendPlayerToOtherClients(uint32_t playerId, uint32_t originatingClientId,
-                                                    uint16_t posX, uint16_t posY)
-{
-    std::vector<uint8_t> args;
-    args.push_back(0x01);  // flags_count = 1
-    args.push_back(0x01);  // FLAG_RELIABLE
-    // sequence_number (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
-    // timestamp (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
-    // entity_id (4 bytes, little-endian)
-    args.push_back(playerId & 0xFF);
-    args.push_back((playerId >> 8) & 0xFF);
-    args.push_back((playerId >> 16) & 0xFF);
-    args.push_back((playerId >> 24) & 0xFF);
-    // entity_type (1 byte)
-    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
-    // position_x (2 bytes, little-endian)
-    args.push_back(posX & 0xFF);
-    args.push_back((posX >> 8) & 0xFF);
-    // position_y (2 bytes, little-endian)
-    args.push_back(posY & 0xFF);
-    args.push_back((posY >> 8) & 0xFF);
-    // mob_variant (1 byte)
-    args.push_back(0);
-    // initial_health (1 byte)
-    args.push_back(100);
-    // initial_velocity_x (2 bytes, little-endian)
-    args.push_back(0); args.push_back(0);
-    // initial_velocity_y (2 bytes, little-endian)
-    args.push_back(0); args.push_back(0);
-    // is_playable (1 byte)
-    args.push_back(0);  // false
-
-    auto packet = PacketManager::createEntitySpawn(args);
-    if (packet) {
-        for (const auto& slot : _clients) {
-            if (slot.active && slot.clientId != originatingClientId) {
-                queueOutgoing(packet.value(), slot.clientId);
-            }
-        }
-        LOG_DEBUG("Player %u sent to all clients except %u with is_playable=false", 
-                  playerId, originatingClientId);
-    } else {
-        LOG_ERROR("Failed to create ENTITY_SPAWN packet for player %u", playerId);
-    }
-}
-
-void ServerNetworkManager::sendBulletToOtherClients(uint32_t bulletId, uint32_t originatingClientId,
-                                                    uint16_t posX, uint16_t posY,
-                                                    int16_t velX, int16_t velY)
-{
-    std::vector<uint8_t> args;
-    args.push_back(0x01);  // flags_count = 1
-    args.push_back(0x01);  // FLAG_RELIABLE
-    // sequence_number (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
-    // timestamp (4 bytes, little-endian)
-    args.push_back(0); args.push_back(0); args.push_back(0); args.push_back(0);
-    // entity_id (4 bytes, little-endian)
-    args.push_back(bulletId & 0xFF);
-    args.push_back((bulletId >> 8) & 0xFF);
-    args.push_back((bulletId >> 16) & 0xFF);
-    args.push_back((bulletId >> 24) & 0xFF);
-    // entity_type (1 byte)
-    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER));
-    // position_x (2 bytes, little-endian)
-    args.push_back(posX & 0xFF);
-    args.push_back((posX >> 8) & 0xFF);
-    // position_y (2 bytes, little-endian)
-    args.push_back(posY & 0xFF);
-    args.push_back((posY >> 8) & 0xFF);
-    // mob_variant (1 byte)
-    args.push_back(0);
-    // initial_health (1 byte)
-    args.push_back(1);
-    // initial_velocity_x (2 bytes, little-endian)
-    args.push_back(velX & 0xFF);
-    args.push_back((velX >> 8) & 0xFF);
-    // initial_velocity_y (2 bytes, little-endian)
-    args.push_back(velY & 0xFF);
-    args.push_back((velY >> 8) & 0xFF);
-    // is_playable (1 byte)
-    args.push_back(0);  // false
-
-    auto packet = PacketManager::createEntitySpawn(args);
-    if (packet) {
-        for (const auto& slot : _clients) {
-            if (slot.active && slot.clientId != originatingClientId) {
-                queueOutgoing(packet.value(), slot.clientId);
-            }
-        }
-        LOG_DEBUG("Bullet %u sent to all clients except %u", bulletId, originatingClientId);
-    } else {
-        LOG_ERROR("Failed to create ENTITY_SPAWN packet for bullet %u", bulletId);
-    }
-}
-
-void ServerNetworkManager::handlePing(const common::protocol::Packet& packet, const std::string& remoteAddress)
-{
-    auto clientId = findClientIdByAddress(remoteAddress);
-    if (!clientId.has_value()) {
-        return;
-    }
-
-    LOG_DEBUG("Ping from client {}", clientId.value());
-
-    // Send pong using PacketManager
-    std::vector<uint8_t> args;
-    args.push_back(0);  // flags_count
-    // sequence_number (4 bytes, little-endian)
-    uint32_t seq = packet.header.sequence_number;
-    args.push_back(seq & 0xFF);
-    args.push_back((seq >> 8) & 0xFF);
-    args.push_back((seq >> 16) & 0xFF);
-    args.push_back((seq >> 24) & 0xFF);
-    // timestamp (4 bytes, little-endian)
-    uint32_t ts = packet.header.timestamp;
-    args.push_back(ts & 0xFF);
-    args.push_back((ts >> 8) & 0xFF);
-    args.push_back((ts >> 16) & 0xFF);
-    args.push_back((ts >> 24) & 0xFF);
-    // client_timestamp (4 bytes, little-endian)
-    args.push_back(ts & 0xFF);
-    args.push_back((ts >> 8) & 0xFF);
-    args.push_back((ts >> 16) & 0xFF);
-    args.push_back((ts >> 24) & 0xFF);
-
-    auto pong = PacketManager::createPong(args);
-    if (pong) {
-        queueOutgoing(pong.value(), clientId.value());
     }
 }
 

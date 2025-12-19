@@ -30,30 +30,19 @@ public:
     void stop() override;
     bool isRunning() const override { return _running.load(); }
 
-    void queueOutgoing(const common::protocol::Packet& packet,
-                       std::optional<uint32_t> targetClient = std::nullopt) override;
-
+    void queueOutgoing(const common::protocol::Packet& packet, std::optional<uint32_t> targetClient = std::nullopt) override;
     std::vector<common::network::ReceivedPacket> fetchIncoming() override;
 
     void run();
 
     // Network packet sending methods
     void sendConnectionRequest();
-    void sendHeartbeat();
-    void sendDisconnect(uint8_t reason);
-    void sendAck(uint32_t acked_sequence, uint32_t received_timestamp);
-    void sendPing();
 
     // handling methods
     void handleConnectionAccepted(const common::protocol::Packet& packet);
     void handleConnectionRejected(const common::protocol::Packet& packet);
     //void handleHeartbeatAck();
     void handleDisconnect(const common::protocol::Packet& packet);
-    void handleAck(const common::protocol::Packet& packet);
-    void handlePing(const common::protocol::Packet& packet);
-    void handlePong(const common::protocol::Packet& packet);
-
-
 
 private:
     bool shouldForward(const common::protocol::Packet& packet) const;
@@ -71,8 +60,6 @@ private:
     std::mutex _outMutex;
     std::deque<common::network::ReceivedPacket> _incoming;
     std::deque<common::protocol::Packet> _outgoing;
-
-    std::atomic<unsigned int> _tickCount;
 };
 
 } // namespace network
