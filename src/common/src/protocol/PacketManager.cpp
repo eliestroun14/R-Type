@@ -1788,7 +1788,7 @@ std::optional<common::protocol::Packet> PacketManager::createServerAccept(const 
 {
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_SERVER_ACCEPT));
 
-    if (args.size() < SERVER_ACCEPT_MIN_ARGS_SIZE) {
+    if (args.size() < SERVER_ACCEPT_MIN_ARGS_SIZE ) {
         LOG_ERROR_CAT("NetworkManager", "createServerAccept: args too small, minimum {} bytes needed, got {}",
                      SERVER_ACCEPT_MIN_ARGS_SIZE, args.size());
         return std::nullopt;
@@ -1807,11 +1807,11 @@ std::optional<common::protocol::Packet> PacketManager::createServerAccept(const 
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_SIZE + SERVER_ACCEPT_PAYLOAD_SIZE) {
+/*     if (args.size() < offset + HEADER_SIZE + SERVER_ACCEPT_PAYLOAD_SIZE ) {
         LOG_ERROR_CAT("NetworkManager", "createServerAccept: not enough data for header + payload, expected {} got {}",
                      offset + HEADER_SIZE + SERVER_ACCEPT_PAYLOAD_SIZE, args.size());
         return std::nullopt;
-    }
+    } */
 
     uint32_t sequence_number;
     std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
@@ -1867,12 +1867,6 @@ std::optional<common::protocol::Packet> PacketManager::createServerReject(const 
     uint8_t combined_flags = 0x00;
     for (uint8_t i = 0; i < flags_count; ++i) {
         combined_flags |= args[offset++];
-    }
-
-    if (args.size() < offset + HEADER_SIZE + SERVER_REJECT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createServerReject: not enough data for header + payload, expected {} got {}",
-                     offset + HEADER_SIZE + SERVER_REJECT_PAYLOAD_SIZE, args.size());
-        return std::nullopt;
     }
 
     uint32_t sequence_number;

@@ -30,9 +30,7 @@ bool Server::init() {
 
 void Server::run() {
     _isRunning = true;
-    _gameEngine = std::make_shared<gameEngine::GameEngine>();
-    _gameEngine->init();  // Initialize engine BEFORE network manager starts
-    _networkManager->setGameEngine(_gameEngine);
+    // TODO: Initialize game
     _networkManager->start();
 
     LOG_INFO("Server running on port {}", _config.port);
@@ -40,16 +38,21 @@ void Server::run() {
     std::thread networkThread(&server::network::ServerNetworkManager::run, _networkManager.get());
     networkThread.detach(); // Detach the network thread to allow independent execution
 
-    this->gameLoop();
-    
-    // Ensure network manager is stopped
-    if (_networkManager) {
-        _networkManager->stop();
+    while (_isRunning && !g_shutdownRequested.load()) {
+        // TODO: game run
+        // if (!_game->runGameLoop(TYPE::SERVER)) {
+        //  stop();
+        // break;
+        auto incomingPackets = _networkManager->fetchIncoming();
+        for (const auto &entry : incomingPackets) {
+            // TODO: push back dans la queue du game
+        }
+        //std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
-    
-    // Give network thread a moment to process the stop signal
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
+    if (g_shutdownRequested.load()) {
+        LOG_INFO("Shutdown requested, stopping gracefully...");
+    }
 }
 
 void Server::stop() {
@@ -58,59 +61,6 @@ void Server::stop() {
         _networkManager->stop();
     }
 }
-
-void Server::gameLoop() {
-
-    // Engine already initialized in run()
-    
-    auto next = std::chrono::steady_clock::now();
-    const std::chrono::milliseconds tick(std::chrono::milliseconds(TICK_RATE));
-
-    uint64_t currentTick = 0;
-    uint64_t lastHeartbeatTick = 0;
-
-    while (_isRunning && !g_shutdownRequested.load()) {
-
-        next += tick;
-        std::this_thread::sleep_until(next);
-
-        currentTick++;
-
-        // Calculate delta time in milliseconds
-        float deltaTime = static_cast<float>(TICK_RATE);
-
-        // Process received packets
-        std::vector<common::protocol::Packet> packetsToProcess;
-        auto incomingPackets = _networkManager->fetchIncoming();
-        for (const auto& entry : incomingPackets) {
-            packetsToProcess.push_back(entry.packet);
-        }
-
-        // Update game state every tick
-         //FIXME: game engine has been refactor so need to be changed
-        // _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_SERVER, packetsToProcess, currentTick * TICK_RATE);
-
-        // Build and send packets based on tick intervals
-        std::vector<common::protocol::Packet> outgoingPackets;
-
-
-         //FIXME: game engine has been refactor so need to be changed
-        // this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
-        //     NetworkType::NETWORK_TYPE_CLIENT,
-        //     currentTick * TICK_RATE,
-        //     outgoingPackets
-        // );
-
-        for (const auto& packet : outgoingPackets) {
-            _networkManager->queueOutgoing(packet);
-        }
-    }
-    
-    if (g_shutdownRequested.load()) {
-        LOG_INFO("Shutdown requested, stopping gracefully...");
-    }
-}
-
 } // namespace server
 
 // Signal handler
