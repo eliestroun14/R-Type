@@ -271,7 +271,6 @@ struct Drawable {};
 struct Playable {};
 
 /**
-<<<<<<< HEAD
  * @brief Stores input state for an entity (player).
  *
  * Each player entity has its own InputComponent to track active actions.
@@ -287,14 +286,12 @@ struct InputComponent
 };
 
 /**
-=======
  * @brief Tag component. Marks the entity as an enemy.
  *
  */
 struct Enemy {};
 
 /*
->>>>>>> dev
  * @brief Represents a projectile fired by an entity.
  *
  * Stores information about who shot it and what it can hit.
