@@ -81,11 +81,12 @@ namespace gameEngine {
 
             /**
              * @brief Removes an entity and all its associated components.
-             * @param e Reference to the entity to destroy.
+             * @param entityId Reference to the entity id to destroy.
              */
-            void destroyEntity(Entity &e)
+            void destroyEntity(std::uint32_t entityId)
             {
-                this->_entityManager->killEntity(e);
+                Entity entity = Entity::fromId(static_cast<std::size_t>(entityId));
+                this->_entityManager->killEntity(entity);
             }
 
             /**
