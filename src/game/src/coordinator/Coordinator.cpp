@@ -6,7 +6,6 @@
 */
 
 #include "game/coordinator/Coordinator.hpp"
-#include "Coordinator.hpp"
 
 void Coordinator::initEngine()
 {
@@ -279,7 +278,21 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
 
 void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &packet)
 {
-    //TODO: implement here
+    // Validate payload size using the protocol define
+    if (packet.data.size() != ENTITY_DESTROY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), ENTITY_DESTROY_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the DESTROY_ENTITY payload in one memcpy
+    protocol::EntityDestroyPayload payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "Entity destroyed: id=%u reason=%u final_pos=(%.1f, %.1f)",
+        payload.entity_id, payload.destroy_reason, static_cast<float>(payload.final_position_x), static_cast<float>(payload.final_position_y));
+
+    // Destroy the entity
+    this->_engine->destroyEntity(payload.entity_id);
 }
 
 
