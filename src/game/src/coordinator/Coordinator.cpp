@@ -415,6 +415,69 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
 
 void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &packet)
 {
+    // packet.data format:
+    // - world_tick (4 bytes)
+    // - entity_count (2 bytes)
+    // - [entity_id (4 bytes) + ComponentAnimation (7 bytes)] * entity_count
+
+    const auto& data = packet.data;
+
+    // Minimum size: 6 bytes (world_tick + entity_count)
+    if (data.size() < 6) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketAnimationSnapshot: packet too small (%zu bytes)", data.size());
+        return;
+    }
+
+    const uint8_t* ptr = data.data();
+
+    uint32_t world_tick = 0; 
+    std::memcpy(&world_tick, ptr, sizeof(world_tick));
+    ptr += sizeof(world_tick);
+
+    uint16_t entity_count = 0;
+    std::memcpy(&entity_count, ptr, sizeof(entity_count));
+    ptr += sizeof(entity_count);
+
+    // Validate total size: 6 bytes base + (entity_count × 11 bytes)
+    // Each entity has: entity_id(4) + ComponentAnimation(7) = 11 bytes
+    if (data.size() != 6 + (entity_count * 11)) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketAnimationSnapshot: invalid packet size %zu, expected %zu", 
+            data.size(), 6 + (entity_count * 11));
+        return;
+    }
+
+    LOG_INFO_CAT("Coordinator", "AnimationSnapshot: world_tick=%u entity_count=%u", world_tick, entity_count);
+
+    for (uint16_t i = 0; i < entity_count; ++i) {
+        uint32_t entity_id = 0;
+        protocol::ComponentAnimation netAnim;
+
+        std::memcpy(&entity_id, ptr, sizeof(entity_id));
+        ptr += sizeof(entity_id);
+
+        std::memcpy(&netAnim, ptr, sizeof(netAnim));
+        ptr += sizeof(netAnim);
+
+        Entity entity = Entity::fromId(entity_id);
+        if (!this->_engine->isAlive(entity))
+            continue;
+
+        auto& opt = this->_engine->getComponentEntity<Animation>(entity);
+        if (!opt.has_value())
+            continue;
+
+        Animation& anim = opt.value();
+
+        // Update animation state from network data
+        // Note: ComponentAnimation uses animation_id, frame_index, frame_duration, loop_mode
+        // We map these to the Animation component fields
+        anim.currentFrame = netAnim.frame_index;
+        anim.frameDuration = static_cast<float>(netAnim.frame_duration) / 1000.0f; // Convert ms to seconds
+        anim.loop = (netAnim.loop_mode == 1); // 0=once, 1=loop, 2=pingpong
+
+        // Reset elapsed time when receiving new animation state
+        anim.elapsedTime = 0.0f;
+    }
 }
 
 void Coordinator::handlePacketComponentRemove(const common::protocol::Packet &packet)
