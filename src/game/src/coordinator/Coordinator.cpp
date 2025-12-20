@@ -44,7 +44,7 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_DESTROY):
                 if (PacketManager::assertEntityDestroy(packet)) {
-                    // TODO: handle entity destroy
+                    handlePacketDestroyEntity(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT):
@@ -54,12 +54,12 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT):
                 if (PacketManager::assertHealthSnapshot(packet)) {
-                    // TODO: handle health snapshot
+                    handlePacketHealthSnapshot(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT):
                 if (PacketManager::assertWeaponSnapshot(packet)) {
-                    // TODO: handle weapon snapshot
+                    handlePacketWeaponSnapshot(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT):
@@ -69,57 +69,57 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_REMOVE):
                 if (PacketManager::assertComponentRemove(packet)) {
-                    // TODO: handle component remove
+                    handlePacketComponentRemove(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA):
                 if (PacketManager::assertTransformSnapshotDelta(packet)) {
-                    // TODO: handle transform snapshot delta
+                    handlePacketTransformSnapshotDelta(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA):
                 if (PacketManager::assertHealthSnapshotDelta(packet)) {
-                    // TODO: handle health snapshot delta
+                    handlePacketHealthSnapshotDelta(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_HIT):
                 if (PacketManager::assertPlayerHit(packet)) {
-                    // TODO: handle player hit
+                    handlePacketPlayerHit(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_DEATH):
                 if (PacketManager::assertPlayerDeath(packet)) {
-                    // TODO: handle player death
+                    handlePacketPlayerDeath(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_SCORE_UPDATE):
                 if (PacketManager::assertScoreUpdate(packet)) {
-                    // TODO: handle score update
+                    handlePacketScoreUpdate(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP):
                 if (PacketManager::assertPowerupPickup(packet)) {
-                    // TODO: handle powerup pickup
+                    handlePacketPowerupPickup(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_FIRE):
                 if (PacketManager::assertWeaponFire(packet)) {
-                    // TODO: handle weapon fire
+                    handlePacketWeaponFire(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT):
                 if (PacketManager::assertVisualEffect(packet)) {
-                    // TODO: handle visual effect
+                    handlePacketVisualEffect(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT):
                 if (PacketManager::assertAudioEffect(packet)) {
-                    // TODO: handle audio effect
+                    handlePacketAudioEffect(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PARTICLE_SPAWN):
                 if (PacketManager::assertParticleSpawn(packet)) {
-                    // TODO: handle particle spawn
+                    handlePacketParticleSpawn(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START):
@@ -134,22 +134,22 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE):
                 if (PacketManager::assertLevelComplete(packet)) {
-                    // TODO: handle level complete
+                    handlePacketLevelComplete(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START):
                 if (PacketManager::assertLevelStart(packet)) {
-                    // TODO: handle level start
+                    handlePacketLevelStart(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_FORCE_STATE):
                 if (PacketManager::assertForceState(packet)) {
-                    // TODO: handle force state
+                    handlePacketForceState(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_STATE):
                 if (PacketManager::assertAIState(packet)) {
-                    // TODO: handle AI state
+                    handlePacketAIState(packet);
                 }
                 break;
             default:
@@ -440,6 +440,23 @@ void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &
 
 void Coordinator::handlePacketComponentRemove(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != COMPONENT_REMOVE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), COMPONENT_REMOVE_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
+    protocol::ComponentRemove payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "ComponentRemove: component_type=%u entity_id=%u",
+        payload.component_type, payload.entity_id);
+
+    Entity entity = this->_engine->getEntityFromId(payload.entity_id);
+
+
+    this->_engine->removeComponentByType(payload.component_type, entity);
 }
 
 void Coordinator::handlePacketTransformSnapshotDelta(const common::protocol::Packet &packet)
