@@ -22,10 +22,15 @@ target_include_directories(server_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+# Ensure server can include game public headers
+target_include_directories(server_lib PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/game/include
+)
 # Link libraries
 target_link_libraries(server_lib PUBLIC
     engine
     common
+    game
     ${COMMON_LIBS}
 )
 
@@ -34,11 +39,13 @@ add_executable(r-type-server ${SERVER_SOURCES} ${SERVER_HEADERS})
 
 target_include_directories(r-type-server PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/game/include
 )
 
 # Link libraries
 target_link_libraries(r-type-server PRIVATE 
     engine
     common
+    game
     ${COMMON_LIBS}
 )

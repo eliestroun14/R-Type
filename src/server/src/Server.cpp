@@ -1,4 +1,5 @@
 #include <server/core/Server.hpp>
+#include <game/Game.hpp>
 #include <iostream>
 #include <cstring>
 #include <csignal>
@@ -17,6 +18,7 @@ Server::Server(const ServerConfig& config)
     : _config(config)
     , _isRunning(false)
     , _networkManager(std::make_unique<server::network::ServerNetworkManager>(_config.port, _config.maxPlayers))
+    , _game(std::make_unique<Game>(Game::Type::SERVER))
 {
 }
 
@@ -30,7 +32,6 @@ bool Server::init() {
 
 void Server::run() {
     _isRunning = true;
-    // TODO: Initialize game
     _networkManager->start();
 
     LOG_INFO("Server running on port {}", _config.port);
@@ -39,13 +40,29 @@ void Server::run() {
     networkThread.detach(); // Detach the network thread to allow independent execution
 
     while (_isRunning && !g_shutdownRequested.load()) {
-        // TODO: game run
-        // if (!_game->runGameLoop(TYPE::SERVER)) {
-        //  stop();
-        // break;
+        // Basic game processing: feed incoming packets and run game loop
         auto incomingPackets = _networkManager->fetchIncoming();
         for (const auto &entry : incomingPackets) {
-            // TODO: push back dans la queue du game
+            if (_game) {
+                _game->addIncomingPacket(entry);
+            }
+        }
+
+        if (_game) {
+            if (!_game->runGameLoop()) {
+                stop();
+                break;
+            }
+        }
+        // Forward any outgoing packets from Game to the network manager
+        if (_game) {
+            while (true) {
+                auto maybeOut = _game->popOutgoingPacket();
+                if (!maybeOut.has_value())
+                    break;
+                auto &out = maybeOut.value();
+                _networkManager->queueOutgoing(out.first, out.second);
+            }
         }
         //std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
@@ -176,7 +193,7 @@ int main(int argc, char const *argv[])
 {
     // Initialize logger first
     logger::Logger::setup(
-        logger::LogLevel::Info,
+        logger::LogLevel::Debug,
         "server.log",
         {},
         false,

@@ -2027,12 +2027,6 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const s
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_SIZE + PLAYER_INPUT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createPlayerInput: not enough data for header + payload, expected {} got {}",
-                     offset + HEADER_SIZE + PLAYER_INPUT_PAYLOAD_SIZE, args.size());
-        return std::nullopt;
-    }
-
     uint32_t sequence_number;
     std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
     offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
@@ -2098,12 +2092,6 @@ std::optional<common::protocol::Packet> PacketManager::createEntitySpawn(const s
     uint8_t combined_flags = 0x00;
     for (uint8_t i = 0; i < flags_count; ++i) {
         combined_flags |= args[offset++];
-    }
-
-    if (args.size() < offset + HEADER_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createEntitySpawn: not enough data for header + payload, expected {} got {}",
-                     offset + HEADER_SIZE + ENTITY_SPAWN_PAYLOAD_SIZE, args.size());
-        return std::nullopt;
     }
 
     uint32_t sequence_number;
