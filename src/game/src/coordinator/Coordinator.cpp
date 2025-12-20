@@ -386,12 +386,14 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
         std::memcpy(&health, packet.data.data() + offset, sizeof(health));
         offset += sizeof(health);
 
-        // try {
-        //     this->_engine->updateComponent<Health>(entity, health);
-        // } catch (const std::exception& e) {
-        //     // L'entité n'a pas ce composant, on le crée
-        //     this->_engine->emplaceComponent<Health>(entity, health);
-        // }
+        Entity entity = this->_engine->getEntityFromId(entity_id);
+
+        try {
+            this->_engine->updateComponent<Health>(entity, health);
+        } catch (const std::exception& e) {
+            // if the entity does not have the component, set the component
+            this->_engine->emplaceComponent<Health>(entity, health);
+        }
     }
 }
 
@@ -407,10 +409,29 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
     protocol::WeaponSnapshot snapshot;
     std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
 
-    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick=%u entity_count=%u",
+    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: world_tick=%u entity_count=%u",
         snapshot.world_tick, snapshot.entity_count);
 
-    //TODO: idk what to do with this WeaponSnapshot, ask the team what we have to 
+    size_t offset = sizeof(protocol::WeaponSnapshot);
+    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+        uint32_t entity_id;
+        Weapon weapon(0, 0, 0, ProjectileType::UNKNOWN);
+
+        std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
+        offset += sizeof(entity_id);
+
+        std::memcpy(&weapon, packet.data.data() + offset, sizeof(weapon));
+        offset += sizeof(weapon);
+
+        Entity entity = this->_engine->getEntityFromId(entity_id);
+
+        try {
+            this->_engine->updateComponent<Weapon>(entity, weapon);
+        } catch (const std::exception& e) {
+            // if the entity does not have the component, set the component
+            this->_engine->emplaceComponent<Weapon>(entity, weapon);
+        }
+    }
 }
 
 void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &packet)
