@@ -360,7 +360,7 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
 {
     // Validate snapshot size using the protocol define
     if (packet.data.size() != HEALTH_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_BASE_SIZE);
         return;
     }
 
@@ -397,7 +397,7 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
 {
     // Validate snapshot size using the protocol define
     if (packet.data.size() != WEAPON_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_SNAPSHOT_BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapthot: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_SNAPSHOT_BASE_SIZE);
         return;
     }
 
@@ -438,7 +438,7 @@ void Coordinator::handlePacketComponentRemove(const common::protocol::Packet &pa
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != COMPONENT_REMOVE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), COMPONENT_REMOVE_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketComponentRemove: invalid packet size %zu, expected %d", packet.data.size(), COMPONENT_REMOVE_PAYLOAD_SIZE);
         return;
     }
 
@@ -463,11 +463,11 @@ void Coordinator::handlePacketHealthSnapshotDelta(const common::protocol::Packet
 {
     // Validate snapshot size using the protocol define
     if (packet.data.size() != HEALTH_SNAPSHOT_DELTA_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_DELTA_BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshotDelta: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_DELTA_BASE_SIZE);
         return;
     }
 
-    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
+    // Parse the HEALTH_SNAPSHOT_DELTA snapshot in one memcpy
     protocol::HealthSnapshotDelta snapshot;
     std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
 
