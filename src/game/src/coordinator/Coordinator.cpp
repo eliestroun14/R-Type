@@ -461,6 +461,39 @@ void Coordinator::handlePacketTransformSnapshotDelta(const common::protocol::Pac
 
 void Coordinator::handlePacketHealthSnapshotDelta(const common::protocol::Packet &packet)
 {
+    // Validate snapshot size using the protocol define
+    if (packet.data.size() != HEALTH_SNAPSHOT_DELTA_BASE_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_DELTA_BASE_SIZE);
+        return;
+    }
+
+    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
+    protocol::HealthSnapshotDelta snapshot;
+    std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
+
+    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick=%u entity_count=%u",
+        snapshot.world_tick, snapshot.entity_count);
+
+    size_t offset = sizeof(protocol::HealthSnapshotDelta);
+    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+        uint32_t entity_id;
+        Health health(0, 0);
+
+        std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
+        offset += sizeof(entity_id);
+
+        std::memcpy(&health, packet.data.data() + offset, sizeof(health));
+        offset += sizeof(health);
+
+        Entity entity = this->_engine->getEntityFromId(entity_id);
+
+        try {
+            this->_engine->updateComponent<Health>(entity, health);
+        } catch (const std::exception& e) {
+            // if the entity does not have the component, set the component
+            this->_engine->emplaceComponent<Health>(entity, health);
+        }
+    }
 }
 
 void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
