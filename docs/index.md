@@ -41,6 +41,7 @@ R-Type is a modern C++ game engine project built from scratch. It demonstrates a
 | **Tests** | Testing framework and best practices |
 | **Build System** | CPM dependency management rationale |
 | **Client** | Client-side implementation details |
+| **Server** | Server-side implementation details and protocol |
 | **Contributing** | How to contribute and documentation guidelines |
 
 ---

@@ -134,6 +134,10 @@ nav:
     - Overview: Client/index.md
     - Graphical library: Client/graphical-lib.md
 
+  - Server:
+    - Overview: Server/index.md
+    - Protocol: Server/protocol.md
+
   - Contributing:
     - Overview: Contributing/index.md
     - Documentation:
