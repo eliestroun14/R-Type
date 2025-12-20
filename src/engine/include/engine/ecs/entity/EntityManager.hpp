@@ -22,6 +22,7 @@
 #include <any>
 #include <unordered_set>
 #include <optional>
+#include <cstdint>
 
 /**
  * @class EntityManager
@@ -179,6 +180,15 @@ public:
             _systemManager->entitySignatureChanged(id, _signatures[id]);
 
         return Entity(id);
+    }
+
+    /**
+     * @brief Get an entity from his id.
+     */
+    Entity getEntityFromID(std::uint32_t entityId)
+    {
+        Entity entity = Entity::fromId(static_cast<std::size_t>(entityId));
+        return entity;
     }
 
     /**

@@ -80,12 +80,22 @@ namespace gameEngine {
             }
 
             /**
+             * @brief Spawns a new entity in the engine.
+             * @param entityName A debug name for the entity.
+             * @return Entity The ID/Handle of the created entity.
+             */
+            Entity getEntityFromId(std::uint32_t entityId)
+            {
+                return this->_entityManager->getEntityFromID(entityId);
+            }
+
+            /**
              * @brief Removes an entity and all its associated components.
              * @param entityId Reference to the entity id to destroy.
              */
             void destroyEntity(std::uint32_t entityId)
             {
-                Entity entity = Entity::fromId(static_cast<std::size_t>(entityId));
+                Entity entity = getEntityFromId(entityId);
                 this->_entityManager->killEntity(entity);
             }
 
