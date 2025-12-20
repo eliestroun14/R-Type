@@ -495,4 +495,63 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
 
 void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
 {
+    // Validate payload size
+    if (packet.data.size() != AI_STATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "AIState: invalid packet size %zu, expected %d",
+            packet.data.size(), AI_STATE_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the AI_STATE payload
+    const uint8_t* ptr = packet.data.data();
+    
+    uint32_t entity_id = 0;
+    std::memcpy(&entity_id, ptr, sizeof(entity_id));
+    ptr += sizeof(entity_id);
+    
+    uint8_t current_state = 0;
+    std::memcpy(&current_state, ptr, sizeof(current_state));
+    ptr += sizeof(current_state);
+    
+    uint8_t behavior_type = 0;
+    std::memcpy(&behavior_type, ptr, sizeof(behavior_type));
+    ptr += sizeof(behavior_type);
+    
+    uint32_t target_entity_id = 0;
+    std::memcpy(&target_entity_id, ptr, sizeof(target_entity_id));
+    ptr += sizeof(target_entity_id);
+    
+    int16_t waypoint_x = 0;
+    std::memcpy(&waypoint_x, ptr, sizeof(waypoint_x));
+    ptr += sizeof(waypoint_x);
+    
+    int16_t waypoint_y = 0;
+    std::memcpy(&waypoint_y, ptr, sizeof(waypoint_y));
+    ptr += sizeof(waypoint_y);
+    
+    uint16_t state_timer = 0;
+    std::memcpy(&state_timer, ptr, sizeof(state_timer));
+    ptr += sizeof(state_timer);
+
+    // Get the entity
+    Entity entity = Entity::fromId(entity_id);
+    if (!this->_engine->isAlive(entity)) {
+        LOG_WARN_CAT("Coordinator", "AIState: entity %u is not alive", entity_id);
+        return;
+    }
+
+    // Get the AI component
+    auto& optAI = this->_engine->getComponentEntity<AI>(entity);
+    if (!optAI.has_value()) {
+        LOG_WARN_CAT("Coordinator", "AIState: entity %u has no AI component", entity_id);
+        return;
+    }
+
+    // Update the AI component with new state information
+    AI& ai = optAI.value();
+    ai.internalTime = static_cast<float>(state_timer);
+
+    LOG_DEBUG_CAT("Coordinator", "AIState updated: entity=%u state=%u behavior=%u target=%u waypoint=(%.0f, %.0f) timer=%u",
+        entity_id, current_state, behavior_type, target_entity_id,
+        static_cast<float>(waypoint_x), static_cast<float>(waypoint_y), state_timer);
 }

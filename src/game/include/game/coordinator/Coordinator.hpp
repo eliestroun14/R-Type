@@ -78,6 +78,31 @@ class Coordinator {
         void handlePacketLevelComplete(const common::protocol::Packet& packet);
         void handlePacketLevelStart(const common::protocol::Packet& packet);
         void handlePacketForceState(const common::protocol::Packet& packet);
+        
+        /**
+         * @brief Handles an AI_STATE packet from the server
+         *
+         * This method processes AI state updates for enemy entities. It parses the packet
+         * data to extract the AI entity's current state, behavior type, target information,
+         * and waypoint coordinates, then updates the corresponding AI component in the
+         * game engine.
+         *
+         * @param packet The AI_STATE packet containing:
+         *        - entity_id (uint32_t): The ID of the AI entity to update
+         *        - current_state (uint8_t): The current AI state (idle, patrol, chase, etc.)
+         *        - behavior_type (uint8_t): The behavior pattern (AIBehaviorType enum)
+         *        - target_entity_id (uint32_t): The ID of the current target entity (0 if no target)
+         *        - waypoint_x (int16_t): X coordinate of the next waypoint
+         *        - waypoint_y (int16_t): Y coordinate of the next waypoint
+         *        - state_timer (uint16_t): Time remaining in the current state (in milliseconds)
+         *
+         * @note Packet format is exactly AI_STATE_PAYLOAD_SIZE (18 bytes)
+         * @note If the entity doesn't exist in the engine, the packet is ignored
+         * @note If the AI component doesn't exist for the entity, the packet is ignored
+         *
+         * @see AI_STATE_PAYLOAD_SIZE
+         * @see AIBehaviorType
+         */
         void handlePacketAIState(const common::protocol::Packet& packet);
 
 
