@@ -13,11 +13,6 @@ struct Position {
     Position(float xx, float yy) : x(xx), y(yy) {}
 };
 
-struct Velocity {
-    float vx, vy;
-    Velocity(float vxx, float vyy) : vx(vxx), vy(vyy) {}
-};
-
 // Test Fixture
 class EntityManagerTest : public ::testing::Test {
 protected:
