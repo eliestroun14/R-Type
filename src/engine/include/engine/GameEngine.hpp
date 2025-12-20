@@ -51,7 +51,15 @@ namespace gameEngine {
                 this->_entityManager = std::make_unique<EntityManager>();
                 this->_systemManager = std::make_unique<SystemManager>();
                 this->_entityManager->setSystemManager(this->_systemManager.get());
+            }
 
+
+            /**
+             * @brief Initializes RenderManager for the gameEngine, client side.
+             * * This method must be called before any other operation.
+             */
+            void initRender()
+            {
                 this->_renderManager = std::make_unique<RenderManager>();
                 this->_renderManager->init();
             }
@@ -73,11 +81,12 @@ namespace gameEngine {
 
             /**
              * @brief Removes an entity and all its associated components.
-             * @param e Reference to the entity to destroy.
+             * @param entityId Reference to the entity id to destroy.
              */
-            void destroyEntity(Entity &e)
+            void destroyEntity(std::uint32_t entityId)
             {
-                this->_entityManager->killEntity(e);
+                Entity entity = Entity::fromId(static_cast<std::size_t>(entityId));
+                this->_entityManager->killEntity(entity);
             }
 
             /**
@@ -142,6 +151,18 @@ namespace gameEngine {
             emplaceComponent(Entity const &entity, Params&&... params)
             {
                 return this->_entityManager->template emplaceComponent<Component>(entity, std::forward<Params>(params)...);
+            }
+
+            /**
+             * @brief Update a component in-place for a specific entity.
+             * @tparam Component The type of the component.
+             * @param entity The entity receiving the component.
+             * @param newData Component with the new data.
+             */
+            template<class Component>
+            void updateComponent(Entity const& e, const Component& newData)
+            {
+                this->_entityManager->updateComponent(e, newData);
             }
 
             /**
