@@ -204,7 +204,7 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     protocol::EntitySpawnPayload payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u", 
+    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health);
 
     // Create the entity
@@ -296,67 +296,63 @@ void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &pack
 }
 
 
-void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet &packet)
+void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& packet)
 {
-    // packet.data format:
-    // - world_tick (4 bytes)
-    // - entity_count (2 bytes)
-    // - [entity_id (4 bytes) + ComponentTransform (8 bytes)] * entity_count
-    
-    const auto& data = packet.data;
-    
-    // Minimum size: 6 bytes (world_tick + entity_count)
-    if (data.size() < 6 || (data.size() - 6) % 12 != 0) {
-        LOG_ERROR_CAT("Coordinator",
-            "TransformSnapshot: invalid payload size %zu",
-            data.size());
+    constexpr std::size_t BASE_SIZE  = sizeof(uint32_t) + sizeof(uint16_t);                         // 6
+    constexpr std::size_t ENTRY_SIZE = sizeof(uint32_t) + sizeof(protocol::ComponentTransform);     // 12
+
+    const std::size_t size = packet.data.size();
+    if (size < BASE_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: payload too small (%zu), expected >= %zu",size, BASE_SIZE);
         return;
     }
-    
-    const uint8_t* ptr = data.data();
-    
+    if ((size - BASE_SIZE) % ENTRY_SIZE != 0) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: invalid payload size %zu, expected %zu + %zu*N", size, BASE_SIZE, ENTRY_SIZE);
+        return;
+    }
+
+    const std::uint8_t* const data =
+        reinterpret_cast<const std::uint8_t*>(packet.data.data());
+
     uint32_t world_tick = 0;
-    std::memcpy(&world_tick, ptr, sizeof(world_tick));
-    ptr += sizeof(world_tick);
-    
     uint16_t entity_count = 0;
-    std::memcpy(&entity_count, ptr, sizeof(entity_count));
-    ptr += sizeof(entity_count);
-    
-    // Validate total size
-    if (data.size() != 6 + (entity_count * 12)) {
-        LOG_ERROR_CAT("Coordinator",
-            "TransformSnapshot: size mismatch (%zu != %zu)",
-            data.size(), 6 + (entity_count * 12));
+    std::memcpy(&world_tick, data, sizeof(world_tick));
+    std::memcpy(&entity_count, data + sizeof(world_tick), sizeof(entity_count));
+
+    const std::size_t computed_count = (size - BASE_SIZE) / ENTRY_SIZE;
+    if (static_cast<std::size_t>(entity_count) != computed_count) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: entity_count mismatch (packet=%u computed=%zu)", entity_count, computed_count);
         return;
     }
+
+    LOG_INFO_CAT("Coordinator", "TransformSnapshot: world_tick=%u entity_count=%u", world_tick, entity_count);
+
+    std::size_t offset = BASE_SIZE;
 
     for (uint16_t i = 0; i < entity_count; ++i) {
         uint32_t entity_id = 0;
-        protocol::ComponentTransform net;
+        protocol::ComponentTransform net{};
 
-        std::memcpy(&entity_id, ptr, sizeof(entity_id));
-        ptr += sizeof(entity_id);
+        std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
+        offset += sizeof(entity_id);
 
-        std::memcpy(&net, ptr, sizeof(net));
-        ptr += sizeof(net);
+        std::memcpy(&net, packet.data.data() + offset, sizeof(net));
+        offset += sizeof(net);
 
-        Entity entity = Entity::fromId(entity_id);
-        if (!this->_engine->isAlive(entity))
-            continue;
+        Entity entity = this->_engine->getEntityFromId(entity_id);
 
-        auto& opt = this->_engine->getComponentEntity<Transform>(entity);
-        if (!opt.has_value())
-            continue;
+        const Transform tf(
+            static_cast<float>(net.pos_x),
+            static_cast<float>(net.pos_y),
+            (static_cast<float>(net.rotation) * 360.0f) / 65535.0f,
+            static_cast<float>(net.scale) / 1000.0f
+        );
 
-        Transform& tr = opt.value();
-
-        tr.x = static_cast<float>(net.pos_x);
-        tr.y = static_cast<float>(net.pos_y);
-
-        tr.rotation = (static_cast<float>(net.rotation) / 65535.f) * 360.f;
-
-        tr.scale = static_cast<float>(net.scale) / 1000.f;
+        try {
+            this->_engine->updateComponent<Transform>(entity, tf);
+        } catch (const std::exception&) {
+            this->_engine->emplaceComponent<Transform>(entity, tf);
+        }
     }
 }
 
