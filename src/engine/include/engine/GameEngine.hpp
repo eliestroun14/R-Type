@@ -154,6 +154,18 @@ namespace gameEngine {
             }
 
             /**
+             * @brief Update a component in-place for a specific entity.
+             * @tparam Component The type of the component.
+             * @param entity The entity receiving the component.
+             * @param newData Component with the new data.
+             */
+            template<class Component>
+            void updateComponent(Entity const& e, const Component& newData)
+            {
+                this->_entityManager->updateComponent(e, newData);
+            }
+
+            /**
              * @brief Removes a component from an entity.
              * @tparam Component The type of component to remove.
              * @param entity The target entity.

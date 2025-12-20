@@ -259,6 +259,15 @@ public:
         return getComponents<Component>().emplaceAt(e, std::forward<Params>(ps)...);
     }
 
+    template<class Component>
+    void updateComponent(Entity const& e, const Component& newData) {
+        if (!isAlive(e))
+            throw Error(ErrorType::EcsInvalidEntity, ErrorMessages::ECS_INVALID_ENTITY);
+        
+        auto& component = getComponent<Component>(e);
+        component = newData;
+    }
+
     /**
      * @brief Removes a component from an entity.
      */
