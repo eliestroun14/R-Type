@@ -51,7 +51,6 @@ class Game {
 
         bool _isConnected = false;
         bool _isRunning = false;
-        bool _packetsSent = false; //TODO: remove here for debug
 };
 
 #endif /* !GAME_HPP_ */
