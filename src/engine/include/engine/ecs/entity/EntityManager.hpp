@@ -12,6 +12,8 @@
 #include <engine/ecs/system/SystemManager.hpp>
 #include <engine/ecs/entity/Entity.hpp>
 #include <engine/ecs/Signature.hpp>
+#include <engine/ecs/component/Components.hpp>
+#include <common/logger/Logger.hpp>
 
 #include <common/error/Error.hpp>
 
@@ -273,7 +275,7 @@ public:
     void updateComponent(Entity const& e, const Component& newData) {
         if (!isAlive(e))
             throw Error(ErrorType::EcsInvalidEntity, ErrorMessages::ECS_INVALID_ENTITY);
-        
+
         auto& component = getComponent<Component>(e);
         component = newData;
     }
@@ -295,6 +297,45 @@ public:
         getComponents<Component>().erase(e);
     }
 
+
+    void removeComponentByType(uint8_t componentType, Entity entity)
+    {
+        switch (componentType) {
+            case 0x01:
+                this->removeComponent<Transform>(entity);
+                break;
+            case 0x02:
+                this->removeComponent<Velocity>(entity);
+                break;
+            case 0x03:
+                this->removeComponent<Health>(entity);
+                break;
+            case 0x04:
+                this->removeComponent<Weapon>(entity);
+                break;
+            case 0x05:
+                this->removeComponent<AI>(entity);
+                break;
+            case 0x07:
+                this->removeComponent<HitBox>(entity);
+                break;
+            case 0x08:
+                this->removeComponent<Sprite>(entity);
+                break;
+            case 0x09:
+                this->removeComponent<Animation>(entity);
+                break;
+            case 0x0A:
+                this->removeComponent<Powerup>(entity);
+                break;
+            case 0x0C:
+                this->removeComponent<InputComponent>(entity);
+                break;
+            default:
+                LOG_ERROR("Unknown component type: %u", componentType);
+                break;
+        }
+    }
 private:
     std::unordered_map<std::type_index, std::any> _componentsArrays; /**< Storage for all component arrays */
     std::unordered_map<std::type_index, std::function<void(EntityManager&,Entity const&)>> _erasers; /**< Generic component removers */

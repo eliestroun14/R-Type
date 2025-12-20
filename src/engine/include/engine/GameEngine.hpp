@@ -219,6 +219,12 @@ namespace gameEngine {
                 return this->_entityManager->getComponentTypeID<Component>();
             }
 
+
+            void removeComponentByType(uint8_t componentType, Entity entity)
+            {
+                this->_entityManager->removeComponentByType(componentType, entity);
+            }
+
             // ################################################################
             // ########################### SYSTEM #############################
             // ################################################################
