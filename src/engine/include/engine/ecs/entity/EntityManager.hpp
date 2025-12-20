@@ -22,6 +22,7 @@
 #include <any>
 #include <unordered_set>
 #include <optional>
+#include <cstdint>
 
 /**
  * @class EntityManager
@@ -182,6 +183,15 @@ public:
     }
 
     /**
+     * @brief Get an entity from his id.
+     */
+    Entity getEntityFromID(std::uint32_t entityId)
+    {
+        Entity entity = Entity::fromId(static_cast<std::size_t>(entityId));
+        return entity;
+    }
+
+    /**
      * @brief Destroys an entity and removes all its components.
      */
     void killEntity(Entity const &entity) {
@@ -257,6 +267,15 @@ public:
             _systemManager->entitySignatureChanged((std::size_t)e, _signatures[e]);
 
         return getComponents<Component>().emplaceAt(e, std::forward<Params>(ps)...);
+    }
+
+    template<class Component>
+    void updateComponent(Entity const& e, const Component& newData) {
+        if (!isAlive(e))
+            throw Error(ErrorType::EcsInvalidEntity, ErrorMessages::ECS_INVALID_ENTITY);
+        
+        auto& component = getComponent<Component>(e);
+        component = newData;
     }
 
     /**

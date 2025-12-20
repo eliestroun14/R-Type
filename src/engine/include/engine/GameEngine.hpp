@@ -80,12 +80,22 @@ namespace gameEngine {
             }
 
             /**
+             * @brief Spawns a new entity in the engine.
+             * @param entityName A debug name for the entity.
+             * @return Entity The ID/Handle of the created entity.
+             */
+            Entity getEntityFromId(std::uint32_t entityId)
+            {
+                return this->_entityManager->getEntityFromID(entityId);
+            }
+
+            /**
              * @brief Removes an entity and all its associated components.
              * @param entityId Reference to the entity id to destroy.
              */
             void destroyEntity(std::uint32_t entityId)
             {
-                Entity entity = Entity::fromId(static_cast<std::size_t>(entityId));
+                Entity entity = getEntityFromId(entityId);
                 this->_entityManager->killEntity(entity);
             }
 
@@ -151,6 +161,18 @@ namespace gameEngine {
             emplaceComponent(Entity const &entity, Params&&... params)
             {
                 return this->_entityManager->template emplaceComponent<Component>(entity, std::forward<Params>(params)...);
+            }
+
+            /**
+             * @brief Update a component in-place for a specific entity.
+             * @tparam Component The type of the component.
+             * @param entity The entity receiving the component.
+             * @param newData Component with the new data.
+             */
+            template<class Component>
+            void updateComponent(Entity const& e, const Component& newData)
+            {
+                this->_entityManager->updateComponent(e, newData);
             }
 
             /**
