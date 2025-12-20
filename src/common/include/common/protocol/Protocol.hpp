@@ -449,7 +449,7 @@ namespace protocol {
         COMPONENT_WEAPON          = 0x04,       // Weapon state
         COMPONENT_AI              = 0x05,       // AI behavior
         COMPONENT_FORCE           = 0x06,       // R-Type Force attachment
-        COMPONENT_COLLISION       = 0x07,       // Collision bounds
+        COMPONENT_HITBOX          = 0x07,       // Collision bounds
         COMPONENT_SPRITE          = 0x08,       // Visual representation
         COMPONENT_ANIMATION       = 0x09,       // Animation state
         COMPONENT_POWERUP         = 0x0A,       // Powerup effect
