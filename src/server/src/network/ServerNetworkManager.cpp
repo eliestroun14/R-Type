@@ -68,6 +68,10 @@ void ServerNetworkManager::queueOutgoing(const common::protocol::Packet& packet,
 {
     std::lock_guard<std::mutex> lock(_outMutex);
     _outgoing.emplace_back(packet, targetClient);
+    LOG_DEBUG("ServerNetworkManager: queued outgoing type={} target={} queue_size={}",
+              static_cast<int>(packet.header.packet_type),
+              targetClient.has_value() ? std::to_string(targetClient.value()) : std::string("broadcast"),
+              _outgoing.size());
 }
 
 std::vector<common::network::ReceivedPacket> ServerNetworkManager::fetchIncoming()
@@ -110,6 +114,7 @@ void ServerNetworkManager::run()
             auto clientId = findClientIdByAddress(remoteAddress);
             if (clientId.has_value()) {
                 _incoming.push_back({incoming, clientId.value()});
+                LOG_DEBUG("ServerNetworkManager: incoming queue size={}", _incoming.size());
             }
             if (!shouldForward(incoming)) {
                 handleNetworkPacket(incoming, remoteAddress);
@@ -118,6 +123,7 @@ void ServerNetworkManager::run()
 
         {
             std::lock_guard<std::mutex> lock(_outMutex);
+            LOG_DEBUG("ServerNetworkManager: processing outgoing queue size={}", _outgoing.size());
             while (!_outgoing.empty()) {
                 const auto [packet, target] = _outgoing.front();
                 if (target.has_value()) {
@@ -132,6 +138,7 @@ void ServerNetworkManager::run()
                         }
                     }
                 }
+                LOG_DEBUG("ServerNetworkManager: sent outgoing type={} target={}", static_cast<int>(packet.header.packet_type), target.has_value() ? std::to_string(target.value()) : std::string("broadcast"));
                 _outgoing.pop_front();
             }
         }

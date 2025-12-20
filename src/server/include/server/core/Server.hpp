@@ -13,6 +13,7 @@
 #include <common/constants/defines.hpp>
 #include <engine/GameEngine.hpp>
 #include <server/network/ServerNetworkManager.hpp>
+#include <game/Game.hpp>
 
 namespace server {
 
@@ -53,6 +54,7 @@ namespace server {
         ServerConfig _config;
 
         std::unique_ptr<server::network::ServerNetworkManager> _networkManager;
+        std::unique_ptr<Game> _game;
 
         // State
         std::atomic<bool> _isRunning;

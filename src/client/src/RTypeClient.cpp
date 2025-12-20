@@ -30,7 +30,7 @@ void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerNa
 {
     _networkManager = std::make_unique<client::network::ClientNetworkManager>(serverIp, port, this);
 
-    // TODO: initialize game
+    _game = std::make_unique<Game>(Game::Type::CLIENT);
 
     _playerName = playerName;
     _isRunning = false;
@@ -52,14 +52,31 @@ void RTypeClient::run()
     LOG_INFO("Waiting for connection to server...");
 
         while (_isRunning) {
-            // TODO: game run
-            // if (!_game->runGameLoop(TYPE::CLIENT)) {
-            //  stop();
-            // break;
-            auto incomingPackets = _networkManager->fetchIncoming();
-            for (const auto &entry : incomingPackets) {
-                // TODO: push back dans la queue du game
-            }
+                // Feed incoming packets to the game and run a game step
+                auto incomingPackets = _networkManager->fetchIncoming();
+                for (const auto &entry : incomingPackets) {
+                    if (_game) {
+                        _game->addIncomingPacket(entry);
+                    }
+                }
+
+                if (_game) {
+                    if (!_game->runGameLoop()) {
+                        stop();
+                        break;
+                    }
+                }
+
+                // Forward any outgoing packets from Game to the network manager
+                if (_game) {
+                    while (true) {
+                        auto maybeOut = _game->popOutgoingPacket();
+                        if (!maybeOut.has_value())
+                            break;
+                        auto &out = maybeOut.value();
+                        _networkManager->queueOutgoing(out.first);
+                    }
+                }
             //std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 

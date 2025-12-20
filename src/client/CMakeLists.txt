@@ -28,6 +28,7 @@ target_include_directories(client_lib PUBLIC
 target_link_libraries(client_lib PUBLIC
     engine
     common
+    game
     ${COMMON_LIBS}
 )
 
@@ -45,6 +46,7 @@ target_link_libraries(r-type-client PRIVATE
     client_lib
     engine
     common
+    game
     ${COMMON_LIBS}
 )
 

@@ -89,7 +89,7 @@ void ClientNetworkManager::run()
         common::protocol::Packet incoming;
         std::string remoteAddress;
         if (_socket->receiveFrom(incoming, remoteAddress)) {
-            LOG_DEBUG("Phase 1: Received packet type: {}", static_cast<int>(incoming.header.packet_type));
+            LOG_DEBUG("Phase 1: Received packet type: {} from {}", static_cast<int>(incoming.header.packet_type), remoteAddress);
             handleNetworkPacket(incoming);
         }
 
@@ -117,17 +117,21 @@ void ClientNetworkManager::run()
         common::protocol::Packet incoming;
         std::string remoteAddress;
         if (_socket->receiveFrom(incoming, remoteAddress)) {
-            if (shouldForward(incoming)) {
-                std::lock_guard<std::mutex> lock(_inMutex);
-                _incoming.push_back({incoming, std::nullopt});
-            } else {
-                handleNetworkPacket(incoming);
-            }
+                LOG_DEBUG("Phase 2: Received packet type: {} from {}", static_cast<int>(incoming.header.packet_type), remoteAddress);
+                if (shouldForward(incoming)) {
+                    std::lock_guard<std::mutex> lock(_inMutex);
+                    _incoming.push_back({incoming, std::nullopt});
+                    LOG_DEBUG("Queued incoming packet type={} (forwarded)", static_cast<int>(incoming.header.packet_type));
+                } else {
+                    LOG_DEBUG("Handling network packet type={} (control)", static_cast<int>(incoming.header.packet_type));
+                    handleNetworkPacket(incoming);
+                }
         }
 
         {
             std::lock_guard<std::mutex> lock(_outMutex);
             while (!_outgoing.empty()) {
+                LOG_DEBUG("Sending outgoing packet type={}", static_cast<int>(_outgoing.front().header.packet_type));
                 _socket->send(_outgoing.front());
                 _outgoing.pop_front();
             }
