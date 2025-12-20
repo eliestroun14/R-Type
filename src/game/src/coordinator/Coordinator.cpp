@@ -298,28 +298,21 @@ void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& packet)
 {
-    using std::uint8_t;
-    using std::uint16_t;
-    using std::uint32_t;
-
     constexpr std::size_t BASE_SIZE  = sizeof(uint32_t) + sizeof(uint16_t);                         // 6
     constexpr std::size_t ENTRY_SIZE = sizeof(uint32_t) + sizeof(protocol::ComponentTransform);     // 12
 
     const std::size_t size = packet.data.size();
-    const uint8_t* const data = reinterpret_cast<const uint8_t*>(packet.data.data());
-
     if (size < BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator",
-            "TransformSnapshot: payload too small (%zu), expected >= %zu",
-            size, BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: payload too small (%zu), expected >= %zu",size, BASE_SIZE);
         return;
     }
     if ((size - BASE_SIZE) % ENTRY_SIZE != 0) {
-        LOG_ERROR_CAT("Coordinator",
-            "TransformSnapshot: invalid payload size (%zu), expected %zu + %zu*N",
-            size, BASE_SIZE, ENTRY_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: invalid payload size %zu, expected %zu + %zu*N", size, BASE_SIZE, ENTRY_SIZE);
         return;
     }
+
+    const std::uint8_t* const data =
+        reinterpret_cast<const std::uint8_t*>(packet.data.data());
 
     uint32_t world_tick = 0;
     uint16_t entity_count = 0;
@@ -327,46 +320,41 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
     std::memcpy(&entity_count, data + sizeof(world_tick), sizeof(entity_count));
 
     const std::size_t computed_count = (size - BASE_SIZE) / ENTRY_SIZE;
-    if (entity_count != computed_count) {
-        LOG_ERROR_CAT("Coordinator",
-            "TransformSnapshot: entity_count mismatch (packet=%u computed=%zu)",
-            entity_count, computed_count);
+    if (static_cast<std::size_t>(entity_count) != computed_count) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: entity_count mismatch (packet=%u computed=%zu)", entity_count, computed_count);
         return;
     }
 
-    auto& transforms = this->_engine->getComponents<Transform>();
-    const uint8_t* it = data + BASE_SIZE;
+    LOG_INFO_CAT("Coordinator", "TransformSnapshot: world_tick=%u entity_count=%u", world_tick, entity_count);
 
-    for (std::size_t i = 0; i < entity_count; ++i) {
+    std::size_t offset = BASE_SIZE;
+
+    for (uint16_t i = 0; i < entity_count; ++i) {
         uint32_t entity_id = 0;
         protocol::ComponentTransform net{};
 
-        std::memcpy(&entity_id, it, sizeof(entity_id));
-        it += sizeof(entity_id);
+        std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
+        offset += sizeof(entity_id);
 
-        std::memcpy(&net, it, sizeof(net));
-        it += sizeof(net);
+        std::memcpy(&net, packet.data.data() + offset, sizeof(net));
+        offset += sizeof(net);
 
-        auto& opt = transforms[entity_id];
-        if (!opt.has_value()) {
-            const float rot = (static_cast<float>(net.rotation) * 360.0f) / 65535.0f;
-            const float sca = static_cast<float>(net.scale) / 1000.0f;
-            opt.emplace(static_cast<float>(net.pos_x), static_cast<float>(net.pos_y), rot, sca);
-            continue;
+        Entity entity = this->_engine->getEntityFromId(entity_id);
+
+        const Transform tf(
+            static_cast<float>(net.pos_x),
+            static_cast<float>(net.pos_y),
+            (static_cast<float>(net.rotation) * 360.0f) / 65535.0f,
+            static_cast<float>(net.scale) / 1000.0f
+        );
+
+        try {
+            this->_engine->updateComponent<Transform>(entity, tf);
+        } catch (const std::exception&) {
+            this->_engine->emplaceComponent<Transform>(entity, tf);
         }
-
-        Transform& tf = *opt;
-        tf.x = static_cast<float>(net.pos_x);
-        tf.y = static_cast<float>(net.pos_y);
-        tf.rotation = (static_cast<float>(net.rotation) * 360.0f) / 65535.0f;
-        tf.scale = static_cast<float>(net.scale) / 1000.0f;
     }
-
-    LOG_DEBUG_CAT("Coordinator",
-        "TransformSnapshot applied: tick=%u entities=%u payload=%zu",
-        world_tick, entity_count, size);
 }
-
 
 void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &packet)
 {
