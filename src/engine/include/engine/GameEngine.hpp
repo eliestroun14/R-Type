@@ -225,6 +225,15 @@ namespace gameEngine {
                 this->_entityManager->removeComponentByType(componentType, entity);
             }
 
+
+            /**
+             * @brief Checks whether an entity possesses a component.
+             */
+            template <class Component>
+            bool hasComponent(Entity const& e) const {
+                return this->_entityManager->hasComponent<Component>(e);
+            }
+
             // ################################################################
             // ########################### SYSTEM #############################
             // ################################################################
