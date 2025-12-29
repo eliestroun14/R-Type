@@ -544,6 +544,25 @@ void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
 
 void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != PLAYER_DEATH_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerHit: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_DEATH_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the PLAYER_DEATH_PAYLOAD_SIZE payload in one memcpy
+    protocol::PlayerDeath payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "killer_id: id=%u death_pos=(%.1f, %.1f) player_id=%u score_before_death=%u",
+        payload.killer_id, static_cast<float>(payload.death_pos_x), static_cast<float>(payload.death_pos_y), payload.player_id,
+        payload.score_before_death);
+
+    // kill player
+    Entity playerDead = this->_engine->getEntityFromId(payload.player_id);
+
+    // add this component and the DeadPlayerSystem has to do the job (if all is fine), need to be test absolutely
+    this->_engine->addComponent<DeadPlayer>(playerDead, DeadPlayer());
 }
 
 void Coordinator::handlePacketScoreUpdate(const common::protocol::Packet &packet)
