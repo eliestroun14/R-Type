@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 14
+#define NUMBER_ASSETS 15
 
 #include <array>
 #include <iostream>
@@ -46,6 +46,7 @@ enum Assets {
 
     // EXPLOSIONS
     EXPLOSIONS,
+    BIG_EXPLOSION,
 };
 
 static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
@@ -76,6 +77,7 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 
     // EXPLOSIONS
     "../assets/explosions/explosions.png",
+    "../assets/explosions/bigExplosions.png",
 };
 
 
