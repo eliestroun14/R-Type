@@ -498,6 +498,48 @@ void Coordinator::handlePacketHealthSnapshotDelta(const common::protocol::Packet
 
 void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
 {
+     // Validate payload size using the protocol define
+    if (packet.data.size() != PLAYER_HIT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerHit: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_HIT_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the PLAYER_HIT_PAYLOAD_SIZE payload in one memcpy
+    protocol::PlayerHit payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "attacker_id: id=%u damage=%u hit_pos=(%.1f, %.1f) player_id=%u remaining_health=%u remaining_shield=%u",
+        payload.attacker_id, payload.damage, static_cast<float>(payload.hit_pos_x), static_cast<float>(payload.hit_pos_y), payload.player_id,
+        payload.remaining_health, payload.remaining_shield);
+
+
+    // Hit player
+    Entity playerHit = this->_engine->getEntityFromId(payload.player_id);
+
+    try
+    {
+        auto& health = this->_engine->getComponentEntity<Health>(playerHit);
+        health->currentHealth = payload.remaining_health;
+        // TODO: handle the shied here, add a component and add the remaining_shield
+
+        LOG_INFO_CAT("Coordinator", "Player %u health updated: hp=%u shield=%u",
+            payload.player_id, payload.remaining_health, payload.remaining_shield);
+
+
+        //TODO: add sound effects
+        // this->_engine->playHitEffect(playerHit, payload.hit_pos_x, payload.hit_pos_y);
+        // this->_engine->playHitSound(payload.damage);
+
+    }
+    catch(const Error &e)
+    {
+        LOG_ERROR_CAT("Coordinator", "Failed to update player %u health: %s",
+            payload.player_id, e.what());
+        std::cerr << "Error: " << e.what() << std::endl;
+        if (e.getType() == ErrorType::CorruptedData) {
+            std::cerr << "Problem update player " << payload.player_id << "health when hit" << std::endl;
+        }
+    }
 }
 
 void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet)
