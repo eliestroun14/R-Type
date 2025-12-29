@@ -223,6 +223,7 @@ struct Powerup
 enum ProjectileType {
     MISSILE,
     LASER,
+    UNKNOWN
 };
 
 /**

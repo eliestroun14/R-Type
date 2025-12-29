@@ -30,7 +30,7 @@ void Coordinator::processServerPackets(const std::vector<common::protocol::Packe
     }
 }
 
-void Coordinator::processCLientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
+void Coordinator::processClientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
 {
     for (const auto& packet : packetsToProcess) {
         // Check packet type first, then validate
@@ -44,7 +44,7 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_DESTROY):
                 if (PacketManager::assertEntityDestroy(packet)) {
-                    // TODO: handle entity destroy
+                    handlePacketDestroyEntity(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT):
@@ -54,12 +54,12 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT):
                 if (PacketManager::assertHealthSnapshot(packet)) {
-                    // TODO: handle health snapshot
+                    handlePacketHealthSnapshot(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_SNAPSHOT):
                 if (PacketManager::assertWeaponSnapshot(packet)) {
-                    // TODO: handle weapon snapshot
+                    handlePacketWeaponSnapshot(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ANIMATION_SNAPSHOT):
@@ -69,57 +69,57 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_COMPONENT_REMOVE):
                 if (PacketManager::assertComponentRemove(packet)) {
-                    // TODO: handle component remove
+                    handlePacketComponentRemove(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT_DELTA):
                 if (PacketManager::assertTransformSnapshotDelta(packet)) {
-                    // TODO: handle transform snapshot delta
+                    handlePacketTransformSnapshotDelta(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_HEALTH_SNAPSHOT_DELTA):
                 if (PacketManager::assertHealthSnapshotDelta(packet)) {
-                    // TODO: handle health snapshot delta
+                    handlePacketHealthSnapshotDelta(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_HIT):
                 if (PacketManager::assertPlayerHit(packet)) {
-                    // TODO: handle player hit
+                    handlePacketPlayerHit(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_DEATH):
                 if (PacketManager::assertPlayerDeath(packet)) {
-                    // TODO: handle player death
+                    handlePacketPlayerDeath(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_SCORE_UPDATE):
                 if (PacketManager::assertScoreUpdate(packet)) {
-                    // TODO: handle score update
+                    handlePacketScoreUpdate(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP):
                 if (PacketManager::assertPowerupPickup(packet)) {
-                    // TODO: handle powerup pickup
+                    handlePacketPowerupPickup(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_WEAPON_FIRE):
                 if (PacketManager::assertWeaponFire(packet)) {
-                    // TODO: handle weapon fire
+                    handlePacketWeaponFire(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT):
                 if (PacketManager::assertVisualEffect(packet)) {
-                    // TODO: handle visual effect
+                    handlePacketVisualEffect(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT):
                 if (PacketManager::assertAudioEffect(packet)) {
-                    // TODO: handle audio effect
+                    handlePacketAudioEffect(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PARTICLE_SPAWN):
                 if (PacketManager::assertParticleSpawn(packet)) {
-                    // TODO: handle particle spawn
+                    handlePacketParticleSpawn(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_GAME_START):
@@ -134,22 +134,22 @@ void Coordinator::processCLientPackets(const std::vector<common::protocol::Packe
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE):
                 if (PacketManager::assertLevelComplete(packet)) {
-                    // TODO: handle level complete
+                    handlePacketLevelComplete(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START):
                 if (PacketManager::assertLevelStart(packet)) {
-                    // TODO: handle level start
+                    handlePacketLevelStart(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_FORCE_STATE):
                 if (PacketManager::assertForceState(packet)) {
-                    // TODO: handle force state
+                    handlePacketForceState(packet);
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_AI_STATE):
                 if (PacketManager::assertAIState(packet)) {
-                    // TODO: handle AI state
+                    handlePacketAIState(packet);
                 }
                 break;
             default:
@@ -204,7 +204,7 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     protocol::EntitySpawnPayload payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u", 
+    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health);
 
     // Create the entity
@@ -296,67 +296,63 @@ void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &pack
 }
 
 
-void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet &packet)
+void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& packet)
 {
-    // packet.data format:
-    // - world_tick (4 bytes)
-    // - entity_count (2 bytes)
-    // - [entity_id (4 bytes) + ComponentTransform (8 bytes)] * entity_count
-    
-    const auto& data = packet.data;
-    
-    // Minimum size: 6 bytes (world_tick + entity_count)
-    if (data.size() < 6 || (data.size() - 6) % 12 != 0) {
-        LOG_ERROR_CAT("Coordinator",
-            "TransformSnapshot: invalid payload size %zu",
-            data.size());
+    constexpr std::size_t BASE_SIZE  = sizeof(uint32_t) + sizeof(uint16_t);                         // 6
+    constexpr std::size_t ENTRY_SIZE = sizeof(uint32_t) + sizeof(protocol::ComponentTransform);     // 12
+
+    const std::size_t size = packet.data.size();
+    if (size < BASE_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: payload too small (%zu), expected >= %zu",size, BASE_SIZE);
         return;
     }
-    
-    const uint8_t* ptr = data.data();
-    
+    if ((size - BASE_SIZE) % ENTRY_SIZE != 0) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: invalid payload size %zu, expected %zu + %zu*N", size, BASE_SIZE, ENTRY_SIZE);
+        return;
+    }
+
+    const std::uint8_t* const data =
+        reinterpret_cast<const std::uint8_t*>(packet.data.data());
+
     uint32_t world_tick = 0;
-    std::memcpy(&world_tick, ptr, sizeof(world_tick));
-    ptr += sizeof(world_tick);
-    
     uint16_t entity_count = 0;
-    std::memcpy(&entity_count, ptr, sizeof(entity_count));
-    ptr += sizeof(entity_count);
-    
-    // Validate total size
-    if (data.size() != 6 + (entity_count * 12)) {
-        LOG_ERROR_CAT("Coordinator",
-            "TransformSnapshot: size mismatch (%zu != %zu)",
-            data.size(), 6 + (entity_count * 12));
+    std::memcpy(&world_tick, data, sizeof(world_tick));
+    std::memcpy(&entity_count, data + sizeof(world_tick), sizeof(entity_count));
+
+    const std::size_t computed_count = (size - BASE_SIZE) / ENTRY_SIZE;
+    if (static_cast<std::size_t>(entity_count) != computed_count) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: entity_count mismatch (packet=%u computed=%zu)", entity_count, computed_count);
         return;
     }
+
+    LOG_INFO_CAT("Coordinator", "TransformSnapshot: world_tick=%u entity_count=%u", world_tick, entity_count);
+
+    std::size_t offset = BASE_SIZE;
 
     for (uint16_t i = 0; i < entity_count; ++i) {
         uint32_t entity_id = 0;
-        protocol::ComponentTransform net;
+        protocol::ComponentTransform net{};
 
-        std::memcpy(&entity_id, ptr, sizeof(entity_id));
-        ptr += sizeof(entity_id);
+        std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
+        offset += sizeof(entity_id);
 
-        std::memcpy(&net, ptr, sizeof(net));
-        ptr += sizeof(net);
+        std::memcpy(&net, packet.data.data() + offset, sizeof(net));
+        offset += sizeof(net);
 
-        Entity entity = Entity::fromId(entity_id);
-        if (!this->_engine->isAlive(entity))
-            continue;
+        Entity entity = this->_engine->getEntityFromId(entity_id);
 
-        auto& opt = this->_engine->getComponentEntity<Transform>(entity);
-        if (!opt.has_value())
-            continue;
+        const Transform tf(
+            static_cast<float>(net.pos_x),
+            static_cast<float>(net.pos_y),
+            (static_cast<float>(net.rotation) * 360.0f) / 65535.0f,
+            static_cast<float>(net.scale) / 1000.0f
+        );
 
-        Transform& tr = opt.value();
-
-        tr.x = static_cast<float>(net.pos_x);
-        tr.y = static_cast<float>(net.pos_y);
-
-        tr.rotation = (static_cast<float>(net.rotation) / 65535.f) * 360.f;
-
-        tr.scale = static_cast<float>(net.scale) / 1000.f;
+        try {
+            this->_engine->updateComponent<Transform>(entity, tf);
+        } catch (const std::exception&) {
+            this->_engine->emplaceComponent<Transform>(entity, tf);
+        }
     }
 }
 
@@ -364,7 +360,7 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
 {
     // Validate snapshot size using the protocol define
     if (packet.data.size() != HEALTH_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_BASE_SIZE);
         return;
     }
 
@@ -386,12 +382,14 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
         std::memcpy(&health, packet.data.data() + offset, sizeof(health));
         offset += sizeof(health);
 
-        // try {
-        //     this->_engine->updateComponent<Health>(entity, health);
-        // } catch (const std::exception& e) {
-        //     // L'entité n'a pas ce composant, on le crée
-        //     this->_engine->emplaceComponent<Health>(entity, health);
-        // }
+        Entity entity = this->_engine->getEntityFromId(entity_id);
+
+        try {
+            this->_engine->updateComponent<Health>(entity, health);
+        } catch (const std::exception& e) {
+            // if the entity does not have the component, set the component
+            this->_engine->emplaceComponent<Health>(entity, health);
+        }
     }
 }
 
@@ -399,7 +397,7 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
 {
     // Validate snapshot size using the protocol define
     if (packet.data.size() != WEAPON_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_SNAPSHOT_BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapthot: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_SNAPSHOT_BASE_SIZE);
         return;
     }
 
@@ -407,10 +405,29 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
     protocol::WeaponSnapshot snapshot;
     std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
 
-    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick=%u entity_count=%u",
+    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: world_tick=%u entity_count=%u",
         snapshot.world_tick, snapshot.entity_count);
 
-    //TODO: idk what to do with this WeaponSnapshot, ask the team what we have to 
+    size_t offset = sizeof(protocol::WeaponSnapshot);
+    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+        uint32_t entity_id;
+        Weapon weapon(0, 0, 0, ProjectileType::UNKNOWN);
+
+        std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
+        offset += sizeof(entity_id);
+
+        std::memcpy(&weapon, packet.data.data() + offset, sizeof(weapon));
+        offset += sizeof(weapon);
+
+        Entity entity = this->_engine->getEntityFromId(entity_id);
+
+        try {
+            this->_engine->updateComponent<Weapon>(entity, weapon);
+        } catch (const std::exception& e) {
+            // if the entity does not have the component, set the component
+            this->_engine->emplaceComponent<Weapon>(entity, weapon);
+        }
+    }
 }
 
 void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &packet)
@@ -482,6 +499,23 @@ void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &
 
 void Coordinator::handlePacketComponentRemove(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != COMPONENT_REMOVE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketComponentRemove: invalid packet size %zu, expected %d", packet.data.size(), COMPONENT_REMOVE_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
+    protocol::ComponentRemove payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "ComponentRemove: component_type=%u entity_id=%u",
+        payload.component_type, payload.entity_id);
+
+    Entity entity = this->_engine->getEntityFromId(payload.entity_id);
+
+
+    this->_engine->removeComponentByType(payload.component_type, entity);
 }
 
 void Coordinator::handlePacketTransformSnapshotDelta(const common::protocol::Packet &packet)
@@ -490,10 +524,85 @@ void Coordinator::handlePacketTransformSnapshotDelta(const common::protocol::Pac
 
 void Coordinator::handlePacketHealthSnapshotDelta(const common::protocol::Packet &packet)
 {
+    // Validate snapshot size using the protocol define
+    if (packet.data.size() != HEALTH_SNAPSHOT_DELTA_BASE_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshotDelta: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_DELTA_BASE_SIZE);
+        return;
+    }
+
+    // Parse the HEALTH_SNAPSHOT_DELTA snapshot in one memcpy
+    protocol::HealthSnapshotDelta snapshot;
+    std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
+
+    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick=%u entity_count=%u",
+        snapshot.world_tick, snapshot.entity_count);
+
+    size_t offset = sizeof(protocol::HealthSnapshotDelta);
+    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+        uint32_t entity_id;
+        Health health(0, 0);
+
+        std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
+        offset += sizeof(entity_id);
+
+        std::memcpy(&health, packet.data.data() + offset, sizeof(health));
+        offset += sizeof(health);
+
+        Entity entity = this->_engine->getEntityFromId(entity_id);
+
+        try {
+            this->_engine->updateComponent<Health>(entity, health);
+        } catch (const std::exception& e) {
+            // if the entity does not have the component, set the component
+            this->_engine->emplaceComponent<Health>(entity, health);
+        }
+    }
 }
 
 void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
 {
+     // Validate payload size using the protocol define
+    if (packet.data.size() != PLAYER_HIT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerHit: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_HIT_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the PLAYER_HIT_PAYLOAD_SIZE payload in one memcpy
+    protocol::PlayerHit payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "attacker_id: id=%u damage=%u hit_pos=(%.1f, %.1f) player_id=%u remaining_health=%u remaining_shield=%u",
+        payload.attacker_id, payload.damage, static_cast<float>(payload.hit_pos_x), static_cast<float>(payload.hit_pos_y), payload.player_id,
+        payload.remaining_health, payload.remaining_shield);
+
+
+    // Hit player
+    Entity playerHit = this->_engine->getEntityFromId(payload.player_id);
+
+    try
+    {
+        auto& health = this->_engine->getComponentEntity<Health>(playerHit);
+        health->currentHealth = payload.remaining_health;
+        // TODO: handle the shied here, add a component and add the remaining_shield
+
+        LOG_INFO_CAT("Coordinator", "Player %u health updated: hp=%u shield=%u",
+            payload.player_id, payload.remaining_health, payload.remaining_shield);
+
+
+        //TODO: add sound effects
+        // this->_engine->playHitEffect(playerHit, payload.hit_pos_x, payload.hit_pos_y);
+        // this->_engine->playHitSound(payload.damage);
+
+    }
+    catch(const Error &e)
+    {
+        LOG_ERROR_CAT("Coordinator", "Failed to update player %u health: %s",
+            payload.player_id, e.what());
+        std::cerr << "Error: " << e.what() << std::endl;
+        if (e.getType() == ErrorType::CorruptedData) {
+            std::cerr << "Problem update player " << payload.player_id << "health when hit" << std::endl;
+        }
+    }
 }
 
 void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet)

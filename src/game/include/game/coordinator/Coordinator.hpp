@@ -48,7 +48,7 @@ class Coordinator {
 
         //TODO:
         void processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
-        void processCLientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
+        void processClientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
 
         //TODO:
         void buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
@@ -105,6 +105,8 @@ class Coordinator {
          */
         void handlePacketAIState(const common::protocol::Packet& packet);
 
+
+        std::shared_ptr<gameEngine::GameEngine> getEngine() const;
 
     public:
         bool _gameRunning = false;
