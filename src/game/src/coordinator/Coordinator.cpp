@@ -30,7 +30,7 @@ void Coordinator::processServerPackets(const std::vector<common::protocol::Packe
     }
 }
 
-void Coordinator::processCLientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
+void Coordinator::processClientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
 {
     for (const auto& packet : packetsToProcess) {
         // Check packet type first, then validate
