@@ -407,5 +407,21 @@ struct Level
     Level() : currentWaveIndex(0), elapsedTime(0.f), completed(false) {}
 };
 
+// ############################################################################
+// ################################# PLAYER ###################################
+// ############################################################################
+
+/**
+ * @brief Marks the entity player as dead.
+ *
+ * Used to hide the sprite and the control/interaction of the player.
+ * See the PlayerDeadSystem !
+ */
+struct DeadPlayer {
+    float timer = 0.0f;
+    bool initialized = false; // some actions need to be set once, set to try when they are set
+    uint32_t killerId; // optionnal if we want to show a message : "Killed by X"
+};
+
 
 #endif /* !COMPONENTS_HPP_ */
