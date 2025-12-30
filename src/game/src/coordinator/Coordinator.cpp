@@ -546,7 +546,7 @@ void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != PLAYER_DEATH_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerHit: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_DEATH_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerDeath: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_DEATH_PAYLOAD_SIZE);
         return;
     }
 
@@ -567,6 +567,34 @@ void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet
 
 void Coordinator::handlePacketScoreUpdate(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != SCORE_UPDATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketScoreUpdate: invalid packet size %zu, expected %d", packet.data.size(), SCORE_UPDATE_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the SCORE_UPDATE_PAYLOAD_SIZE payload in one memcpy
+    protocol::ScoreUpdate payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "player_id=%u new_score=%u reason=%u score_delta=%u",
+                payload.player_id, payload.new_score, payload.reason, payload.score_delta);
+
+    // get the player
+    Entity player = this->_engine->getEntityFromId(payload.player_id);
+
+
+    // set the score to the player
+    Score score;
+
+    score.score = payload.new_score;
+
+    try {
+        this->_engine->updateComponent<Score>(player, score);
+    } catch (const std::exception& e) {
+        // if the player does not have the component, set the component
+        this->_engine->emplaceComponent<Score>(player, score);
+    }
 }
 
 void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &packet)
