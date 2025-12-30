@@ -196,10 +196,14 @@ struct Health
  * @brief Types of available power-ups in the game.
  */
 enum PowerupType {
-    WEAPON_UPGRADE,
-    SHIELD,
     SPEED_BOOST,
-    HEAL
+    WEAPON_UPGRADE,
+    FORCE,
+    SHIELD,
+    EXTRA_LIFE,
+    INVINCIBILITY,
+    HEAL,
+    UNKOWN,
 };
 
 /**

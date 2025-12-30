@@ -333,7 +333,8 @@ namespace protocol {
         POWERUP_FORCE                = 0x02,    // R-Type signature
         POWERUP_SHIELD               = 0x03,
         POWERUP_EXTRA_LIFE           = 0x04,
-        POWERUP_INVINCIBILITY        = 0x05
+        POWERUP_INVINCIBILITY        = 0x05,
+        POWERUP_HEAL                 = 0x06
         // Add here if we need...
     };
 
