@@ -599,6 +599,53 @@ void Coordinator::handlePacketScoreUpdate(const common::protocol::Packet &packet
 
 void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != POWER_PICKUP_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPowerupPickup: invalid packet size %zu, expected %d", packet.data.size(), POWER_PICKUP_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the POWER_PICKUP_PAYLOAD_SIZE payload in one memcpy
+    protocol::PowerupPickup payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "player_id=%u powerup_id=%u powerup_type=%u duration=%u",
+                payload.player_id, payload.powerup_id, payload.powerup_type, payload.duration);
+
+    // get the player
+    Entity player = this->_engine->getEntityFromId(payload.player_id);
+
+    Powerup powerup(PowerupType::HEAL, 0);
+
+    powerup.duration = payload.duration;
+
+    switch (powerup.powerupType) {
+        case 0:
+            powerup.powerupType = PowerupType::WEAPON_UPGRADE;
+            break;
+
+        case 1:
+            powerup.powerupType = PowerupType::SHIELD;
+            break;
+
+        case 2:
+            powerup.powerupType = PowerupType::SPEED_BOOST;
+            break;
+
+        case 3:
+            powerup.powerupType = PowerupType::HEAL;
+            break;
+
+        default:
+            break;
+    }
+
+    try {
+        this->_engine->updateComponent<Powerup>(player, powerup);
+    } catch (const std::exception& e) {
+        // if the player does not have the component, set the component
+        this->_engine->emplaceComponent<Powerup>(player, powerup);
+    }
 }
 
 void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
