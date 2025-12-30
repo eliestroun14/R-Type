@@ -424,4 +424,14 @@ struct DeadPlayer {
 };
 
 
+/**
+ * @brief Stock the player score (each player have its own score).
+ *
+ * Used to know the score of the player.
+ */
+struct Score {
+    uint32_t score = 0;
+};
+
+
 #endif /* !COMPONENTS_HPP_ */
