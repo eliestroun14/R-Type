@@ -615,24 +615,36 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
     // get the player
     Entity player = this->_engine->getEntityFromId(payload.player_id);
 
-    Powerup powerup(PowerupType::HEAL, 0);
+    Powerup powerup(PowerupType::UNKOWN, 0);
 
     powerup.duration = payload.duration;
 
     switch (powerup.powerupType) {
-        case 0:
-            powerup.powerupType = PowerupType::WEAPON_UPGRADE;
-            break;
-
-        case 1:
-            powerup.powerupType = PowerupType::SHIELD;
-            break;
-
-        case 2:
+        case 0x00:
             powerup.powerupType = PowerupType::SPEED_BOOST;
             break;
 
-        case 3:
+        case 0x01:
+            powerup.powerupType = PowerupType::WEAPON_UPGRADE;
+            break;
+
+        case 0x02:
+            powerup.powerupType = PowerupType::FORCE;
+            break;
+
+        case 0x03:
+            powerup.powerupType = PowerupType::SHIELD;
+            break;
+
+        case 0x04:
+            powerup.powerupType = PowerupType::EXTRA_LIFE;
+            break;
+
+        case 0x05:
+            powerup.powerupType = PowerupType::INVINCIBILITY;
+            break;
+
+        case 0x06:
             powerup.powerupType = PowerupType::HEAL;
             break;
 
