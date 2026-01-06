@@ -436,6 +436,106 @@ namespace gameEngine {
                 this->_renderManager->render();
             }
 
+            /** @brief Displays everything that was drawn during the frame.
+             * @param type The player entity.
+             * @param x,y The action to check.
+             * @param scale The action to check.
+             * @param duration The action to check.
+             * @param r,g,b The action to check.
+            */
+            void spawnVisualEffect(protocol::VisualEffectType type, float x, float y,
+                                float scale, float duration,
+                                float color_r, float color_g, float color_b)
+            {
+                Entity visualEffectEntity = this->_entityManager->spawnEntity("VisualEffect");
+
+                this->_entityManager->addComponent<Transform>(visualEffectEntity, Transform(x, y, 0, scale));
+                this->_entityManager->addComponent<VisualEffect>(visualEffectEntity,
+                    VisualEffect(type, scale, duration, color_r, color_g, color_b));
+
+                // set the sprites and animations
+                switch(type) {
+                    case protocol::VisualEffectType::VFX_EXPLOSION_SMALL:
+                        this->_entityManager->addComponent<Sprite>(visualEffectEntity,
+                            Sprite(Assets::SMALL_EXPLOSION, ZIndex::IS_GAME,
+                            sf::IntRect(0, 0, SMALL_EXPLOSION_SPRITE_WIDTH, SMALL_EXPLOSION_SPRITE_HEIGHT)));
+
+                        this->_entityManager->addComponent<Animation>(visualEffectEntity,
+                            Animation(SMALL_EXPLOSION_ANIMATION_WIDTH, SMALL_EXPLOSION_ANIMATION_HEIGHT,
+                                SMALL_EXPLOSION_ANIMATION_CURRENT, SMALL_EXPLOSION_ANIMATION_ELAPSED_TIME, SMALL_EXPLOSION_ANIMATION_DURATION,
+                            SMALL_EXPLOSION_ANIMATION_START, SMALL_EXPLOSION_ANIMATION_END, SMALL_EXPLOSION_ANIMATION_LOOPING));
+                        break;
+
+                    case protocol::VisualEffectType::VFX_EXPLOSION_MEDIUM:
+                        this->_entityManager->addComponent<Sprite>(visualEffectEntity,
+                            Sprite(Assets::MEDIUM_EXPLOSION, ZIndex::IS_GAME,
+                            sf::IntRect(0, 0, MEDIUM_EXPLOSION_SPRITE_WIDTH, MEDIUM_EXPLOSION_SPRITE_HEIGHT)));
+
+                        this->_entityManager->addComponent<Animation>(visualEffectEntity,
+                            Animation(MEDIUM_EXPLOSION_ANIMATION_WIDTH, MEDIUM_EXPLOSION_ANIMATION_HEIGHT,
+                                MEDIUM_EXPLOSION_ANIMATION_CURRENT, MEDIUM_EXPLOSION_ANIMATION_ELAPSED_TIME, MEDIUM_EXPLOSION_ANIMATION_DURATION,
+                            MEDIUM_EXPLOSION_ANIMATION_START, MEDIUM_EXPLOSION_ANIMATION_END, MEDIUM_EXPLOSION_ANIMATION_LOOPING));
+                        break;
+
+                    case protocol::VisualEffectType::VFX_EXPLOSION_LARGE:
+                        this->_entityManager->addComponent<Sprite>(visualEffectEntity,
+                            Sprite(Assets::BIG_EXPLOSION, ZIndex::IS_GAME,
+                            sf::IntRect(0, 0, BIG_EXPLOSION_SPRITE_WIDTH, BIG_EXPLOSION_SPRITE_HEIGHT)));
+
+                        this->_entityManager->addComponent<Animation>(visualEffectEntity,
+                            Animation(BIG_EXPLOSION_ANIMATION_WIDTH, BIG_EXPLOSION_ANIMATION_HEIGHT,
+                                BIG_EXPLOSION_ANIMATION_CURRENT, BIG_EXPLOSION_ANIMATION_ELAPSED_TIME, BIG_EXPLOSION_ANIMATION_DURATION,
+                            BIG_EXPLOSION_ANIMATION_START, BIG_EXPLOSION_ANIMATION_END, BIG_EXPLOSION_ANIMATION_LOOPING));
+                        break;
+
+                    case protocol::VisualEffectType::VFX_MUZZLE_FLASH:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_IMPACT_SPARK:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_POWERUP_GLOW:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_SHIELD_HIT:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_WARP_IN:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_WARP_OUT:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_CHARGE_BEAM:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_FORCE_DETACH:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_PLAYER_SPAWN:
+                        //TODO:
+                        break;
+
+                    case protocol::VisualEffectType::VFX_BOSS_INTRO:
+                        //TODO:
+                        break;
+
+                    // Add more as needed
+                }
+
+                // TODO: add a LifeTime Component to destroy it when it is ends
+                this->_entityManager->addComponent<Lifetime>(visualEffectEntity, Lifetime(duration));
+            }
+
+
             // ################################################################
             // ########################### SOUNDS #############################
             // ################################################################
