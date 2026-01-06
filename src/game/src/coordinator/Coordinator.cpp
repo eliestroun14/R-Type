@@ -698,6 +698,43 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 
 void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)
 {
+    if (packet.data.size() != VISUAL_EFFECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketVisualEffect: invalid packet size %zu, expected %d", packet.data.size(), VISUAL_EFFECT_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the VISUAL_EFFECT_PAYLOAD_SIZE payload in one memcpy
+    protocol::VisualEffect payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "effect_type=%u scale=%u duration_ms=%u color_tint_r=%u color_tint_g=%u color_tint_b=%u pos=(%.1f, %.1f)",
+                payload.effect_type, payload.scale, payload.duration_ms,
+                payload.color_tint_r, payload.color_tint_g, payload.color_tint_b,
+                payload.pos_x, payload.pos_y);
+
+    // Convert network data to usable format
+    float pos_x = static_cast<float>(payload.pos_x);
+    float pos_y = static_cast<float>(payload.pos_y);
+    float scale = static_cast<float>(payload.scale) / 100.0f; // 100 = 1.0x
+    float duration = static_cast<float>(payload.duration_ms) / 1000.0f; // Convert to seconds
+
+    // Convert color from 0-255 to 0.0-1.0 if needed for your graphics system
+    float color_r = static_cast<float>(payload.color_tint_r) / 255.0f;
+    float color_g = static_cast<float>(payload.color_tint_g) / 255.0f;
+    float color_b = static_cast<float>(payload.color_tint_b) / 255.0f;
+
+    // Spawn the visual effect based on effect_type
+    this->_engine->spawnVisualEffect(
+        static_cast<protocol::VisualEffectType>(payload.effect_type),
+        pos_x, pos_y,
+        scale,
+        duration,
+        color_r, color_g, color_b
+    );
+
+    LOG_INFO_CAT("Coordinator", "Visual effect %u spawned at (%.1f, %.1f) with scale %.2fx for %.2fs", 
+                 payload.effect_type, pos_x, pos_y, scale, duration);
+
 }
 
 void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet)
