@@ -23,6 +23,7 @@
 #include <utility>
 #include <engine/ecs/entity/Entity.hpp>
 #include <vector>
+#include <common/protocol/Protocol.hpp>
 
 // Forward declaration for GameAction enum
 enum class GameAction;
