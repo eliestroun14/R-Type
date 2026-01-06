@@ -353,7 +353,7 @@ namespace protocol {
 
     enum class WeaponTypes : uint8_t {
         WEAPON_TYPE_BASIC          = 0x00,
-        WEAPON_TYPE_Charged        = 0x01,
+        WEAPON_TYPE_CHARGED        = 0x01,
         WEAPON_TYPE_SPREAD         = 0x02,
         WEAPON_TYPE_LASER          = 0x03,
         WEAPON_TYPE_MISSILE        = 0x04,

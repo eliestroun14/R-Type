@@ -185,6 +185,46 @@ public:
     }
 
     /**
+     * @brief Spawns a new entity with a specific ID (for network synchronization).
+     * @param id The specific ID to assign to the entity (from server)
+     * @param name The name to assign to the entity
+     * @return The created Entity
+     */
+    Entity spawnEntityWithId(std::size_t id, std::string name) {
+        // check if id already exists
+        if (_aliveEntities.find(id) != _aliveEntities.end()) {
+            LOG_ERROR("Entity with ID %zu already exists, cannot spawn", id);
+            throw Error(ErrorType::EcsInvalidEntity, "Entity ID already in use");
+        }
+
+        // remove the id from the free ids'list if it is inside
+        auto it = std::find(_freeIds.begin(), _freeIds.end(), id);
+        if (it != _freeIds.end())
+            _freeIds.erase(it);
+
+        // update _nextId to avoid collision
+        if (id >= _nextId)
+            _nextId = id + 1;
+
+        // resize vectors (if necessary)
+        if (id >= _signatures.size())
+            _signatures.resize(id + 1);
+        if (id >= _entitiesName.size())
+            _entitiesName.resize(id + 1);
+
+        // init the entity
+        _signatures[id].reset();
+        _aliveEntities.insert(id);
+        _entitiesName[id] = name;
+
+        // notify the systemManager
+        if (_systemManager)
+            _systemManager->entitySignatureChanged(id, _signatures[id]);
+
+        return Entity::fromId(id);
+    }
+
+    /**
      * @brief Get an entity from his id.
      */
     Entity getEntityFromID(std::uint32_t entityId)

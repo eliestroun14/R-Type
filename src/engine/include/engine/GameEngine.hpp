@@ -80,6 +80,18 @@ namespace gameEngine {
             }
 
             /**
+             * @brief Spawns a new entity with a specific ID (for network synchronization).
+             * @param id The specific ID to assign to the entity (from server)
+             * @param name The name to assign to the entity
+             * @return The created Entity
+             */
+            Entity createEntityWithId(uint32_t id, std::string entityName)
+            {
+                Entity entity = this->_entityManager->spawnEntityWithId(id, entityName);
+                return entity;
+            }
+
+            /**
              * @brief Spawns a new entity in the engine.
              * @param entityName A debug name for the entity.
              * @return Entity The ID/Handle of the created entity.
@@ -422,6 +434,36 @@ namespace gameEngine {
             void render()
             {
                 this->_renderManager->render();
+            }
+
+            // ################################################################
+            // ########################### SOUNDS #############################
+            // ################################################################
+
+
+            // TODO: create an audio manager or handle it in renderManager
+            void playWeaponFireSound(uint8_t weapon_type)
+            {
+                // switch(weapon_type) {
+                //     case 0x00: // WEAPON_TYPE_BASIC
+                //         audioManager->playSound(Assets::DEFAULT_BULLET);
+                //         break;
+                //     case 0x01: // WEAPON_TYPE_CHARGED:
+                //         audioManager->playSound(Assets::DEFAULT_BULLET);
+                //         break;
+                //     case 0x02: // WEAPON_TYPE_SPREAD:
+                //         audioManager->playSound(Assets::DEFAULT_BULLET);
+                //         break;
+                //     case 0x03: // WEAPON_TYPE_LASER:
+                //         audioManager->playSound(Assets::DEFAULT_BULLET);
+                //         break;
+                //     case 0x04: // WEAPON_TYPE_MISSILE:
+                //         audioManager->playSound(Assets::DEFAULT_BULLET);
+                //         break;
+                //     case 0x05: // WEAPON_TYPE_FORCE_SHOT:
+                //         audioManager->playSound(Assets::DEFAULT_BULLET);
+                //         break;
+                // }
             }
     };
 }
