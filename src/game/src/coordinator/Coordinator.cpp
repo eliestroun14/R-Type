@@ -907,6 +907,33 @@ void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packe
 
 void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet)
 {
+    if (packet.data.size() != AUDIO_EFFECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketAudioEffect: invalid packet size %zu, expected %d", 
+                      packet.data.size(), AUDIO_EFFECT_PAYLOAD_SIZE);
+        return;
+    }
+
+    protocol::AudioEffect payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "audio_effect_type=%u volume=%u pitch=%u pos=(%.1f, %.1f)",
+                 payload.effect_type, payload.volume, payload.pitch,
+                 payload.pos_x, payload.pos_y);
+
+    // Convert network data
+    float pos_x = static_cast<float>(payload.pos_x);
+    float pos_y = static_cast<float>(payload.pos_y);
+    float volume = static_cast<float>(payload.volume) / 255.0f; // 0-255 → 0.0-1.0
+    float pitch = static_cast<float>(payload.pitch) / 100.0f;   // 100 = normal pitch
+
+    // Play the audio effect with 3D positioning
+    this->_engine->playAudioEffect(
+        static_cast<protocol::AudioEffectType>(payload.effect_type),
+        pos_x, pos_y,
+        volume,
+        pitch
+    );
+
 }
 
 void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &packet)
