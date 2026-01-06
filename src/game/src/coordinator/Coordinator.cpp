@@ -18,6 +18,170 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     this->_engine->initRender();
 }
 
+// ==============================================================
+//                       Entity creation helpers
+// ==============================================================
+
+Entity Coordinator::createPlayerEntity(
+    uint32_t playerId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool isPlayable,
+    bool withRenderComponents
+)
+{
+    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(playerId));
+    this->setupPlayerEntity(
+        entity,
+        playerId,
+        posX,
+        posY,
+        velX,
+        velY,
+        initialHealth,
+        isPlayable,
+        withRenderComponents
+    );
+    return entity;
+}
+
+Entity Coordinator::createEnemyEntity(
+    uint32_t enemyId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool withRenderComponents
+)
+{
+    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(enemyId));
+    this->setupEnemyEntity(
+        entity,
+        enemyId,
+        posX,
+        posY,
+        velX,
+        velY,
+        initialHealth,
+        withRenderComponents
+    );
+    return entity;
+}
+
+Entity Coordinator::createProjectileEntity(
+    uint32_t projectileId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    bool isPlayerProjectile,
+    uint16_t damage,
+    bool withRenderComponents
+)
+{
+    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(projectileId));
+    this->setupProjectileEntity(
+        entity,
+        projectileId,
+        posX,
+        posY,
+        velX,
+        velY,
+        isPlayerProjectile,
+        damage,
+        withRenderComponents
+    );
+    return entity;
+}
+
+// ==============================================================
+//                               Setup
+// ==============================================================
+
+void Coordinator::setupPlayerEntity(
+    Entity entity,
+    uint32_t playerId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool isPlayable,
+    bool withRenderComponents
+)
+{
+    // Common gameplay components (server + client)
+    if (withRenderComponents) {
+        Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
+        this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
+        this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
+    }
+
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.5f));
+    this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
+    this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+    this->_engine->addComponent<HitBox>(entity, HitBox());
+    this->_engine->addComponent<Weapon>(entity, Weapon(200, 0, 10, ProjectileType::MISSILE));
+    this->_engine->addComponent<InputComponent>(entity, InputComponent(playerId));
+
+    // If this is the playable player, set it as local player
+    if (isPlayable) {
+        this->_engine->addComponent<Playable>(entity, Playable());
+
+        //FIXME: fix here the method in game engine
+        // this->_engine->setLocalPlayerEntity(entity, playerId);
+        LOG_INFO_CAT("Coordinator", "Local player created with ID %u", playerId);
+    }
+}
+
+void Coordinator::setupEnemyEntity(
+    Entity entity,
+    uint32_t enemyId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool withRenderComponents
+)
+{
+    (void)enemyId;
+
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.0f));
+    this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
+    this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+    if (withRenderComponents) {
+        this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
+    }
+    this->_engine->addComponent<HitBox>(entity, HitBox());
+    this->_engine->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+}
+
+void Coordinator::setupProjectileEntity(
+    Entity entity,
+    uint32_t projectileId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    bool isPlayerProjectile,
+    uint16_t damage,
+    bool withRenderComponents
+)
+{
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
+    this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
+    if (withRenderComponents) {
+        this->_engine->addComponent<Sprite>(entity, Sprite(DEFAULT_BULLET, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 16)));
+    }
+    this->_engine->addComponent<HitBox>(entity, HitBox());
+    this->_engine->addComponent<Projectile>(entity, Projectile(Entity::fromId(projectileId), isPlayerProjectile, damage));
+}
+
 void Coordinator::processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
 {
     // TODO
@@ -213,34 +377,30 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     // Add type-specific components
     switch (payload.entity_type) {
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER): {
-            Assets spriteAsset = _playerSpriteAllocator.allocate(payload.entity_id);
-
-            this->_engine->addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.5f));
-            this->_engine->addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
-            this->_engine->addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-            this->_engine->addComponent<Sprite>(newEntity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
-            this->_engine->addComponent<Animation>(newEntity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
-            this->_engine->addComponent<HitBox>(newEntity, HitBox());
-            this->_engine->addComponent<Weapon>(newEntity, Weapon(200, 0, 10, ProjectileType::MISSILE));
-            this->_engine->addComponent<InputComponent>(newEntity, InputComponent(payload.entity_id));
-
-            // If this is the playable player, set it as local player
-            if (payload.is_playable) {
-                this->_engine->addComponent<Playable>(newEntity, Playable());
-
-                //FIXME: fix here the method in game engine
-                // this->_engine->setLocalPlayerEntity(newEntity, payload.entity_id);
-                LOG_INFO_CAT("Coordinator", "Local player created with ID %u", payload.entity_id);
-            }
+            this->setupPlayerEntity(
+                newEntity,
+                payload.entity_id,
+                static_cast<float>(payload.position_x),
+                static_cast<float>(payload.position_y),
+                static_cast<float>(payload.initial_velocity_x),
+                static_cast<float>(payload.initial_velocity_y),
+                payload.initial_health,
+                payload.is_playable,
+                /*withRenderComponents=*/true
+            );
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY): {
-            this->_engine->addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.0f));
-            this->_engine->addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
-            this->_engine->addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-            this->_engine->addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
-            this->_engine->addComponent<HitBox>(newEntity, HitBox());
-            this->_engine->addComponent<Weapon>(newEntity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+            this->setupEnemyEntity(
+                newEntity,
+                payload.entity_id,
+                static_cast<float>(payload.position_x),
+                static_cast<float>(payload.position_y),
+                static_cast<float>(payload.initial_velocity_x),
+                static_cast<float>(payload.initial_velocity_y),
+                payload.initial_health,
+                /*withRenderComponents=*/true
+            );
             LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
             break;
         }
@@ -253,12 +413,18 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
                 payload.entity_type == static_cast<uint8_t>(
                     protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER
                 );
-            this->_engine->addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 1.f));
-            this->_engine->addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
-            this->_engine->addComponent<Sprite>(newEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 16)));
-            this->_engine->addComponent<HitBox>(newEntity, HitBox());
-            this->_engine->addComponent<Projectile>(newEntity, Projectile(Entity::fromId(payload.entity_id), isPlayerProjectile, 10));
 
+            this->setupProjectileEntity(
+                newEntity,
+                payload.entity_id,
+                static_cast<float>(payload.position_x),
+                static_cast<float>(payload.position_y),
+                static_cast<float>(payload.initial_velocity_x),
+                static_cast<float>(payload.initial_velocity_y),
+                isPlayerProjectile,
+                10,
+                /*withRenderComponents=*/true
+            );
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_POWERUP):
@@ -275,6 +441,8 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
             break;
     }
 }
+
+
 
 void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &packet)
 {

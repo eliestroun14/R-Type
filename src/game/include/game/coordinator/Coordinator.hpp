@@ -46,6 +46,42 @@ class Coordinator {
         void initEngine();
         void initEngineRender();
 
+        // ==============================================================
+        //                       Entity creation helpers
+        // ==============================================================
+
+        Entity createPlayerEntity(
+            uint32_t playerId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool isPlayable,
+            bool withRenderComponents = true
+        );
+
+        Entity createEnemyEntity(
+            uint32_t enemyId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool withRenderComponents = true
+        );
+
+        Entity createProjectileEntity(
+            uint32_t projectileId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            bool isPlayerProjectile,
+            uint16_t damage = 10,
+            bool withRenderComponents = true
+        );
+
         //TODO:
         void processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
         void processClientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
@@ -110,6 +146,42 @@ class Coordinator {
 
     public:
         bool _gameRunning = false;
+
+    private:
+        void setupPlayerEntity(
+            Entity entity,
+            uint32_t playerId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool isPlayable,
+            bool withRenderComponents
+        );
+
+        void setupEnemyEntity(
+            Entity entity,
+            uint32_t enemyId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool withRenderComponents
+        );
+
+        void setupProjectileEntity(
+            Entity entity,
+            uint32_t projectileId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            bool isPlayerProjectile,
+            uint16_t damage,
+            bool withRenderComponents
+        );
 
     private:
         PlayerSpriteAllocator _playerSpriteAllocator;
