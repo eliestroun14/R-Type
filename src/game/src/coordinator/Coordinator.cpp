@@ -655,6 +655,75 @@ void Coordinator::handleGameEnd(const common::protocol::Packet& packet)
 
 void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != LEVEL_COMPLETE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_COMPLETE payload size: expected %zu, got %zu",
+            LEVEL_COMPLETE_PAYLOAD_SIZE, packet.data.size());
+        return;
+    }
+
+    // Parse the LEVEL_COMPLETE payload in one memcpy
+    const uint8_t* ptr = packet.data.data();
+
+    uint8_t completed_level = 0;
+    std::memcpy(&completed_level, ptr, sizeof(completed_level));
+    ptr += sizeof(completed_level);
+
+    uint8_t next_level = 0;
+    std::memcpy(&next_level, ptr, sizeof(next_level));
+    ptr += sizeof(next_level);
+
+    uint32_t bonus_score = 0;
+    std::memcpy(&bonus_score, ptr, sizeof(bonus_score));
+    ptr += sizeof(bonus_score);
+
+    uint16_t completion_time = 0;
+    std::memcpy(&completion_time, ptr, sizeof(completion_time));
+
+    LOG_INFO_CAT("Coordinator", "Level completed: level=%u next=%u bonus_score=%u time=%u seconds",
+        completed_level, next_level, bonus_score, completion_time);
+
+    // Display level completion message
+    std::string completionMessage;
+    if (next_level == 0xFF) {
+        // Game is complete
+        completionMessage = "GAME COMPLETE! Final Score Bonus: " + std::to_string(bonus_score);
+        LOG_INFO_CAT("Coordinator", "Game completed! Final bonus: %u", bonus_score);
+    } else {
+        // Level complete, more levels ahead
+        completionMessage = "LEVEL " + std::to_string(completed_level) + " COMPLETE! Bonus: " + std::to_string(bonus_score);
+        LOG_INFO_CAT("Coordinator", "Level %u completed, preparing level %u", completed_level, next_level);
+    }
+
+    // Create a UI text entity to display the completion message
+    Entity messageEntity = this->_engine->createEntity("LevelCompleteMessage");
+    this->_engine->addComponent<Transform>(messageEntity, Transform(400.f, 300.f, 0.f, 1.5f));
+    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage));
+    this->_engine->addComponent<Sprite>(messageEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+
+    // Update game state based on completion
+    if (next_level == 0xFF) {
+        // Game is finished - stop running state
+        _gameRunning = false;
+        LOG_INFO_CAT("Coordinator", "Game ended - all levels completed");
+        
+        // Display final game stats
+        std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
+        Entity timeEntity = this->_engine->createEntity("CompletionTime");
+        this->_engine->addComponent<Transform>(timeEntity, Transform(400.f, 350.f, 0.f, 1.0f));
+        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage));
+        this->_engine->addComponent<Sprite>(timeEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    } else {
+        // More levels to play - keep game running
+        LOG_INFO_CAT("Coordinator", "Waiting for server to start level %u", next_level);
+        
+        // Display "Next Level" message
+        std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
+        Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
+        this->_engine->addComponent<Transform>(nextEntity, Transform(400.f, 350.f, 0.f, 1.0f));
+        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage));
+        this->_engine->addComponent<Sprite>(nextEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    }
 }
 
 void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
