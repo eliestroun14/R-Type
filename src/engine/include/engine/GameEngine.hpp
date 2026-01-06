@@ -540,6 +540,82 @@ namespace gameEngine {
             // ########################### SOUNDS #############################
             // ################################################################
 
+            /** @brief Plays an audio effect at a specific position with volume and pitch.
+             * @param type The type of audio effect to play.
+             * @param x,y The position where the sound originates.
+             * @param volume The volume level (0.0 - 1.0).
+             * @param pitch The pitch modifier (1.0 = normal).
+             */
+            void playAudioEffect(protocol::AudioEffectType type, float x, float y,
+                                float volume, float pitch)
+            {
+                Entity audioEffectEntity = this->_entityManager->spawnEntity("AudioEffect");
+
+                this->_entityManager->addComponent<Transform>(audioEffectEntity, Transform(x, y, 0, 0));
+                this->_entityManager->addComponent<AudioEffect>(audioEffectEntity, AudioEffect(type, volume, pitch));
+
+                // set the sprites and animations
+                switch(type) {
+                    case protocol::AudioEffectType::SFX_SHOOT_BASIC:
+                        // this->_entityManager->addComponent<AudioSource>(audioEffectEntity,
+                        //     AudioSource(AudioAssets::EXPLOSION_AUDIO, false, 100.0f, 0.5f));
+                        break;
+
+                    case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_SHOOT_LASER:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_EXPLOSION_SMALL:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_EXPLOSION_LARGE:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_POWERUP_COLLECT:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_PLAYER_HIT:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_PLAYER_DEATH:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_FORCE_ATTACH:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_FORCE_DETACH:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_BOSS_ROAR:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_MENU_SELECT:
+                        //TODO:
+                        break;
+
+                    case protocol::AudioEffectType::SFX_ALERT:
+                        //TODO:
+                        break;
+
+                    // Add more as needed
+                }
+
+                // Ajouter un composant de durée de vie pour auto-détruire l'entité
+                this->_entityManager->addComponent<Lifetime>(audioEffectEntity, Lifetime(10.0f)); // 10 secondes max
+            }
+
 
             // TODO: create an audio manager or handle it in renderManager
             void playWeaponFireSound(uint8_t weapon_type)
