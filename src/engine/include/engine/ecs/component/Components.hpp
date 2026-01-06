@@ -173,6 +173,30 @@ struct ScrollingBackground
         : scrollSpeed(speed), currentOffset(0.0f), horizontal(isHorizontal), repeat(shouldRepeat) {}
 };
 
+/**
+ * @brief Contain for the visual effects.
+ *
+ * Used by: RenderSystem
+ */
+struct VisualEffect
+{
+    protocol::VisualEffectType type;
+    float scale;
+    float duration;
+    float color_r;
+    float color_g;
+    float color_b;
+    VisualEffect(protocol::VisualEffectType t, float s, float d, float r, float g, float b)
+        : type(t), scale(s), duration(d), color_r(r), color_g(g), color_b(b) {}
+};
+
+
+struct Lifetime {
+    float remainingTime;
+
+    Lifetime(float time) : remainingTime(time) {}
+};
+
 
 // ############################################################################
 // ################################# LOGIC  ###################################
@@ -196,10 +220,14 @@ struct Health
  * @brief Types of available power-ups in the game.
  */
 enum PowerupType {
-    WEAPON_UPGRADE,
-    SHIELD,
     SPEED_BOOST,
-    HEAL
+    WEAPON_UPGRADE,
+    FORCE,
+    SHIELD,
+    EXTRA_LIFE,
+    INVINCIBILITY,
+    HEAL,
+    UNKOWN,
 };
 
 /**
@@ -407,5 +435,78 @@ struct Level
     Level() : currentWaveIndex(0), elapsedTime(0.f), completed(false) {}
 };
 
+// ############################################################################
+// ################################# PLAYER ###################################
+// ############################################################################
+
+/**
+ * @brief Marks the entity player as dead.
+ *
+ * Used to hide the sprite and the control/interaction of the player.
+ * See the PlayerDeadSystem !
+ */
+struct DeadPlayer {
+    float timer = 0.0f;
+    bool initialized = false; // some actions need to be set once, set to try when they are set
+    uint32_t killerId; // optionnal if we want to show a message : "Killed by X"
+};
+
+
+/**
+ * @brief Stock the player score (each player have its own score).
+ *
+ * Used to know the score of the player.
+ */
+struct Score {
+    uint32_t score = 0;
+};
+
+
+// ############################################################################
+// ################################# AUDIO ####################################
+// ############################################################################
+
+/**
+ * @brief Contain for the audio effects.
+ *
+ * Used by: AudioSystem
+ */
+struct AudioEffect {
+    protocol::AudioEffectType type;
+    float volume;        // Multiplicateur de volume (0.0 - 1.0)
+    float pitch;         // Modificateur de pitch (1.0 = normal)
+    bool isPlaying;
+
+    AudioEffect(protocol::AudioEffectType t, float v, float p)
+        : type(t), volume(v), pitch(p), isPlaying(false) {}
+};
+
+
+
+
+/**
+ * @brief Contain for the audio effects.
+ *
+ * Used by: AudioSystem
+ */
+struct AudioSource {
+    AudioAssets assetId;
+    bool loop;
+    float minDistance;      // Distance avant atténuation
+    float attenuation;      // Facteur d'atténuation (plus petit = moins d'atténuation)
+    bool isUI;              // Si true, pas de positionnement 3D
+    // sf::Sound* sound;       // Pointeur vers le sf::Sound actif
+
+    AudioSource(AudioAssets asset, bool looping = false,
+                float minDist = 100.0f, float atten = 0.5f, bool ui = false)
+        : assetId(asset), loop(looping), minDistance(minDist),
+          attenuation(atten), isUI(ui)
+        //   sound(nullptr)
+          {}
+
+    ~AudioSource() {
+        // Le AudioSystem s'occupera du nettoyage
+    }
+};
 
 #endif /* !COMPONENTS_HPP_ */
