@@ -728,6 +728,57 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != LEVEL_START_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_START payload size: expected %zu, got %zu",
+            LEVEL_START_PAYLOAD_SIZE, packet.data.size());
+        return;
+    }
+
+    // Parse the LEVEL_START payload
+    const uint8_t* ptr = packet.data.data();
+
+    uint8_t level_id = 0;
+    std::memcpy(&level_id, ptr, sizeof(level_id));
+    ptr += sizeof(level_id);
+
+    char level_name[32] = {0};
+    std::memcpy(level_name, ptr, LEVEL_START_LEVEL_NAME_SIZE);
+    ptr += LEVEL_START_LEVEL_NAME_SIZE;
+
+    uint16_t estimated_duration = 0;
+    std::memcpy(&estimated_duration, ptr, sizeof(estimated_duration));
+
+    // Ensure level name is null-terminated
+    level_name[31] = '\0';
+    std::string levelNameStr(level_name);
+
+    LOG_INFO_CAT("Coordinator", "Level started: id=%u name=\"%s\" estimated_duration=%u seconds",
+        level_id, levelNameStr.c_str(), estimated_duration);
+
+    // Set game to running state
+    _gameRunning = true;
+
+    // Create UI entity to display level start information
+    std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
+    Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
+    this->_engine->addComponent<Transform>(levelStartEntity, Transform(400.f, 200.f, 0.f, 2.0f));
+    this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage));
+    this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+
+    // Display estimated duration if provided
+    if (estimated_duration > 0) {
+        std::string durationMessage = "Estimated Time: " + std::to_string(estimated_duration) + "s";
+        Entity durationEntity = this->_engine->createEntity("LevelDuration");
+        this->_engine->addComponent<Transform>(durationEntity, Transform(400.f, 250.f, 0.f, 1.0f));
+        this->_engine->addComponent<Text>(durationEntity, Text(durationMessage));
+        this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    }
+
+    // Initialize level component if needed
+    // Note: The server will spawn level entities and waves through TYPE_ENTITY_SPAWN packets
+    LOG_INFO_CAT("Coordinator", "Level %u (%s) ready - waiting for entity spawns", 
+        level_id, levelNameStr.c_str());
 }
 
 void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
