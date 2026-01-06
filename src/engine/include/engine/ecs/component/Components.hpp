@@ -173,6 +173,30 @@ struct ScrollingBackground
         : scrollSpeed(speed), currentOffset(0.0f), horizontal(isHorizontal), repeat(shouldRepeat) {}
 };
 
+/**
+ * @brief Contain for the visual effects.
+ *
+ * Used by: RenderSystem
+ */
+struct VisualEffect
+{
+    protocol::VisualEffectType type;
+    float scale;
+    float duration;
+    float color_r;
+    float color_g;
+    float color_b;
+    VisualEffect(protocol::VisualEffectType t, float s, float d, float r, float g, float b)
+        : type(t), scale(s), duration(d), color_r(r), color_g(g), color_b(b) {}
+};
+
+
+struct Lifetime {
+    float remainingTime;
+
+    Lifetime(float time) : remainingTime(time) {}
+};
+
 
 // ############################################################################
 // ################################# LOGIC  ###################################
