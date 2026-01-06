@@ -938,6 +938,47 @@ void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet
 
 void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &packet)
 {
+    if (packet.data.size() != PARTICLE_SPAWN_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketParticleSpawn: invalid packet size %zu, expected %d", 
+                      packet.data.size(), PARTICLE_SPAWN_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the PARTICLE_SPAWN payload in one memcpy
+    protocol::ParticleSpawn payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "particle_system_id=%u particle_count=%u lifetime_ms=%u pos=(%.1f, %.1f) velocity=(%.1f, %.1f) color_start=(%u,%u,%u) color_end=(%u,%u,%u)",
+                 payload.particle_system_id, payload.particle_count, payload.lifetime_ms,
+                 static_cast<float>(payload.pos_x), static_cast<float>(payload.pos_y),
+                 static_cast<float>(payload.velocity_x), static_cast<float>(payload.velocity_y),
+                 payload.color_start_r, payload.color_start_g, payload.color_start_b,
+                 payload.color_end_r, payload.color_end_g, payload.color_end_b);
+
+    // Convert network data to usable format
+    float pos_x = static_cast<float>(payload.pos_x);
+    float pos_y = static_cast<float>(payload.pos_y);
+    float vel_x = static_cast<float>(payload.velocity_x);
+    float vel_y = static_cast<float>(payload.velocity_y);
+    float lifetime = static_cast<float>(payload.lifetime_ms) / 1000.0f; // Convert to seconds
+
+    // Convert colors from 0-255 to 0.0-1.0
+    sf::Color colorStart(payload.color_start_r, payload.color_start_g, payload.color_start_b);
+    sf::Color colorEnd(payload.color_end_r, payload.color_end_g, payload.color_end_b);
+
+    // Spawn the particle system
+    // this->_engine->spawnParticleSystem(
+    //     static_cast<ParticleSystemType>(payload.particle_system_id),
+    //     pos_x, pos_y,
+    //     vel_x, vel_y,
+    //     payload.particle_count,
+    //     lifetime,
+    //     colorStart,
+    //     colorEnd
+    // );
+
+    LOG_INFO_CAT("Coordinator", "Particle system %u spawned with %u particles at (%.1f, %.1f)", 
+                 payload.particle_system_id, payload.particle_count, pos_x, pos_y);
 }
 
 void Coordinator::handleGameStart(const common::protocol::Packet& packet)
