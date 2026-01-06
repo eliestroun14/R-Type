@@ -196,10 +196,14 @@ struct Health
  * @brief Types of available power-ups in the game.
  */
 enum PowerupType {
-    WEAPON_UPGRADE,
-    SHIELD,
     SPEED_BOOST,
-    HEAL
+    WEAPON_UPGRADE,
+    FORCE,
+    SHIELD,
+    EXTRA_LIFE,
+    INVINCIBILITY,
+    HEAL,
+    UNKOWN,
 };
 
 /**
@@ -421,6 +425,16 @@ struct DeadPlayer {
     float timer = 0.0f;
     bool initialized = false; // some actions need to be set once, set to try when they are set
     uint32_t killerId; // optionnal if we want to show a message : "Killed by X"
+};
+
+
+/**
+ * @brief Stock the player score (each player have its own score).
+ *
+ * Used to know the score of the player.
+ */
+struct Score {
+    uint32_t score = 0;
 };
 
 
