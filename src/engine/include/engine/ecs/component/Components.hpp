@@ -462,4 +462,51 @@ struct Score {
 };
 
 
+// ############################################################################
+// ################################# AUDIO ####################################
+// ############################################################################
+
+/**
+ * @brief Contain for the audio effects.
+ *
+ * Used by: AudioSystem
+ */
+struct AudioEffect {
+    protocol::AudioEffectType type;
+    float volume;        // Multiplicateur de volume (0.0 - 1.0)
+    float pitch;         // Modificateur de pitch (1.0 = normal)
+    bool isPlaying;
+
+    AudioEffect(protocol::AudioEffectType t, float v, float p)
+        : type(t), volume(v), pitch(p), isPlaying(false) {}
+};
+
+
+
+
+/**
+ * @brief Contain for the audio effects.
+ *
+ * Used by: AudioSystem
+ */
+struct AudioSource {
+    AudioAssets assetId;
+    bool loop;
+    float minDistance;      // Distance avant atténuation
+    float attenuation;      // Facteur d'atténuation (plus petit = moins d'atténuation)
+    bool isUI;              // Si true, pas de positionnement 3D
+    // sf::Sound* sound;       // Pointeur vers le sf::Sound actif
+
+    AudioSource(AudioAssets asset, bool looping = false,
+                float minDist = 100.0f, float atten = 0.5f, bool ui = false)
+        : assetId(asset), loop(looping), minDistance(minDist),
+          attenuation(atten), isUI(ui)
+        //   sound(nullptr)
+          {}
+
+    ~AudioSource() {
+        // Le AudioSystem s'occupera du nettoyage
+    }
+};
+
 #endif /* !COMPONENTS_HPP_ */
