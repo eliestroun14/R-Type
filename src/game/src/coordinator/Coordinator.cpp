@@ -783,6 +783,126 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
 
 void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != FORCE_STATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "Invalid FORCE_STATE payload size: expected %zu, got %zu",
+            FORCE_STATE_PAYLOAD_SIZE, packet.data.size());
+        return;
+    }
+
+    // Parse the FORCE_STATE payload
+    const uint8_t* ptr = packet.data.data();
+
+    uint32_t force_entity_id = 0;
+    std::memcpy(&force_entity_id, ptr, sizeof(force_entity_id));
+    ptr += sizeof(force_entity_id);
+
+    uint32_t parent_ship_id = 0;
+    std::memcpy(&parent_ship_id, ptr, sizeof(parent_ship_id));
+    ptr += sizeof(parent_ship_id);
+
+    uint8_t attachment_point = 0;
+    std::memcpy(&attachment_point, ptr, sizeof(attachment_point));
+    ptr += sizeof(attachment_point);
+
+    uint8_t power_level = 0;
+    std::memcpy(&power_level, ptr, sizeof(power_level));
+    ptr += sizeof(power_level);
+
+    uint8_t charge_percentage = 0;
+    std::memcpy(&charge_percentage, ptr, sizeof(charge_percentage));
+    ptr += sizeof(charge_percentage);
+
+    uint8_t is_firing = 0;
+    std::memcpy(&is_firing, ptr, sizeof(is_firing));
+
+    // Log force state update
+    const char* attachment_str = "DETACHED";
+    switch (attachment_point) {
+        case 0x00: attachment_str = "DETACHED"; break;
+        case 0x01: attachment_str = "FRONT"; break;
+        case 0x02: attachment_str = "BACK"; break;
+        case 0x03: attachment_str = "TOP"; break;
+        case 0x04: attachment_str = "BOTTOM"; break;
+        default: attachment_str = "UNKNOWN"; break;
+    }
+
+    LOG_INFO_CAT("Coordinator", "Force state: entity=%u parent=%u attach=%s power=%u charge=%u%% firing=%s",
+        force_entity_id, parent_ship_id, attachment_str, power_level, charge_percentage,
+        is_firing ? "YES" : "NO");
+
+    // Get the Force entity
+    Entity forceEntity = Entity::fromId(force_entity_id);
+    if (!this->_engine->isAlive(forceEntity)) {
+        LOG_WARN_CAT("Coordinator", "Force entity %u does not exist in engine", force_entity_id);
+        return;
+    }
+
+    // Get or add Force component
+    auto& forceComponent = this->_engine->getComponentEntity<Force>(forceEntity);
+    if (!forceComponent.has_value()) {
+        // Force component doesn't exist, create it
+        this->_engine->addComponent<Force>(forceEntity, 
+            Force(parent_ship_id, static_cast<ForceAttachmentPoint>(attachment_point), 
+                  power_level, charge_percentage, is_firing != 0));
+        LOG_DEBUG_CAT("Coordinator", "Created Force component for entity %u", force_entity_id);
+    } else {
+        // Update existing Force component
+        forceComponent->parentShipId = parent_ship_id;
+        forceComponent->attachmentPoint = static_cast<ForceAttachmentPoint>(attachment_point);
+        forceComponent->powerLevel = power_level;
+        forceComponent->chargePercentage = charge_percentage;
+        forceComponent->isFiring = (is_firing != 0);
+    }
+
+    // Update Force position based on attachment
+    if (parent_ship_id == 0) {
+        // Force is detached - it should move independently
+        LOG_DEBUG_CAT("Coordinator", "Force %u is detached and moving independently", force_entity_id);
+    } else {
+        // Force is attached to a parent ship - update its position relative to parent
+        Entity parentEntity = Entity::fromId(parent_ship_id);
+        if (this->_engine->isAlive(parentEntity)) {
+            auto& parentTransform = this->_engine->getComponentEntity<Transform>(parentEntity);
+            auto& forceTransform = this->_engine->getComponentEntity<Transform>(forceEntity);
+            
+            if (parentTransform.has_value() && forceTransform.has_value()) {
+                // Adjust Force position based on attachment point
+                float offsetX = 0.f;
+                float offsetY = 0.f;
+                
+                switch (attachment_point) {
+                    case 0x01: // FRONT
+                        offsetX = 30.f;
+                        offsetY = 0.f;
+                        break;
+                    case 0x02: // BACK
+                        offsetX = -30.f;
+                        offsetY = 0.f;
+                        break;
+                    case 0x03: // TOP
+                        offsetX = 0.f;
+                        offsetY = -20.f;
+                        break;
+                    case 0x04: // BOTTOM
+                        offsetX = 0.f;
+                        offsetY = 20.f;
+                        break;
+                    default:
+                        break;
+                }
+                
+                forceTransform->x = parentTransform->x + offsetX;
+                forceTransform->y = parentTransform->y + offsetY;
+                
+                LOG_DEBUG_CAT("Coordinator", "Force %u attached to parent %u at (%.1f, %.1f)",
+                    force_entity_id, parent_ship_id, forceTransform->x, forceTransform->y);
+            }
+        } else {
+            LOG_WARN_CAT("Coordinator", "Parent ship %u does not exist for Force %u", 
+                parent_ship_id, force_entity_id);
+        }
+    }
 }
 
 void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
