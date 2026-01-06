@@ -662,6 +662,38 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != WEAPON_FIRE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_FIRE_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the WEAPON_FIRE_PAYLOAD_SIZE payload in one memcpy
+    protocol::WeaponFire payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "shooter_id=%u projectile_id=%u weapon_type=%u origin_pos=(%.1f, %.1f), direction_pos=(%.1f, %.1f)",
+                payload.shooter_id, payload.projectile_id, payload.weapon_type, payload.origin_x, payload.origin_y, payload.direction_x, payload.direction_y);
+
+    // get the shooter
+    Entity shooter = this->_engine->getEntityFromId(payload.shooter_id);
+
+    float origin_x = static_cast<float>(payload.origin_x);
+    float origin_y = static_cast<float>(payload.origin_y);
+
+
+    float direction_x = static_cast<float>(payload.direction_x) / 1000.0f;
+    float direction_y = static_cast<float>(payload.direction_y) / 1000.0f;
+
+
+    Entity projectile = spawnProjectile(shooter, payload.projectile_id, payload.weapon_type, payload.origin_x,
+        payload.origin_y, payload.direction_x, payload.direction_y);
+
+    // Optional: Play fire effects for the shooter
+    this->_engine->playWeaponFireSound(payload.weapon_type);
+
+    LOG_INFO_CAT("Coordinator", "Projectile %u spawned from shooter %u", 
+                 payload.projectile_id, payload.shooter_id);
 }
 
 void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)
@@ -769,4 +801,70 @@ void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
     LOG_DEBUG_CAT("Coordinator", "AIState updated: entity=%u state=%u behavior=%u target=%u waypoint=(%.0f, %.0f) timer=%u",
         entity_id, current_state, behavior_type, target_entity_id,
         static_cast<float>(waypoint_x), static_cast<float>(waypoint_y), state_timer);
+}
+
+Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type, float origin_x, float origin_y, float dir_x, float dir_y)
+{
+    bool isFromPlayable = false;
+    std::string projectileName = this->_engine->getEntityName(shooter) + " projectile";
+
+    auto& shooterWeapon = this->_engine->getComponentEntity<Weapon>(shooter);
+
+    if (this->_engine->hasComponent<InputComponent>(shooter))
+        isFromPlayable = true;
+
+    Entity projectile = this->_engine->createEntityWithId(projectile_id, projectileName);
+    float projectileSpeed = 1.5f;  // tuned for visible travel with dt in ms
+
+    switch (weapon_type) {
+        case 0x00: // WEAPON_TYPE_BASIC
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_PROJ_ROTATION, DEFAULT_PROJ_SCALE));
+            this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
+                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
+                DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
+            this->_engine->addComponent<HitBox>(projectile, HitBox());
+            break;
+
+        case 0x01: // WEAPON_TYPE_CHARGED
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_PROJ_ROTATION, CHARGED_PROJ_SCALE));
+            this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, CHARGED_PROJ_SPRITE_WIDTH, CHARGED_PROJ_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_PROJ_ANIMATION_WIDTH,
+                CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
+                CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
+            this->_engine->addComponent<HitBox>(projectile, HitBox());
+            break;
+
+        // case 0x02: // WEAPON_TYPE_SPREAD
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        // case 0x03: // WEAPON_TYPE_LASER
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        // case 0x04: // WEAPON_TYPE_MISSILE
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        // case 0x05: // WEAPON_TYPE_FORCE_SHOT
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        default:
+            break;
+    }
+
+
+    return projectile;
 }

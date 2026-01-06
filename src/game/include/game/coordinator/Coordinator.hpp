@@ -106,6 +106,10 @@ class Coordinator {
         void handlePacketAIState(const common::protocol::Packet& packet);
 
 
+        Entity spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type,
+                                float origin_x, float origin_y,
+                                float dir_x, float dir_y);
+
         std::shared_ptr<gameEngine::GameEngine> getEngine() const;
 
     public:
