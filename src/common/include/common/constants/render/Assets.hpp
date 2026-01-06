@@ -9,6 +9,8 @@
 #define ASSETS_HPP_
 
 #define NUMBER_ASSETS 17
+#define NUMBER_AUDIO_ASSETS 1
+
 
 #include <array>
 #include <iostream>
@@ -82,6 +84,19 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     "../assets/explosions/smallExplosion.png",
     "../assets/explosions/mediumExplosion.png",
     "../assets/explosions/bigExplosion.png",
+};
+
+
+enum AudioAssets {
+    // EXPLOSIONS
+    EXPLOSION_AUDIO
+};
+
+static const std::array<std::string, NUMBER_AUDIO_ASSETS> pathAudioAssets = {
+    // EXPLOSIONS
+    "../assets/explosions/explosion.png",
+
+
 };
 
 
