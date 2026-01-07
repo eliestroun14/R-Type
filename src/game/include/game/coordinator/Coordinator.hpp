@@ -54,6 +54,9 @@ class Coordinator {
         void buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
 
+        std::vector<uint32_t> getPlayablePlayerIds();
+        bool createPacketInputClient(common::protocol::Packet *packet, uint32_t playerId);
+
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs);
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet);

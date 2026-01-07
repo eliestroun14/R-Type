@@ -164,9 +164,133 @@ void Coordinator::buildSeverPacketBasedOnStatus(std::vector<common::protocol::Pa
     // TODO
 }
 
+std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
+{
+    std::vector<uint32_t> playerIds;
+    auto playableEntities = this->_engine->getComponents<Playable>();
+
+    for (size_t i = 0; i < playableEntities.size(); ++i) {
+        if (playableEntities[i].has_value()) {
+            playerIds.push_back(static_cast<uint32_t>(i));
+        }
+    }
+
+    return playerIds;
+}
+
 void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
-    // TODO
+    auto playerIds = getPlayablePlayerIds();
+
+    // TODO: add if for the elapsed time to limit packet sending rate
+    // Should only have one playable per client
+    if (!playerIds.empty()) {
+        common::protocol::Packet packet;
+        if (createPacketInputClient(&packet, playerIds[0])) {
+            outgoingPackets.push_back(packet);
+        }
+    }
+
+    LOG_DEBUG("buildClientPacketBasedOnStatus: sent {} packets", outgoingPackets.size());
+}
+
+bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint32_t playerId)
+{
+    if (!packet) {
+        LOG_ERROR_CAT("Coordinator", "createPacketInputClient: packet pointer is null");
+        return false;
+    }
+
+    // Get the entity for the player ID
+    Entity playerEntity = this->_engine->getEntityFromId(playerId);
+    if (!this->_engine->isAlive(playerEntity)) {
+        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player entity %u is not alive", playerId);
+        return false;
+    }
+
+    auto& inputOpt = this->_engine->getComponentEntity<InputComponent>(playerEntity);
+    if (!inputOpt.has_value()) {
+        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player %u has no input component", playerId);
+        return false;
+    }
+
+    InputComponent& inputComp = inputOpt.value();
+    uint32_t actualPlayerId = inputComp.playerId;
+    uint16_t inputState = 0;
+
+    auto actionIt = inputComp.activeActions.find(GameAction::MOVE_UP);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::MOVE_DOWN);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_DOWN);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::MOVE_LEFT);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_LEFT);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::MOVE_RIGHT);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_RIGHT);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::SHOOT);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY);
+    }
+
+    // Format: [flags_count(1) + flags(1) + sequence_number(4) + timestamp(4) + player_id(4) + input_state(2) + aim_dir_x(2) + aim_dir_y(2)]
+    std::vector<uint8_t> inputArgs;
+    inputArgs.resize(20);  // 1 + 1 + 4 + 4 + 4 + 2 + 2 + 2
+    uint8_t* ptr = inputArgs.data();
+
+    // flags_count (1 byte) - 1 flag (RELIABLE)
+    uint8_t flagsCount = 1;
+    std::memcpy(ptr, &flagsCount, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+
+    // flags (1 byte) - FLAG_RELIABLE
+    uint8_t flags = 0x01;  // FLAG_RELIABLE
+    std::memcpy(ptr, &flags, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+
+    // TODO: sequence_number should be based on tick rate, not timestamp
+    // sequence_number (4 bytes) - should be incremented based on tick rate
+    uint32_t sequenceNumber = static_cast<uint32_t>(std::time(nullptr));
+    std::memcpy(ptr, &sequenceNumber, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+
+    // timestamp (4 bytes) - timestamp since epoch
+    uint32_t timestamp = static_cast<uint32_t>(std::time(nullptr));
+    std::memcpy(ptr, &timestamp, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+
+    // player_id (4 bytes)
+    std::memcpy(ptr, &actualPlayerId, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+
+    // input_state (2 bytes)
+    std::memcpy(ptr, &inputState, sizeof(uint16_t));
+    ptr += sizeof(uint16_t);
+
+    // aim_direction_x (2 bytes) - hardcoded to 0 for now
+    int16_t aimX = 0;
+    std::memcpy(ptr, &aimX, sizeof(int16_t));
+    ptr += sizeof(int16_t);
+
+    // aim_direction_y (2 bytes) - hardcoded to 0 for now
+    int16_t aimY = 0;
+    std::memcpy(ptr, &aimY, sizeof(int16_t));
+
+    auto playerInputPacket = PacketManager::createPlayerInput(inputArgs);
+    if (!playerInputPacket.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketInputClient: failed to create player input packet");
+        return false;
+    }
+
+    *packet = playerInputPacket.value();
+    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: packet created for player %u", actualPlayerId);
+    return true;
 }
 
 void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
