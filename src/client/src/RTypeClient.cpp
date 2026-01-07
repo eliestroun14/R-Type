@@ -61,7 +61,7 @@ void RTypeClient::run()
                 }
 
                 if (_game) {
-                    if (!_game->runGameLoop()) {
+                    if (!_game->runGameLoop()) { // dedans on va process packet + update + create packet + render
                         stop();
                         break;
                     }
