@@ -333,7 +333,8 @@ namespace protocol {
         POWERUP_FORCE                = 0x02,    // R-Type signature
         POWERUP_SHIELD               = 0x03,
         POWERUP_EXTRA_LIFE           = 0x04,
-        POWERUP_INVINCIBILITY        = 0x05
+        POWERUP_INVINCIBILITY        = 0x05,
+        POWERUP_HEAL                 = 0x06
         // Add here if we need...
     };
 
@@ -352,7 +353,7 @@ namespace protocol {
 
     enum class WeaponTypes : uint8_t {
         WEAPON_TYPE_BASIC          = 0x00,
-        WEAPON_TYPE_Charged        = 0x01,
+        WEAPON_TYPE_CHARGED        = 0x01,
         WEAPON_TYPE_SPREAD         = 0x02,
         WEAPON_TYPE_LASER          = 0x03,
         WEAPON_TYPE_MISSILE        = 0x04,

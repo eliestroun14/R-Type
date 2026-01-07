@@ -46,6 +46,42 @@ class Coordinator {
         void initEngine();
         void initEngineRender();
 
+        // ==============================================================
+        //                       Entity creation helpers
+        // ==============================================================
+
+        Entity createPlayerEntity(
+            uint32_t playerId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool isPlayable,
+            bool withRenderComponents = true
+        );
+
+        Entity createEnemyEntity(
+            uint32_t enemyId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool withRenderComponents = true
+        );
+
+        Entity createProjectileEntity(
+            uint32_t projectileId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            bool isPlayerProjectile,
+            uint16_t damage = 10,
+            bool withRenderComponents = true
+        );
+
         //TODO:
         void processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
         void processClientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
@@ -124,11 +160,50 @@ class Coordinator {
          * @return true if packet was created successfully, false otherwise
          */
         bool createPacketEntityDestroy(common::protocol::Packet* packet, uint32_t entityId, uint8_t reason, uint32_t sequence_number);
+        Entity spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type,
+                                float origin_x, float origin_y,
+                                float dir_x, float dir_y);
 
         std::shared_ptr<gameEngine::GameEngine> getEngine() const;
 
     public:
         bool _gameRunning = false;
+
+    private:
+        void setupPlayerEntity(
+            Entity entity,
+            uint32_t playerId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool isPlayable,
+            bool withRenderComponents
+        );
+
+        void setupEnemyEntity(
+            Entity entity,
+            uint32_t enemyId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            uint16_t initialHealth,
+            bool withRenderComponents
+        );
+
+        void setupProjectileEntity(
+            Entity entity,
+            uint32_t projectileId,
+            float posX,
+            float posY,
+            float velX,
+            float velY,
+            bool isPlayerProjectile,
+            uint16_t damage,
+            bool withRenderComponents
+        );
 
     private:
         PlayerSpriteAllocator _playerSpriteAllocator;

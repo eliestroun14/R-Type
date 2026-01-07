@@ -18,6 +18,170 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     this->_engine->initRender();
 }
 
+// ==============================================================
+//                       Entity creation helpers
+// ==============================================================
+
+Entity Coordinator::createPlayerEntity(
+    uint32_t playerId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool isPlayable,
+    bool withRenderComponents
+)
+{
+    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(playerId));
+    this->setupPlayerEntity(
+        entity,
+        playerId,
+        posX,
+        posY,
+        velX,
+        velY,
+        initialHealth,
+        isPlayable,
+        withRenderComponents
+    );
+    return entity;
+}
+
+Entity Coordinator::createEnemyEntity(
+    uint32_t enemyId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool withRenderComponents
+)
+{
+    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(enemyId));
+    this->setupEnemyEntity(
+        entity,
+        enemyId,
+        posX,
+        posY,
+        velX,
+        velY,
+        initialHealth,
+        withRenderComponents
+    );
+    return entity;
+}
+
+Entity Coordinator::createProjectileEntity(
+    uint32_t projectileId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    bool isPlayerProjectile,
+    uint16_t damage,
+    bool withRenderComponents
+)
+{
+    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(projectileId));
+    this->setupProjectileEntity(
+        entity,
+        projectileId,
+        posX,
+        posY,
+        velX,
+        velY,
+        isPlayerProjectile,
+        damage,
+        withRenderComponents
+    );
+    return entity;
+}
+
+// ==============================================================
+//                               Setup
+// ==============================================================
+
+void Coordinator::setupPlayerEntity(
+    Entity entity,
+    uint32_t playerId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool isPlayable,
+    bool withRenderComponents
+)
+{
+    // Common gameplay components (server + client)
+    if (withRenderComponents) {
+        Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
+        this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
+        this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
+    }
+
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.5f));
+    this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
+    this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+    this->_engine->addComponent<HitBox>(entity, HitBox());
+    this->_engine->addComponent<Weapon>(entity, Weapon(200, 0, 10, ProjectileType::MISSILE));
+    this->_engine->addComponent<InputComponent>(entity, InputComponent(playerId));
+
+    // If this is the playable player, set it as local player
+    if (isPlayable) {
+        this->_engine->addComponent<Playable>(entity, Playable());
+
+        //FIXME: fix here the method in game engine
+        // this->_engine->setLocalPlayerEntity(entity, playerId);
+        LOG_INFO_CAT("Coordinator", "Local player created with ID %u", playerId);
+    }
+}
+
+void Coordinator::setupEnemyEntity(
+    Entity entity,
+    uint32_t enemyId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    uint16_t initialHealth,
+    bool withRenderComponents
+)
+{
+    (void)enemyId;
+
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.0f));
+    this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
+    this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+    if (withRenderComponents) {
+        this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
+    }
+    this->_engine->addComponent<HitBox>(entity, HitBox());
+    this->_engine->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+}
+
+void Coordinator::setupProjectileEntity(
+    Entity entity,
+    uint32_t projectileId,
+    float posX,
+    float posY,
+    float velX,
+    float velY,
+    bool isPlayerProjectile,
+    uint16_t damage,
+    bool withRenderComponents
+)
+{
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
+    this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
+    if (withRenderComponents) {
+        this->_engine->addComponent<Sprite>(entity, Sprite(DEFAULT_BULLET, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 16)));
+    }
+    this->_engine->addComponent<HitBox>(entity, HitBox());
+    this->_engine->addComponent<Projectile>(entity, Projectile(Entity::fromId(projectileId), isPlayerProjectile, damage));
+}
+
 void Coordinator::processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
 {
     // TODO
@@ -213,34 +377,30 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     // Add type-specific components
     switch (payload.entity_type) {
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER): {
-            Assets spriteAsset = _playerSpriteAllocator.allocate(payload.entity_id);
-
-            this->_engine->addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.5f));
-            this->_engine->addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
-            this->_engine->addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-            this->_engine->addComponent<Sprite>(newEntity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
-            this->_engine->addComponent<Animation>(newEntity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
-            this->_engine->addComponent<HitBox>(newEntity, HitBox());
-            this->_engine->addComponent<Weapon>(newEntity, Weapon(200, 0, 10, ProjectileType::MISSILE));
-            this->_engine->addComponent<InputComponent>(newEntity, InputComponent(payload.entity_id));
-
-            // If this is the playable player, set it as local player
-            if (payload.is_playable) {
-                this->_engine->addComponent<Playable>(newEntity, Playable());
-
-                //FIXME: fix here the method in game engine
-                // this->_engine->setLocalPlayerEntity(newEntity, payload.entity_id);
-                LOG_INFO_CAT("Coordinator", "Local player created with ID %u", payload.entity_id);
-            }
+            this->setupPlayerEntity(
+                newEntity,
+                payload.entity_id,
+                static_cast<float>(payload.position_x),
+                static_cast<float>(payload.position_y),
+                static_cast<float>(payload.initial_velocity_x),
+                static_cast<float>(payload.initial_velocity_y),
+                payload.initial_health,
+                payload.is_playable,
+                /*withRenderComponents=*/true
+            );
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY): {
-            this->_engine->addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 2.0f));
-            this->_engine->addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
-            this->_engine->addComponent<Health>(newEntity, Health(payload.initial_health, payload.initial_health));
-            this->_engine->addComponent<Sprite>(newEntity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
-            this->_engine->addComponent<HitBox>(newEntity, HitBox());
-            this->_engine->addComponent<Weapon>(newEntity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+            this->setupEnemyEntity(
+                newEntity,
+                payload.entity_id,
+                static_cast<float>(payload.position_x),
+                static_cast<float>(payload.position_y),
+                static_cast<float>(payload.initial_velocity_x),
+                static_cast<float>(payload.initial_velocity_y),
+                payload.initial_health,
+                /*withRenderComponents=*/true
+            );
             LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
             break;
         }
@@ -253,12 +413,18 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
                 payload.entity_type == static_cast<uint8_t>(
                     protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER
                 );
-            this->_engine->addComponent<Transform>(newEntity, Transform(static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), 0.f, 1.f));
-            this->_engine->addComponent<Velocity>(newEntity, Velocity(static_cast<float>(payload.initial_velocity_x), static_cast<float>(payload.initial_velocity_y)));
-            this->_engine->addComponent<Sprite>(newEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 16)));
-            this->_engine->addComponent<HitBox>(newEntity, HitBox());
-            this->_engine->addComponent<Projectile>(newEntity, Projectile(Entity::fromId(payload.entity_id), isPlayerProjectile, 10));
 
+            this->setupProjectileEntity(
+                newEntity,
+                payload.entity_id,
+                static_cast<float>(payload.position_x),
+                static_cast<float>(payload.position_y),
+                static_cast<float>(payload.initial_velocity_x),
+                static_cast<float>(payload.initial_velocity_y),
+                isPlayerProjectile,
+                10,
+                /*withRenderComponents=*/true
+            );
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_POWERUP):
@@ -275,6 +441,8 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
             break;
     }
 }
+
+
 
 void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &packet)
 {
@@ -607,30 +775,273 @@ void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
 
 void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != PLAYER_DEATH_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerDeath: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_DEATH_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the PLAYER_DEATH_PAYLOAD_SIZE payload in one memcpy
+    protocol::PlayerDeath payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "killer_id: id=%u death_pos=(%.1f, %.1f) player_id=%u score_before_death=%u",
+        payload.killer_id, static_cast<float>(payload.death_pos_x), static_cast<float>(payload.death_pos_y), payload.player_id,
+        payload.score_before_death);
+
+    // kill player
+    Entity playerDead = this->_engine->getEntityFromId(payload.player_id);
+
+    // add this component and the DeadPlayerSystem has to do the job (if all is fine), need to be test absolutely
+    this->_engine->addComponent<DeadPlayer>(playerDead, DeadPlayer());
 }
 
 void Coordinator::handlePacketScoreUpdate(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != SCORE_UPDATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketScoreUpdate: invalid packet size %zu, expected %d", packet.data.size(), SCORE_UPDATE_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the SCORE_UPDATE_PAYLOAD_SIZE payload in one memcpy
+    protocol::ScoreUpdate payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "player_id=%u new_score=%u reason=%u score_delta=%u",
+                payload.player_id, payload.new_score, payload.reason, payload.score_delta);
+
+    // get the player
+    Entity player = this->_engine->getEntityFromId(payload.player_id);
+
+
+    // set the score to the player
+    Score score;
+
+    score.score = payload.new_score;
+
+    try {
+        this->_engine->updateComponent<Score>(player, score);
+    } catch (const std::exception& e) {
+        // if the player does not have the component, set the component
+        this->_engine->emplaceComponent<Score>(player, score);
+    }
 }
 
 void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != POWER_PICKUP_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPowerupPickup: invalid packet size %zu, expected %d", packet.data.size(), POWER_PICKUP_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the POWER_PICKUP_PAYLOAD_SIZE payload in one memcpy
+    protocol::PowerupPickup payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "player_id=%u powerup_id=%u powerup_type=%u duration=%u",
+                payload.player_id, payload.powerup_id, payload.powerup_type, payload.duration);
+
+    // get the player
+    Entity player = this->_engine->getEntityFromId(payload.player_id);
+
+    Powerup powerup(PowerupType::UNKOWN, 0);
+
+    powerup.duration = payload.duration;
+
+    switch (powerup.powerupType) {
+        case 0x00:
+            powerup.powerupType = PowerupType::SPEED_BOOST;
+            break;
+
+        case 0x01:
+            powerup.powerupType = PowerupType::WEAPON_UPGRADE;
+            break;
+
+        case 0x02:
+            powerup.powerupType = PowerupType::FORCE;
+            break;
+
+        case 0x03:
+            powerup.powerupType = PowerupType::SHIELD;
+            break;
+
+        case 0x04:
+            powerup.powerupType = PowerupType::EXTRA_LIFE;
+            break;
+
+        case 0x05:
+            powerup.powerupType = PowerupType::INVINCIBILITY;
+            break;
+
+        case 0x06:
+            powerup.powerupType = PowerupType::HEAL;
+            break;
+
+        default:
+            break;
+    }
+
+    try {
+        this->_engine->updateComponent<Powerup>(player, powerup);
+    } catch (const std::exception& e) {
+        // if the player does not have the component, set the component
+        this->_engine->emplaceComponent<Powerup>(player, powerup);
+    }
 }
 
 void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != WEAPON_FIRE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_FIRE_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the WEAPON_FIRE_PAYLOAD_SIZE payload in one memcpy
+    protocol::WeaponFire payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "shooter_id=%u projectile_id=%u weapon_type=%u origin_pos=(%.1f, %.1f), direction_pos=(%.1f, %.1f)",
+                payload.shooter_id, payload.projectile_id, payload.weapon_type, payload.origin_x, payload.origin_y, payload.direction_x, payload.direction_y);
+
+    // get the shooter
+    Entity shooter = this->_engine->getEntityFromId(payload.shooter_id);
+
+    float origin_x = static_cast<float>(payload.origin_x);
+    float origin_y = static_cast<float>(payload.origin_y);
+
+
+    float direction_x = static_cast<float>(payload.direction_x) / 1000.0f;
+    float direction_y = static_cast<float>(payload.direction_y) / 1000.0f;
+
+
+    Entity projectile = spawnProjectile(shooter, payload.projectile_id, payload.weapon_type, payload.origin_x,
+        payload.origin_y, payload.direction_x, payload.direction_y);
+
+    // Optional: Play fire effects for the shooter
+    this->_engine->playWeaponFireSound(payload.weapon_type);
+
+    LOG_INFO_CAT("Coordinator", "Projectile %u spawned from shooter %u", 
+                 payload.projectile_id, payload.shooter_id);
 }
 
 void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)
 {
+    if (packet.data.size() != VISUAL_EFFECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketVisualEffect: invalid packet size %zu, expected %d", packet.data.size(), VISUAL_EFFECT_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the VISUAL_EFFECT_PAYLOAD_SIZE payload in one memcpy
+    protocol::VisualEffect payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "effect_type=%u scale=%u duration_ms=%u color_tint_r=%u color_tint_g=%u color_tint_b=%u pos=(%.1f, %.1f)",
+                payload.effect_type, payload.scale, payload.duration_ms,
+                payload.color_tint_r, payload.color_tint_g, payload.color_tint_b,
+                payload.pos_x, payload.pos_y);
+
+    // Convert network data to usable format
+    float pos_x = static_cast<float>(payload.pos_x);
+    float pos_y = static_cast<float>(payload.pos_y);
+    float scale = static_cast<float>(payload.scale) / 100.0f; // 100 = 1.0x
+    float duration = static_cast<float>(payload.duration_ms) / 1000.0f; // Convert to seconds
+
+    // Convert color from 0-255 to 0.0-1.0 if needed for your graphics system
+    float color_r = static_cast<float>(payload.color_tint_r) / 255.0f;
+    float color_g = static_cast<float>(payload.color_tint_g) / 255.0f;
+    float color_b = static_cast<float>(payload.color_tint_b) / 255.0f;
+
+    // Spawn the visual effect based on effect_type
+    this->_engine->spawnVisualEffect(
+        static_cast<protocol::VisualEffectType>(payload.effect_type),
+        pos_x, pos_y,
+        scale,
+        duration,
+        color_r, color_g, color_b
+    );
+
+    LOG_INFO_CAT("Coordinator", "Visual effect %u spawned at (%.1f, %.1f) with scale %.2fx for %.2fs", 
+                 payload.effect_type, pos_x, pos_y, scale, duration);
+
 }
 
 void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet)
 {
+    if (packet.data.size() != AUDIO_EFFECT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketAudioEffect: invalid packet size %zu, expected %d", 
+                      packet.data.size(), AUDIO_EFFECT_PAYLOAD_SIZE);
+        return;
+    }
+
+    protocol::AudioEffect payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "audio_effect_type=%u volume=%u pitch=%u pos=(%.1f, %.1f)",
+                 payload.effect_type, payload.volume, payload.pitch,
+                 payload.pos_x, payload.pos_y);
+
+    // Convert network data
+    float pos_x = static_cast<float>(payload.pos_x);
+    float pos_y = static_cast<float>(payload.pos_y);
+    float volume = static_cast<float>(payload.volume) / 255.0f; // 0-255 → 0.0-1.0
+    float pitch = static_cast<float>(payload.pitch) / 100.0f;   // 100 = normal pitch
+
+    // Play the audio effect with 3D positioning
+    this->_engine->playAudioEffect(
+        static_cast<protocol::AudioEffectType>(payload.effect_type),
+        pos_x, pos_y,
+        volume,
+        pitch
+    );
+
 }
 
 void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &packet)
 {
+    if (packet.data.size() != PARTICLE_SPAWN_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketParticleSpawn: invalid packet size %zu, expected %d", 
+                      packet.data.size(), PARTICLE_SPAWN_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse the PARTICLE_SPAWN payload in one memcpy
+    protocol::ParticleSpawn payload;
+    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+
+    LOG_INFO_CAT("Coordinator", "particle_system_id=%u particle_count=%u lifetime_ms=%u pos=(%.1f, %.1f) velocity=(%.1f, %.1f) color_start=(%u,%u,%u) color_end=(%u,%u,%u)",
+                 payload.particle_system_id, payload.particle_count, payload.lifetime_ms,
+                 static_cast<float>(payload.pos_x), static_cast<float>(payload.pos_y),
+                 static_cast<float>(payload.velocity_x), static_cast<float>(payload.velocity_y),
+                 payload.color_start_r, payload.color_start_g, payload.color_start_b,
+                 payload.color_end_r, payload.color_end_g, payload.color_end_b);
+
+    // Convert network data to usable format
+    float pos_x = static_cast<float>(payload.pos_x);
+    float pos_y = static_cast<float>(payload.pos_y);
+    float vel_x = static_cast<float>(payload.velocity_x);
+    float vel_y = static_cast<float>(payload.velocity_y);
+    float lifetime = static_cast<float>(payload.lifetime_ms) / 1000.0f; // Convert to seconds
+
+    // Convert colors from 0-255 to 0.0-1.0
+    sf::Color colorStart(payload.color_start_r, payload.color_start_g, payload.color_start_b);
+    sf::Color colorEnd(payload.color_end_r, payload.color_end_g, payload.color_end_b);
+
+    // Spawn the particle system
+    // this->_engine->spawnParticleSystem(
+    //     static_cast<ParticleSystemType>(payload.particle_system_id),
+    //     pos_x, pos_y,
+    //     vel_x, vel_y,
+    //     payload.particle_count,
+    //     lifetime,
+    //     colorStart,
+    //     colorEnd
+    // );
+
+    LOG_INFO_CAT("Coordinator", "Particle system %u spawned with %u particles at (%.1f, %.1f)", 
+                 payload.particle_system_id, payload.particle_count, pos_x, pos_y);
 }
 
 void Coordinator::handleGameStart(const common::protocol::Packet& packet)
@@ -1140,4 +1551,68 @@ bool Coordinator::createPacketEntityDestroy(common::protocol::Packet* packet, ui
 std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
 {
     return this->_engine;
+Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type, float origin_x, float origin_y, float dir_x, float dir_y)
+{
+    bool isFromPlayable = false;
+    std::string projectileName = this->_engine->getEntityName(shooter) + " projectile";
+
+    auto& shooterWeapon = this->_engine->getComponentEntity<Weapon>(shooter);
+
+    if (this->_engine->hasComponent<InputComponent>(shooter))
+        isFromPlayable = true;
+
+    Entity projectile = this->_engine->createEntityWithId(projectile_id, projectileName);
+    float projectileSpeed = 1.5f;  // tuned for visible travel with dt in ms
+
+    switch (weapon_type) {
+        case 0x00: // WEAPON_TYPE_BASIC
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_PROJ_ROTATION, DEFAULT_PROJ_SCALE));
+            this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
+                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
+                DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
+            this->_engine->addComponent<HitBox>(projectile, HitBox());
+            break;
+
+        case 0x01: // WEAPON_TYPE_CHARGED
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_PROJ_ROTATION, CHARGED_PROJ_SCALE));
+            this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, CHARGED_PROJ_SPRITE_WIDTH, CHARGED_PROJ_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_PROJ_ANIMATION_WIDTH,
+                CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
+                CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
+            this->_engine->addComponent<HitBox>(projectile, HitBox());
+            break;
+
+        // case 0x02: // WEAPON_TYPE_SPREAD
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        // case 0x03: // WEAPON_TYPE_LASER
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        // case 0x04: // WEAPON_TYPE_MISSILE
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        // case 0x05: // WEAPON_TYPE_FORCE_SHOT
+        //     this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, 0, ));
+        //     this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
+        //     break;
+
+        default:
+            break;
+    }
+
+
+    return projectile;
 }
