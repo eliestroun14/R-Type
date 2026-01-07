@@ -1301,69 +1301,166 @@ void Coordinator::spawnVisualEffect(protocol::VisualEffectType type, float x, fl
 void Coordinator::playAudioEffect(protocol::AudioEffectType type, float x, float y, float volume, float pitch)
 {
     Entity audioEffectEntity = this->_engine->createEntity("AudioEffect");
-
     this->_engine->addComponent<Transform>(audioEffectEntity, Transform(x, y, 0, 0));
     this->_engine->addComponent<AudioEffect>(audioEffectEntity, AudioEffect(type, volume, pitch));
 
-    // set the sprites and animations
     switch(type) {
+        // WEAPONS
         case protocol::AudioEffectType::SFX_SHOOT_BASIC:
-            // this->_engine->addComponent<AudioSource>(audioEffectEntity,
-            //     AudioSource(AudioAssets::EXPLOSION_AUDIO, false, 100.0f, 0.5f));
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
-            //TODO:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 150.0f, 0.3f));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_LASER:
-            //TODO:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_SHOOT_LASER, false, 120.0f, 0.4f));
             break;
 
-        case protocol::AudioEffectType::SFX_EXPLOSION_SMALL:
-            //TODO:
+        // EXPLOSIONS
+        case protocol::AudioEffectType::SFX_EXPLOSION_SMALL_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_SMALL_1, false, 200.0f, 0.2f));
             break;
 
-        case protocol::AudioEffectType::SFX_EXPLOSION_LARGE:
-            //TODO:
+        case protocol::AudioEffectType::SFX_EXPLOSION_SMALL_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_SMALL_2, false, 200.0f, 0.2f));
             break;
 
-        case protocol::AudioEffectType::SFX_POWERUP_COLLECT:
-            //TODO:
+        case protocol::AudioEffectType::SFX_EXPLOSION_LARGE_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_LARGE_1, false, 300.0f, 0.1f));
             break;
 
+        case protocol::AudioEffectType::SFX_EXPLOSION_LARGE_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_LARGE_2, false, 300.0f, 0.1f));
+            break;
+
+        // POWERUPS
+        case protocol::AudioEffectType::SFX_POWERUP_COLLECT_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_POWERUP_COLLECT_1, false, 80.0f, 1.0f));
+            break;
+
+        case protocol::AudioEffectType::SFX_POWERUP_COLLECT_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_POWERUP_COLLECT_2, false, 80.0f, 1.0f));
+            break;
+
+        // PLAYER
         case protocol::AudioEffectType::SFX_PLAYER_HIT:
-            //TODO:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_HIT, false, 100.0f, 0.5f));
             break;
 
-        case protocol::AudioEffectType::SFX_PLAYER_DEATH:
-            //TODO:
+        case protocol::AudioEffectType::SFX_PLAYER_DEATH_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_DEATH_1, false, 150.0f, 0.3f));
             break;
 
+        case protocol::AudioEffectType::SFX_PLAYER_DEATH_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_DEATH_2, false, 150.0f, 0.3f));
+            break;
+
+        case protocol::AudioEffectType::SFX_PLAYER_DEATH_3:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_DEATH_3, false, 150.0f, 0.3f));
+            break;
+
+        // FORCE
         case protocol::AudioEffectType::SFX_FORCE_ATTACH:
-            //TODO:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_FORCE_ATTACH, false, 90.0f, 0.6f));
             break;
 
         case protocol::AudioEffectType::SFX_FORCE_DETACH:
-            //TODO:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_FORCE_DETACH, false, 90.0f, 0.6f));
             break;
 
+        // BOSS
         case protocol::AudioEffectType::SFX_BOSS_ROAR:
-            //TODO:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_BOSS_ROAR, false, 400.0f, 0.05f));
             break;
 
+        // UI
         case protocol::AudioEffectType::SFX_MENU_SELECT:
-            //TODO:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_MENU_SELECT, false, 0.0f, 0.0f, true));
             break;
 
-        case protocol::AudioEffectType::SFX_ALERT:
-            //TODO:
+        case protocol::AudioEffectType::SFX_MENU_ALERT:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_MENU_ALERT, false, 0.0f, 0.0f, true));
             break;
 
-        // Add more as needed
+        // MUSIC (Musics does not have to be in this method, that's why playMusic method exist, just below)
+        case protocol::AudioEffectType::MAIN_MENU_MUSIC:
+        case protocol::AudioEffectType::FIRST_LEVEL_MUSIC:
+        case protocol::AudioEffectType::SECOND_LEVEL_MUSIC:
+        case protocol::AudioEffectType::THIRD_LEVEL_MUSIC:
+        case protocol::AudioEffectType::FOURTH_LEVEL_MUSIC:
+        case protocol::AudioEffectType::VICTORY_MUSIC:
+        case protocol::AudioEffectType::DEFEAT_MUSIC:
+            LOG_WARN_CAT("Coordinator", "Music type %d should use playMusic() instead of playAudioEffect()", std::to_string(static_cast<int>(type)));
+            this->_engine->destroyEntity(audioEffectEntity);
+            return;
+
+        default:
+            LOG_ERROR_CAT("Coordinator", "Unknown audio effect type: %d", static_cast<int>(type));
+            this->_engine->destroyEntity(audioEffectEntity);
+            return;
     }
 
-    // Ajouter un composant de durée de vie pour auto-détruire l'entité
     this->_engine->addComponent<Lifetime>(audioEffectEntity, Lifetime(10.0f)); // 10 secondes max
+}
+
+void Coordinator::playMusic(protocol::AudioEffectType musicType)
+{
+    std::string musicPath;
+
+    switch(musicType) {
+        case protocol::AudioEffectType::MAIN_MENU_MUSIC:
+            musicPath = pathAudioAssets[MAIN_MENU_MUSIC];
+            break;
+        case protocol::AudioEffectType::FIRST_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[FIRST_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::SECOND_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[SECOND_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::THIRD_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[THIRD_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::FOURTH_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[FOURTH_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::VICTORY_MUSIC:
+            musicPath = pathAudioAssets[VICTORY_MUSIC];
+            break;
+        case protocol::AudioEffectType::DEFEAT_MUSIC:
+            musicPath = pathAudioAssets[DEFEAT_MUSIC];
+            break;
+        default:
+            LOG_ERROR_CAT("Coordinator", "Unknown music type: %d", static_cast<int>(musicType));
+            return;
+    }
+
+    this->_engine->getAudioManager()->playMusic(musicPath, 0.5f); // 50% volume
+
+    LOG_INFO_CAT("Coordinator", "Playing music: %s", musicPath.c_str());
+}
+
+void Coordinator::stopMusic()
+{
+    this->_engine->getAudioManager()->stopMusic();
 }
 
