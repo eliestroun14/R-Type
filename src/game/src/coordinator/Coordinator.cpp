@@ -921,7 +921,8 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
         payload.origin_y, payload.direction_x, payload.direction_y);
 
     // Optional: Play fire effects for the shooter
-    this->_engine->playWeaponFireSound(payload.weapon_type);
+    //TODO: play sound if necessary
+    // this->_engine->playWeaponFireSound(payload.weapon_type);
 
     LOG_INFO_CAT("Coordinator", "Projectile %u spawned from shooter %u", 
                  payload.projectile_id, payload.shooter_id);
@@ -955,7 +956,7 @@ void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packe
     float color_b = static_cast<float>(payload.color_tint_b) / 255.0f;
 
     // Spawn the visual effect based on effect_type
-    this->_engine->spawnVisualEffect(
+    this->spawnVisualEffect(
         static_cast<protocol::VisualEffectType>(payload.effect_type),
         pos_x, pos_y,
         scale,
@@ -990,7 +991,7 @@ void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet
     float pitch = static_cast<float>(payload.pitch) / 100.0f;   // 100 = normal pitch
 
     // Play the audio effect with 3D positioning
-    this->_engine->playAudioEffect(
+    this->playAudioEffect(
         static_cast<protocol::AudioEffectType>(payload.effect_type),
         pos_x, pos_y,
         volume,
@@ -1204,3 +1205,165 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
 
     return projectile;
 }
+
+
+void Coordinator::spawnVisualEffect(protocol::VisualEffectType type, float x, float y,
+    float scale, float duration, float color_r, float color_g, float color_b)
+{
+    Entity visualEffectEntity = this->_engine->createEntity("VisualEffect");
+
+    this->_engine->addComponent<Transform>(visualEffectEntity, Transform(x, y, 0, scale));
+    this->_engine->addComponent<VisualEffect>(visualEffectEntity,
+        VisualEffect(type, scale, duration, color_r, color_g, color_b));
+
+    // set the sprites and animations
+    switch(type) {
+        case protocol::VisualEffectType::VFX_EXPLOSION_SMALL:
+            this->_engine->addComponent<Sprite>(visualEffectEntity,
+                Sprite(Assets::SMALL_EXPLOSION, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, SMALL_EXPLOSION_SPRITE_WIDTH, SMALL_EXPLOSION_SPRITE_HEIGHT)));
+
+            this->_engine->addComponent<Animation>(visualEffectEntity,
+                Animation(SMALL_EXPLOSION_ANIMATION_WIDTH, SMALL_EXPLOSION_ANIMATION_HEIGHT,
+                    SMALL_EXPLOSION_ANIMATION_CURRENT, SMALL_EXPLOSION_ANIMATION_ELAPSED_TIME, SMALL_EXPLOSION_ANIMATION_DURATION,
+                SMALL_EXPLOSION_ANIMATION_START, SMALL_EXPLOSION_ANIMATION_END, SMALL_EXPLOSION_ANIMATION_LOOPING));
+            break;
+
+        case protocol::VisualEffectType::VFX_EXPLOSION_MEDIUM:
+            this->_engine->addComponent<Sprite>(visualEffectEntity,
+                Sprite(Assets::MEDIUM_EXPLOSION, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, MEDIUM_EXPLOSION_SPRITE_WIDTH, MEDIUM_EXPLOSION_SPRITE_HEIGHT)));
+
+            this->_engine->addComponent<Animation>(visualEffectEntity,
+                Animation(MEDIUM_EXPLOSION_ANIMATION_WIDTH, MEDIUM_EXPLOSION_ANIMATION_HEIGHT,
+                    MEDIUM_EXPLOSION_ANIMATION_CURRENT, MEDIUM_EXPLOSION_ANIMATION_ELAPSED_TIME, MEDIUM_EXPLOSION_ANIMATION_DURATION,
+                MEDIUM_EXPLOSION_ANIMATION_START, MEDIUM_EXPLOSION_ANIMATION_END, MEDIUM_EXPLOSION_ANIMATION_LOOPING));
+            break;
+
+        case protocol::VisualEffectType::VFX_EXPLOSION_LARGE:
+            this->_engine->addComponent<Sprite>(visualEffectEntity,
+                Sprite(Assets::BIG_EXPLOSION, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, BIG_EXPLOSION_SPRITE_WIDTH, BIG_EXPLOSION_SPRITE_HEIGHT)));
+
+            this->_engine->addComponent<Animation>(visualEffectEntity,
+                Animation(BIG_EXPLOSION_ANIMATION_WIDTH, BIG_EXPLOSION_ANIMATION_HEIGHT,
+                    BIG_EXPLOSION_ANIMATION_CURRENT, BIG_EXPLOSION_ANIMATION_ELAPSED_TIME, BIG_EXPLOSION_ANIMATION_DURATION,
+                BIG_EXPLOSION_ANIMATION_START, BIG_EXPLOSION_ANIMATION_END, BIG_EXPLOSION_ANIMATION_LOOPING));
+            break;
+
+        case protocol::VisualEffectType::VFX_MUZZLE_FLASH:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_IMPACT_SPARK:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_POWERUP_GLOW:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_SHIELD_HIT:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_WARP_IN:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_WARP_OUT:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_CHARGE_BEAM:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_FORCE_DETACH:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_PLAYER_SPAWN:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_BOSS_INTRO:
+            //TODO:
+            break;
+
+        // Add more as needed
+    }
+
+    // TODO: add a LifeTime Component to destroy it when it is ends
+    this->_engine->addComponent<Lifetime>(visualEffectEntity, Lifetime(duration));
+}
+
+void Coordinator::playAudioEffect(protocol::AudioEffectType type, float x, float y, float volume, float pitch)
+{
+    Entity audioEffectEntity = this->_engine->createEntity("AudioEffect");
+
+    this->_engine->addComponent<Transform>(audioEffectEntity, Transform(x, y, 0, 0));
+    this->_engine->addComponent<AudioEffect>(audioEffectEntity, AudioEffect(type, volume, pitch));
+
+    // set the sprites and animations
+    switch(type) {
+        case protocol::AudioEffectType::SFX_SHOOT_BASIC:
+            // this->_engine->addComponent<AudioSource>(audioEffectEntity,
+            //     AudioSource(AudioAssets::EXPLOSION_AUDIO, false, 100.0f, 0.5f));
+            break;
+
+        case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_SHOOT_LASER:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_EXPLOSION_SMALL:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_EXPLOSION_LARGE:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_POWERUP_COLLECT:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_PLAYER_HIT:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_PLAYER_DEATH:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_FORCE_ATTACH:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_FORCE_DETACH:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_BOSS_ROAR:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_MENU_SELECT:
+            //TODO:
+            break;
+
+        case protocol::AudioEffectType::SFX_ALERT:
+            //TODO:
+            break;
+
+        // Add more as needed
+    }
+
+    // Ajouter un composant de durée de vie pour auto-détruire l'entité
+    this->_engine->addComponent<Lifetime>(audioEffectEntity, Lifetime(10.0f)); // 10 secondes max
+}
+
