@@ -110,8 +110,7 @@ nav:
     - Render: GameEngine&Architecture/GameEngine/Render/index.md
     - Audio: GameEngine&Architecture/GameEngine/Audio/index.md
 
-    - Coordinator:
-      - Overview: GameEngine&Architecture/GameEngine/Coordinator/index.md
+    - Coordinator: GameEngine&Architecture/GameEngine/Coordinator/index.md
 
   - Logger:
     - Overview: Logger/index.md
