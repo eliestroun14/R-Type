@@ -18,6 +18,7 @@
 #include <engine/ecs/system/SystemManager.hpp>
 #include <engine/render/RenderManager.hpp>
 #include <engine/ecs/component/Components.hpp>
+#include <engine/audio/AudioManager.hpp>
 
 /**
  * @namespace gameEngine
@@ -34,6 +35,7 @@ namespace gameEngine {
             std::shared_ptr<EntityManager> _entityManager; ///< Manager handling entity lifecycle and components.
             std::shared_ptr<SystemManager> _systemManager; ///< Manager handling system registration and updates.
             std::shared_ptr<RenderManager> _renderManager; ///< Manager handling windowing, inputs, and drawing.
+            std::shared_ptr<audio::AudioManager> _audioManager;  ///< Manager handling musics and sounds effects.
 
         public:
 
@@ -62,6 +64,16 @@ namespace gameEngine {
             {
                 this->_renderManager = std::make_unique<RenderManager>();
                 this->_renderManager->init();
+            }
+
+            /**
+             * @brief Initializes AudioManager for the gameEngine, client side.
+             * * This method must be called before any other operation.
+             */
+            void initAudio()
+            {
+                this->_audioManager = std::make_unique<audio::AudioManager>();
+                this->_audioManager->init();
             }
 
             // ################################################################
@@ -440,6 +452,101 @@ namespace gameEngine {
             // ########################### AUDIO #############################
             // ################################################################
 
+            /**
+             * @brief Play a positioned 3D sound effect
+             * @param type The audio effect type
+             * @param x,y The position of the sound
+             * @param volume Volume multiplier (0.0 - 1.0)
+             * @param pitch Pitch multiplier (1.0 = normal)
+             */
+            void playSound(protocol::AudioEffectType type, float x, float y, 
+                        float volume = 1.0f, float pitch = 1.0f)
+            {
+                this->_audioManager->playSound(type, x, y, volume, pitch);
+            }
+
+            /**
+             * @brief Play a non-positioned UI sound effect
+             * @param type The audio effect type
+             * @param volume Volume multiplier (0.0 - 1.0)
+             * @param pitch Pitch multiplier (1.0 = normal)
+             */
+            void playSoundUI(protocol::AudioEffectType type, 
+                            float volume = 1.0f, float pitch = 1.0f)
+            {
+                this->_audioManager->playSoundUI(type, volume, pitch);
+            }
+
+            /**
+             * @brief Play background music (stops previous music)
+             * @param filepath Path to the music file
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void playMusic(const std::string& filepath, float volume = 0.5f)
+            {
+                this->_audioManager->playMusic(filepath, volume);
+            }
+
+            /**
+             * @brief Stop the currently playing music
+             */
+            void stopMusic()
+            {
+                this->_audioManager->stopMusic();
+            }
+
+            /**
+             * @brief Update the audio listener position (usually the player's position)
+             * @param x,y The listener position
+             */
+            void updateAudioListener(float x, float y)
+            {
+                this->_audioManager->setListenerPosition(x, y);
+            }
+
+            /**
+             * @brief Set the master volume (affects all audio)
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void setMasterVolume(float volume)
+            {
+                this->_audioManager->setMasterVolume(volume);
+            }
+
+            /**
+             * @brief Set the sound effects volume
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void setSoundVolume(float volume)
+            {
+                this->_audioManager->setSoundVolume(volume);
+            }
+
+            /**
+             * @brief Set the music volume
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void setMusicVolume(float volume)
+            {
+                this->_audioManager->setMusicVolume(volume);
+            }
+
+            /**
+             * @brief Get the audio manager instance
+             * @return Pointer to the audio manager
+             */
+            audio::AudioManager* getAudioManager()
+            {
+                return this->_audioManager.get();
+            }
+
+            /**
+             * @brief Update audio systems (cleanup finished sounds, etc.)
+             */
+            void updateAudio()
+            {
+                this->_audioManager->update();
+            }
     };
 }
 

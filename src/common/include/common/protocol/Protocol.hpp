@@ -768,19 +768,47 @@ namespace protocol {
     };
 
     enum class AudioEffectType : uint8_t {
-        SFX_SHOOT_BASIC           = 0x00,
-        SFX_SHOOT_CHARGED         = 0x01,
-        SFX_SHOOT_LASER           = 0x02,
-        SFX_EXPLOSION_SMALL       = 0x03,
-        SFX_EXPLOSION_LARGE       = 0x04,
-        SFX_POWERUP_COLLECT       = 0x05,
-        SFX_PLAYER_HIT            = 0x06,
-        SFX_PLAYER_DEATH          = 0x07,
-        SFX_FORCE_ATTACH          = 0x08,
-        SFX_FORCE_DETACH          = 0x09,
-        SFX_BOSS_ROAR             = 0x0A,
-        SFX_MENU_SELECT           = 0x0B,
-        SFX_ALERT                 = 0x0C
+        // WEAPONS
+        SFX_SHOOT_BASIC            = 0x00,
+        SFX_SHOOT_CHARGED          = 0x01,
+        SFX_SHOOT_LASER            = 0x02,
+
+        // EXPLOSIONS
+        SFX_EXPLOSION_SMALL_1      = 0x03,
+        SFX_EXPLOSION_SMALL_2      = 0x04,
+        SFX_EXPLOSION_LARGE_1      = 0x05,
+        SFX_EXPLOSION_LARGE_2      = 0x06,
+
+        // POWERUPS
+        SFX_POWERUP_COLLECT_1      = 0x07,
+        SFX_POWERUP_COLLECT_2      = 0x08,
+
+        // PLAYER
+        SFX_PLAYER_HIT             = 0x09,
+        SFX_PLAYER_DEATH_1         = 0x0A,
+        SFX_PLAYER_DEATH_2         = 0x0B,
+        SFX_PLAYER_DEATH_3         = 0x0C,
+
+        // FORCE
+        SFX_FORCE_ATTACH           = 0x0D,
+        SFX_FORCE_DETACH           = 0x0E,
+
+        // BOSS
+        SFX_BOSS_ROAR              = 0x0F,
+
+        // UI
+        SFX_MENU_SELECT            = 0x10,
+        SFX_MENU_ALERT             = 0x11,
+
+        // MUSIC
+        MAIN_MENU_MUSIC            = 0x12,
+        FIRST_LEVEL_MUSIC          = 0x13,
+        SECOND_LEVEL_MUSIC         = 0x14,
+        THIRD_LEVEL_MUSIC          = 0x15,
+        FOURTH_LEVEL_MUSIC         = 0x16,
+        VICTORY_MUSIC              = 0x17,
+        DEFEAT_MUSIC               = 0x18
+
         // Add more as needed
     };
 

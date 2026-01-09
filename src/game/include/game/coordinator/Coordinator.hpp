@@ -218,6 +218,12 @@ class Coordinator {
         void playAudioEffect(protocol::AudioEffectType type, float x, float y,
                             float volume, float pitch);
 
+        /** @brief Plays a music. */
+        void playMusic(protocol::AudioEffectType musicType);
+
+        /** @brief Stops a music. */
+        void stopMusic();
+
     private:
         PlayerSpriteAllocator _playerSpriteAllocator;
 
