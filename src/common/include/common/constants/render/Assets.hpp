@@ -164,13 +164,13 @@ static const std::array<std::string, NUMBER_AUDIO_ASSETS> pathAudioAssets = {
     "../assets/audio/ui/alert.wav",
 
     // MUSIC
-    "../assets/audio/music/mainMenuMusic.wav",
-    "../assets/audio/music/firstLevelMusic.wav",
-    "../assets/audio/music/secondLevelMusic.wav",
-    "../assets/audio/music/thirdLevelMusic.wav",
-    "../assets/audio/music/fourthLevelMusic.wav",
-    "../assets/audio/music/victoryMusic.wav",
-    "../assets/audio/music/defeatMusic.wav",
+    "../assets/audio/music/mainMenuMusic.ogg",
+    "../assets/audio/music/firstLevelMusic.ogg",
+    "../assets/audio/music/secondLevelMusic.ogg",
+    "../assets/audio/music/thirdLevelMusic.ogg",
+    "../assets/audio/music/fourthLevelMusic.ogg",
+    "../assets/audio/music/victoryMusic.ogg",
+    "../assets/audio/music/defeatMusic.ogg",
 
 };
 
