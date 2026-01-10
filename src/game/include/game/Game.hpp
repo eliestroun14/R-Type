@@ -11,8 +11,11 @@
 #include <optional>
 #include <mutex>
 #include <cstdint>
+#include <chrono>
+#include <memory>
 #include <common/network/NetworkManager.hpp>
 #include <common/protocol/Packet.hpp>
+#include <game/coordinator/Coordinator.hpp>
 
 class Game {
     public:
@@ -25,7 +28,7 @@ class Game {
         Game(Type type = Type::SERVER);
         ~Game();
 
-        bool runGameLoop();
+        bool runGameLoop(); // process packet + update systems / components + render + packet creation
 
         void addIncomingPacket(const common::network::ReceivedPacket& packet);
         std::optional<std::pair<common::protocol::Packet, std::optional<uint32_t>>> popOutgoingPacket();
@@ -35,12 +38,24 @@ class Game {
         void setRunning(bool status) { _isRunning = status; }
         bool isRunning() const { return _isRunning; }
 
+        // Get coordinator for initialization purposes
+        std::shared_ptr<Coordinator> getCoordinator() { return _coordinator; }
+
     protected:
         void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);
         std::optional<common::network::ReceivedPacket> popIncomingPacket();
 
+        // Server-side simulation step
+        void serverTick(uint64_t elapsedMs);
+
+        // Client-side prediction and reconciliation step
+        void clientTick(uint64_t elapsedMs);
+
     private:
         Type _type;
+
+        // Coordinator manages ECS and packet handling
+        std::shared_ptr<Coordinator> _coordinator;
 
         std::deque<common::network::ReceivedPacket> _incoming;
         std::deque<std::pair<common::protocol::Packet, std::optional<uint32_t>>> _outgoing;
@@ -51,6 +66,11 @@ class Game {
 
         bool _isConnected = false;
         bool _isRunning = false;
+
+        // Timing for fixed timestep
+        std::chrono::steady_clock::time_point _lastTickTime;
+        static constexpr uint64_t TICK_RATE_MS = 16; // ~60 FPS
+        uint64_t _accumulatedTime = 0;
 };
 
 #endif /* !GAME_HPP_ */
