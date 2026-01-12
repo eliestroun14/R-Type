@@ -24,6 +24,7 @@
 #include <engine/ecs/entity/Entity.hpp>
 #include <vector>
 #include <common/protocol/Protocol.hpp>
+#include <functional>
 
 // Forward declaration for GameAction enum
 enum class GameAction;
@@ -299,6 +300,32 @@ struct Drawable {};
  * The local player is the one controlled by the keyboard/input on THIS client.
  */
 struct Playable {};
+
+
+/**
+ * @brief Tag component. Marks the entity as the local player controlled character.
+ *
+ * MainMenuScene entities are visible only in main menu.
+ */
+struct MainMenuScene {};
+
+
+/**
+ * @brief Tag component. Marks the entity as the local player controlled character.
+ *
+ * OptionMenuScene entities are visible only in option menu.
+ */
+struct OptionMenuScene {};
+
+
+/**
+ * @brief Tag component. Marks the entity as game scene entity.
+ *
+ * GameScene entities are visible only in game.
+ */
+struct GameScene {};
+
+
 
 /**
  * @brief Stores input state for an entity (player).
