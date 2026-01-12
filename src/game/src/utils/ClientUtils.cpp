@@ -9,6 +9,7 @@
 #include <random>
 #include <iostream>
 #include <chrono>
+#include <engine/GameEngine.hpp>
 
 uint32_t generateClientId()
 {
@@ -27,3 +28,22 @@ uint32_t getCurrentTimeMs()
 
     return milliseconds;
 }
+
+void createButton(gameEngine::GameEngine& engine, std::string label,
+    unsigned int textSize, sf::Color textColor, sf::Vector2f pos, float scale,
+    Assets noneAssetId, Assets hoverAssetId, Assets clickedAssetId,
+    std::function<void ()> onClick)
+{
+    Entity button = engine.createEntity("Button_" + label);
+    engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
+
+    engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_UI_HUD));
+
+    ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
+    engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
+
+    Entity textEntity = engine.createEntity("ButtonText_" + label);
+    engine.addComponent<Transform>(textEntity, Transform(pos.x, pos.y, 0, scale));
+    engine.addComponent<Text>(textEntity, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+}
+
