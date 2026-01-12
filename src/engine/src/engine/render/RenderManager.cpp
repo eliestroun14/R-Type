@@ -203,6 +203,11 @@ std::shared_ptr<sf::Texture> RenderManager::getTexture(Assets id) const
     return this->_textures.getTexture(id);
 }
 
+std::shared_ptr<sf::Font> RenderManager::getFont(FontAssets id) const
+{
+    return this->_fonts.getFont(id);
+}
+
 sf::RenderWindow &RenderManager::getWindow()
 {
     return this->_window;

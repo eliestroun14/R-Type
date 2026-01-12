@@ -436,6 +436,12 @@ namespace gameEngine {
                 return this->_renderManager->getTexture(id);
             }
 
+            /** @brief Retrieves a font from the asset manager via its ID. */
+            std::shared_ptr<sf::Font> getFont(FontAssets id) const
+            {
+                return this->_renderManager->getFont(id);
+            }
+
             /** @brief Processes window events and updates input states. */
             void processInput()
             {

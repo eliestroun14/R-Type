@@ -12,6 +12,7 @@
 #include <engine/render/TextureStorage.hpp>
 #include <engine/ecs/entity/Entity.hpp>
 #include <common/constants/defines.hpp>
+#include <engine/render/FontStorage.hpp>
 
 // Forward declaration
 class Coordinator;
@@ -151,6 +152,14 @@ class RenderManager {
 
 
         /**
+         * @brief Get the sf::Font of sprite in function of his id.
+         * * @return const std::shared_ptr<sf::Font> to the sf::Font.
+         * * @param id The id reference to the enum fontAssets
+         */
+        std::shared_ptr<sf::Font> getFont(FontAssets id) const;
+
+
+        /**
          * @brief Get the sf::RenderWindow of the game.
          * * @return const sf::RenderWindow& Reference to the window.
          */
@@ -167,7 +176,9 @@ class RenderManager {
         Entity _localPlayerEntity;
 
         sf::RenderWindow _window;
+
         TextureStorage _textures;
+        FontStorage _fonts;
 
         /// @brief Maps physical keys (sf::Keyboard::Key) to logical actions (GameAction).
         std::map<sf::Keyboard::Key, GameAction> _keyBindings;
