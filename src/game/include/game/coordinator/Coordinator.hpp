@@ -90,6 +90,7 @@ class Coordinator {
         void buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
 
+        // HANDLE PACKETS
         std::vector<uint32_t> getPlayablePlayerIds();
         bool createPacketInputClient(common::protocol::Packet *packet, uint32_t playerId);
 
@@ -117,7 +118,7 @@ class Coordinator {
         void handlePacketLevelComplete(const common::protocol::Packet& packet);
         void handlePacketLevelStart(const common::protocol::Packet& packet);
         void handlePacketForceState(const common::protocol::Packet& packet);
-        
+
         /**
          * @brief Handles an AI_STATE packet from the server
          *
@@ -143,6 +144,26 @@ class Coordinator {
          * @see AIBehaviorType
          */
         void handlePacketAIState(const common::protocol::Packet& packet);
+
+        // CREATE PACKET
+
+        bool createPacketEntitySpawn(common::protocol::Packet* packet, uint32_t entityId, uint32_t sequence_number);
+        bool createPacketTransformSnapshot(common::protocol::Packet* packet, const std::vector<uint32_t>& entityIds, uint32_t sequence_number);
+        bool createPacketHealthSnapshot(common::protocol::Packet* packet, const std::vector<uint32_t>& entityIds, uint32_t sequence_number);
+        bool createPacketWeaponSnapshot(common::protocol::Packet* packet, const std::vector<uint32_t>& entityIds, uint32_t sequence_number);
+
+        /**
+         * @brief Creates an ENTITY_DESTROY packet
+         * @param packet Pointer to the packet to be filled
+         * @param entityId The entity ID to destroy
+         * @param reason Destruction reason code
+         * @param sequence_number The global tick count since program started
+         * @return true if packet was created successfully, false otherwise
+         */
+        bool createPacketEntityDestroy(common::protocol::Packet* packet, uint32_t entityId, uint8_t reason, uint32_t sequence_number);
+        Entity spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type,
+                                float origin_x, float origin_y,
+                                float dir_x, float dir_y);
 
         std::shared_ptr<gameEngine::GameEngine> getEngine() const;
 

@@ -1504,6 +1504,418 @@ void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
         static_cast<float>(waypoint_x), static_cast<float>(waypoint_y), state_timer);
 }
 
+// ==============================================================
+//                  CREATE PACKET METHODS
+// ==============================================================
+
+bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint32_t entityId, uint32_t sequence_number)
+{
+    if (!packet) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: null packet pointer");
+        return false;
+    }
+
+    Entity entity = Entity::fromId(entityId);
+    if (!this->_engine->isAlive(entity)) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: entity %u is not alive", entityId);
+        return false;
+    }
+
+    // Retrieve components from the engine
+    auto transformOpt = this->_engine->getComponentEntity<Transform>(entity);
+    auto velocityOpt = this->_engine->getComponentEntity<Velocity>(entity);
+    auto healthOpt = this->_engine->getComponentEntity<Health>(entity);
+    auto networkIdOpt = this->_engine->getComponentEntity<NetworkId>(entity);
+
+    if (!transformOpt.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: entity %u has no Transform component", entityId);
+        return false;
+    }
+
+    Transform& transform = transformOpt.value();
+    
+    // Build args vector for PacketManager
+    std::vector<uint8_t> args;
+    
+    // flags_count (0 for now)
+    uint8_t flags_count = 0;
+    args.push_back(flags_count);
+    
+    // sequence_number
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
+                reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
+    
+    // timestamp
+    uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
+                reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
+    
+    // entity_id
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
+                reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
+    
+    // entity_type (default to ENEMY if no specific type found)
+    uint8_t entity_type = static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY);
+    args.push_back(entity_type);
+    
+    // position_x, position_y
+    uint16_t position_x = static_cast<uint16_t>(transform.x);
+    uint16_t position_y = static_cast<uint16_t>(transform.y);
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&position_x), 
+                reinterpret_cast<uint8_t*>(&position_x) + sizeof(position_x));
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&position_y), 
+                reinterpret_cast<uint8_t*>(&position_y) + sizeof(position_y));
+    
+    // mob_variant (0 for default)
+    uint8_t mob_variant = 0;
+    args.push_back(mob_variant);
+    
+    // initial_health
+    uint8_t initial_health = healthOpt.has_value() ? static_cast<uint8_t>(healthOpt.value().currentHealth) : 100;
+    args.push_back(initial_health);
+    
+    // initial_velocity_x, initial_velocity_y
+    int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx) : 0;
+    int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy) : 0;
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_x), 
+                reinterpret_cast<uint8_t*>(&velocity_x) + sizeof(velocity_x));
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_y), 
+                reinterpret_cast<uint8_t*>(&velocity_y) + sizeof(velocity_y));
+    
+    // is_playable (check for InputComponent)
+    uint8_t is_playable = this->_engine->getComponentEntity<InputComponent>(entity).has_value() ? 1 : 0;
+    args.push_back(is_playable);
+
+    // Create the packet using PacketManager
+    auto result = PacketManager::createEntitySpawn(args);
+    if (!result.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: PacketManager failed to create packet");
+        return false;
+    }
+
+    // Assert the packet
+    if (!PacketManager::assertEntitySpawn(result.value())) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: packet assertion failed");
+        return false;
+    }
+
+    // Copy to output packet
+    *packet = result.value();
+    
+    LOG_DEBUG_CAT("Coordinator", "createPacketEntitySpawn: created packet for entity %u", entityId);
+    return true;
+}
+
+bool Coordinator::createPacketTransformSnapshot(common::protocol::Packet* packet, const std::vector<uint32_t>& entityIds, uint32_t sequence_number)
+{
+    if (!packet) {
+        LOG_ERROR_CAT("Coordinator", "createPacketTransformSnapshot: null packet pointer");
+        return false;
+    }
+
+    // Build args vector
+    std::vector<uint8_t> args;
+    
+    // flags_count (0 for now)
+    uint8_t flags_count = 0;
+    args.push_back(flags_count);
+    
+    // sequence_numbe
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
+                reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
+    
+    // timestamp
+    uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
+                reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
+    
+    // entity_count
+    uint16_t entity_count = static_cast<uint16_t>(entityIds.size());
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&entity_count), 
+                reinterpret_cast<uint8_t*>(&entity_count) + sizeof(entity_count));
+    
+    // For each entity, add transform data
+    for (uint32_t entityId : entityIds) {
+        Entity entity = Entity::fromId(entityId);
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "createPacketTransformSnapshot: skipping dead entity %u", entityId);
+            continue;
+        }
+
+        auto transformOpt = this->_engine->getComponentEntity<Transform>(entity);
+        if (!transformOpt.has_value()) {
+            LOG_WARN_CAT("Coordinator", "createPacketTransformSnapshot: entity %u has no Transform", entityId);
+            continue;
+        }
+
+        Transform& transform = transformOpt.value();
+
+        // entity_id (4 bytes)
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
+                    reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
+
+                    // position_x (2 bytes)
+        uint16_t position_x = static_cast<uint16_t>(transform.x);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&position_x), 
+                    reinterpret_cast<uint8_t*>(&position_x) + sizeof(position_x));
+
+                    // position_y (2 bytes)
+        uint16_t position_y = static_cast<uint16_t>(transform.y);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&position_y), 
+                    reinterpret_cast<uint8_t*>(&position_y) + sizeof(position_y));
+
+                    // rotation (2 bytes, scaled to uint16_t)
+        uint16_t rotation = static_cast<uint16_t>(transform.rotation * 100.0f);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&rotation), 
+                    reinterpret_cast<uint8_t*>(&rotation) + sizeof(rotation));
+
+                    // scale (2 bytes, scaled to uint16_t)
+        uint16_t scale = static_cast<uint16_t>(transform.scale * 100.0f);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&scale), 
+                    reinterpret_cast<uint8_t*>(&scale) + sizeof(scale));
+    }
+
+    // Create the packet
+    auto result = PacketManager::createTransformSnapshot(args);
+    if (!result.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketTransformSnapshot: PacketManager failed");
+        return false;
+    }
+
+    // Assert the packet
+    if (!PacketManager::assertTransformSnapshot(result.value())) {
+        LOG_ERROR_CAT("Coordinator", "createPacketTransformSnapshot: packet assertion failed");
+        return false;
+    }
+
+    *packet = result.value();
+    LOG_DEBUG_CAT("Coordinator", "createPacketTransformSnapshot: created packet for %zu entities", entityIds.size());
+    return true;
+}
+
+bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, const std::vector<uint32_t>& entityIds, uint32_t sequence_number)
+{
+    if (!packet) {
+        LOG_ERROR_CAT("Coordinator", "createPacketHealthSnapshot: null packet pointer");
+        return false;
+    }
+
+    std::vector<uint8_t> args;
+    
+    // flags_count
+    uint8_t flags_count = 0;
+    args.push_back(flags_count);
+    
+    // sequence_number
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
+                reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
+    
+    // timestamp
+    uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
+                reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
+    
+    // entity_count
+    uint16_t entity_count = static_cast<uint16_t>(entityIds.size());
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&entity_count), 
+                reinterpret_cast<uint8_t*>(&entity_count) + sizeof(entity_count));
+    
+    // For each entity, add health data
+    for (uint32_t entityId : entityIds) {
+        Entity entity = Entity::fromId(entityId);
+        if (!this->_engine->isAlive(entity)) {
+            continue;
+        }
+
+        auto healthOpt = this->_engine->getComponentEntity<Health>(entity);
+        if (!healthOpt.has_value()) {
+            continue;
+        }
+
+        Health& health = healthOpt.value();
+
+        // entity_id (4 bytes)
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
+                    reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
+
+                    // current_health (2 bytes)
+        uint16_t current_health = static_cast<uint16_t>(health.currentHealth);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&current_health), 
+                    reinterpret_cast<uint8_t*>(&current_health) + sizeof(current_health));
+
+                    // max_health (2 bytes)
+        uint16_t max_health = static_cast<uint16_t>(health.maxHp);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&max_health), 
+                    reinterpret_cast<uint8_t*>(&max_health) + sizeof(max_health));
+    }
+
+    auto result = PacketManager::createHealthSnapshot(args);
+    if (!result.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketHealthSnapshot: PacketManager failed");
+        return false;
+    }
+
+    if (!PacketManager::assertHealthSnapshot(result.value())) {
+        LOG_ERROR_CAT("Coordinator", "createPacketHealthSnapshot: packet assertion failed");
+        return false;
+    }
+
+    *packet = result.value();
+    LOG_DEBUG_CAT("Coordinator", "createPacketHealthSnapshot: created packet for %zu entities", entityIds.size());
+    return true;
+}
+
+bool Coordinator::createPacketWeaponSnapshot(common::protocol::Packet* packet, const std::vector<uint32_t>& entityIds, uint32_t sequence_number)
+{
+    if (!packet) {
+        LOG_ERROR_CAT("Coordinator", "createPacketWeaponSnapshot: null packet pointer");
+        return false;
+    }
+
+    std::vector<uint8_t> args;
+    
+    // flags_count
+    uint8_t flags_count = 0;
+    args.push_back(flags_count);
+    
+    // sequence_number
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
+                reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
+    
+    // timestamp
+    uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
+                reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
+    
+    // entity_count
+    uint16_t entity_count = static_cast<uint16_t>(entityIds.size());
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&entity_count), 
+                reinterpret_cast<uint8_t*>(&entity_count) + sizeof(entity_count));
+    
+    // For each entity, add weapon data
+    for (uint32_t entityId : entityIds) {
+        Entity entity = Entity::fromId(entityId);
+        if (!this->_engine->isAlive(entity)) {
+            continue;
+        }
+
+        auto weaponOpt = this->_engine->getComponentEntity<Weapon>(entity);
+        if (!weaponOpt.has_value()) {
+            continue;
+        }
+
+        Weapon& weapon = weaponOpt.value();
+
+        // entity_id (4 bytes)
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
+                    reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
+
+                    // fire_rate (2 bytes)
+        uint16_t fire_rate = static_cast<uint16_t>(weapon.fireRateMs);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&fire_rate), 
+                    reinterpret_cast<uint8_t*>(&fire_rate) + sizeof(fire_rate));
+
+                    // damage (2 bytes)
+        uint16_t damage = static_cast<uint16_t>(weapon.damage);
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&damage), 
+                    reinterpret_cast<uint8_t*>(&damage) + sizeof(damage));
+
+                    // projectile_type (1 byte)
+        uint8_t projectile_type = static_cast<uint8_t>(weapon.projectileType);
+        args.push_back(projectile_type);
+
+        // last_shot_time (4 bytes)
+        uint32_t last_shot_time = weapon.lastShotTime;
+        args.insert(args.end(), reinterpret_cast<uint8_t*>(&last_shot_time), 
+                    reinterpret_cast<uint8_t*>(&last_shot_time) + sizeof(last_shot_time));
+    }
+
+    auto result = PacketManager::createWeaponSnapshot(args);
+    if (!result.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketWeaponSnapshot: PacketManager failed");
+        return false;
+    }
+
+    if (!PacketManager::assertWeaponSnapshot(result.value())) {
+        LOG_ERROR_CAT("Coordinator", "createPacketWeaponSnapshot: packet assertion failed");
+        return false;
+    }
+
+    *packet = result.value();
+    LOG_DEBUG_CAT("Coordinator", "createPacketWeaponSnapshot: created packet for %zu entities", entityIds.size());
+    return true;
+}
+
+bool Coordinator::createPacketEntityDestroy(common::protocol::Packet* packet, uint32_t entityId, uint8_t reason, uint32_t sequence_number)
+{
+    if (!packet) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntityDestroy: null packet pointer");
+        return false;
+    }
+
+    Entity entity = Entity::fromId(entityId);
+    
+    // Get final position if entity still exists
+    uint16_t final_x = 0;
+    uint16_t final_y = 0;
+    
+    if (this->_engine->isAlive(entity)) {
+        auto transformOpt = this->_engine->getComponentEntity<Transform>(entity);
+        if (transformOpt.has_value()) {
+            final_x = static_cast<uint16_t>(transformOpt.value().x);
+            final_y = static_cast<uint16_t>(transformOpt.value().y);
+        }
+    }
+
+    std::vector<uint8_t> args;
+    
+    // flags_count
+    uint8_t flags_count = 0;
+    args.push_back(flags_count);
+    
+    // sequence_number
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
+                reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
+    
+    // timestamp
+    uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
+                reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
+    
+    // entity_id
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
+                reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
+    
+    // destroy_reason
+    args.push_back(reason);
+    
+    // final_position_x
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&final_x), 
+                reinterpret_cast<uint8_t*>(&final_x) + sizeof(final_x));
+    
+    // final_position_y
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&final_y), 
+                reinterpret_cast<uint8_t*>(&final_y) + sizeof(final_y));
+
+    auto result = PacketManager::createEntityDestroy(args);
+    if (!result.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntityDestroy: PacketManager failed");
+        return false;
+    }
+
+    if (!PacketManager::assertEntityDestroy(result.value())) {
+        LOG_ERROR_CAT("Coordinator", "createPacketEntityDestroy: packet assertion failed");
+        return false;
+    }
+
+    *packet = result.value();
+    LOG_DEBUG_CAT("Coordinator", "createPacketEntityDestroy: created packet for entity %u", entityId);
+    return true;
+}
+
+std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
+{
+    return this->_engine;
 Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type, float origin_x, float origin_y, float dir_x, float dir_y)
 {
     bool isFromPlayable = false;
