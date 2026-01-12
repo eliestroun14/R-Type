@@ -34,6 +34,8 @@ enum class GameAction {
     SPECIAL,        ///< Trigger special ability (Default: F)
     OPTIONS,        ///< Open option menu (Default: P - commented out)
     EXIT,           ///< Close the game/window (Default: Escape)
+    RIGHT_CLICK,    ///< Interact with the UI (Default: Right click)
+    LEFT_CLICK,     ///< Interact with the UI (Default: left click)
     UNKNOW          ///< Fallback for unrecognized actions
 };
 
@@ -111,6 +113,15 @@ class RenderManager {
          * @return false Otherwise.
          */
         bool isActionJustPressed(GameAction action) const;
+
+
+        /**
+         * @brief Checks if a specific game action was just released (edge detection).
+         * * @param action The logical action to check.
+         * @return true If the action is currently released AND was not released last frame.
+         * @return false Otherwise.
+         */
+        bool isActionJustReleased(GameAction action) const;
 
         /**
          * @brief Retrieves the current mouse position relative to the window.

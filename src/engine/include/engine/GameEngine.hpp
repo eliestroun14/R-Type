@@ -424,6 +424,12 @@ namespace gameEngine {
                 return this->_renderManager->isActionJustPressed(action);
             }
 
+            /** @brief Checks if an action was released during this specific frame. */
+            bool isActionJustReleased(GameAction action) const
+            {
+                return this->_renderManager->isActionJustReleased(action);
+            }
+
             /** @brief Retrieves a texture from the asset manager via its ID. */
             std::shared_ptr<sf::Texture> getTexture(Assets id) const
             {

@@ -42,6 +42,10 @@ RenderManager::RenderManager() : _coordinator(nullptr), _localPlayerEntity(Entit
     this->_activeActions[GameAction::SPECIAL] = false;
     // this->_activeActions[GameAction::OPTIONS] = false;
     this->_activeActions[GameAction::EXIT] = false;
+
+
+    this->_activeActions[GameAction::RIGHT_CLICK] = false;
+    this->_activeActions[GameAction::LEFT_CLICK] = false;
 }
 
 RenderManager::~RenderManager()
@@ -132,6 +136,13 @@ bool RenderManager::isActionJustPressed(GameAction action) const
     return currentState && !previousState;
 }
 
+bool RenderManager::isActionJustReleased(GameAction action) const {
+    auto it = _previousActions.find(action);
+    bool previousState = (it != _previousActions.end()) ? it->second : false;
+
+    return !isActionActive(action) && previousState;
+}
+
 sf::Vector2i RenderManager::getMousePosition() const
 {
     return _mousePos;
@@ -171,13 +182,15 @@ void RenderManager::handleEvent(const sf::Event& event)
         }
     }
 
-    if (event.type == sf::Event::MouseButtonPressed)
-        if (event.mouseButton.button == sf::Mouse::Left)
-            return; //TODO: add here action
+    if (event.type == sf::Event::MouseButtonPressed || event.type == sf::Event::MouseButtonReleased) {
+        bool isPressed = (event.type == sf::Event::MouseButtonPressed);
 
-    if (event.type == sf::Event::MouseButtonPressed)
+        if (event.mouseButton.button == sf::Mouse::Left)
+            this->_activeActions[GameAction::LEFT_CLICK] = isPressed;
+
         if (event.mouseButton.button == sf::Mouse::Right)
-            return; //TODO: add here action
+            this->_activeActions[GameAction::RIGHT_CLICK] = isPressed;
+    }
 }
 
 std::map<GameAction, bool>& RenderManager::getActiveActions()
