@@ -161,9 +161,9 @@ class Coordinator {
          * @return true if packet was created successfully, false otherwise
          */
         bool createPacketEntityDestroy(common::protocol::Packet* packet, uint32_t entityId, uint8_t reason, uint32_t sequence_number);
-        Entity spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type,
-                                float origin_x, float origin_y,
-                                float dir_x, float dir_y);
+        // Entity spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type,
+        //                         float origin_x, float origin_y,
+        //                         float dir_x, float dir_y);
 
         std::shared_ptr<gameEngine::GameEngine> getEngine() const;
 
