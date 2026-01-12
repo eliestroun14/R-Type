@@ -8,7 +8,8 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 38
+#define NUMBER_ASSETS 36
+#define NUMBER_FONT_ASSETS 2
 #define NUMBER_AUDIO_ASSETS 25
 
 
@@ -82,12 +83,6 @@ enum Assets {
     SOUND_OFF_NONE_BUTTON,
     SOUND_OFF_HOVER_BUTTON,
     SOUND_OFF_CLICKED_BUTTON,
-
-
-    // FONT
-    DEFAULT_FONT,
-    DYSLEXIC_FONT,
-
 };
 
 static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
@@ -124,36 +119,43 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 
     // MENU
     // LOGO
-    "../assets/menu/mainMenu/logo/logoRtype.png",
+    "../assets/menu/mainMenu/logo/logoRType.png",
 
     // BUTTONS
-    "../assets/button/defaultNoneButton",
-    "../assets/button/defaultHoverButton",
-    "../assets/button/defaultClickedButton",
+    "../assets/button/defaultNoneButton.png",
+    "../assets/button/defaultHoverButton.png",
+    "../assets/button/defaultClickedButton.png",
 
-    "../assets/button/backNoneButton",
-    "../assets/button/backHoverButton",
-    "../assets/button/backClickedButton",
+    "../assets/button/backNoneButton.png",
+    "../assets/button/backHoverButton.png",
+    "../assets/button/backClickedButton.png",
 
     // MENU/OPTIONS -> MUSIC
-    "../assets/music/button/musicOnNoneButton",
-    "../assets/music/button/musicOnHoverButton",
-    "../assets/music/button/musicOnClickedButton",
+    "../assets/button/options/music/musicOnNoneButton.png",
+    "../assets/button/options/music/musicOnHoverButton.png",
+    "../assets/button/options/music/musicOnClickedButton.png",
 
-    "../assets/music/button/musicOffNoneButton",
-    "../assets/music/button/musicOffHoverButton",
-    "../assets/music/button/musicOffClickedButton",
+    "../assets/button/options/music/musicOffNoneButton.png",
+    "../assets/button/options/music/musicOffHoverButton.png",
+    "../assets/button/options/music/musicOffClickedButton.png",
 
     // MENU/OPTIONS -> SOUND
-    "../assets/sound/button/soundOnNoneButton",
-    "../assets/sound/button/soundOnHoverButton",
-    "../assets/sound/button/soundOnClickedButton",
+    "../assets/button/options/sound/soundOnNoneButton.png",
+    "../assets/button/options/sound/soundOnHoverButton.png",
+    "../assets/button/options/sound/soundOnClickedButton.png",
 
-    "../assets/sound/button/soundOffNoneButton",
-    "../assets/sound/button/soundOffHoverButton",
-    "../assets/sound/button/soundOffClickedButton",
+    "../assets/button/options/sound/soundOffNoneButton.png",
+    "../assets/button/options/sound/soundOffHoverButton.png",
+    "../assets/button/options/sound/soundOffClickedButton.png",
+};
 
 
+enum FontAssets {
+    DEFAULT_FONT,
+    DYSLEXIC_FONT,
+};
+
+static const std::array<std::string, NUMBER_FONT_ASSETS> pathFontAssets = {
     // FONT
     "../assets/font/defaultFont.otf",
     "../assets/font/dyslexicFont.otf",
