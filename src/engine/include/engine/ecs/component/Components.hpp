@@ -161,8 +161,8 @@ struct Text
     sf::Color color;
     ZIndex zIndex;
 
-    Text(std::string s, FontAssets f = DEFAULT_FONT, sf::Color c, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
-        : str(s), fontId(f), size(sz), color(c), zIndex(z) {}
+    Text(std::string s, FontAssets f = DEFAULT_FONT, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
+        : str(s), color(c), fontId(f), size(sz), zIndex(z) {}
 };
 
 /**
