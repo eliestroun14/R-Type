@@ -76,12 +76,28 @@ bool Game::runGameLoop()
         }
     }
     // ============================================================================
-    // RENDERING (Client Only)
+    // INPUT PROCESSING & RENDERING (Client Only)
     // ============================================================================
     if (_type == Type::CLIENT || _type == Type::STAND_ALONE) {
         auto engine = _coordinator->getEngine();
         if (engine) {
+            // Process window events (CRITICAL: prevents window from freezing)
+            engine->processInput();
+            
+            // Check if window was closed
+            if (!engine->isWindowOpen()) {
+                _isRunning = false;
+                return false;
+            }
+            
+            // Clear the window and prepare for rendering
             engine->beginFrame();
+            
+            // Update systems (including RenderSystem which draws entities)
+            float deltaSeconds = TICK_RATE_MS / 1000.0f;
+            engine->updateSystems(deltaSeconds);
+            
+            // Display the rendered frame
             engine->render();
         }
     }
@@ -95,8 +111,8 @@ void Game::serverTick(uint64_t elapsedMs)
     // ============================================================================
     // 1. Process incoming client input packets
     // 2. Validate and apply inputs to ECS
-    // 3. Update all game systems (physics, collision, AI, etc.)
-    // 4. Generate authoritative state packets
+    // 3. Update all game systems (physics, collision, AI, etc.) = simulate
+    // 4. Generate authoritative state packets = buildPacketBasedOnStatus
     // 5. Queue outgoing packets to clients
     // ============================================================================
     LOG_DEBUG("Server tick: elapsedMs={}", elapsedMs);
@@ -128,7 +144,7 @@ void Game::serverTick(uint64_t elapsedMs)
     // STEP 3: Generate Authoritative State Packets
 
     std::vector<common::protocol::Packet> outgoingPackets;
-    _coordinator->buildSeverPacketBasedOnStatus(outgoingPackets, elapsedMs);
+    _coordinator->buildServerPacketBasedOnStatus(outgoingPackets, elapsedMs);
 
 
     // STEP 4: Queue Outgoing Packets
@@ -173,16 +189,7 @@ void Game::clientTick(uint64_t elapsedMs)
     // (Server will validate and correct if needed in next update)
 
 
-    // STEP 3: Update ECS Systems Locally
-
-    auto engine = _coordinator->getEngine();
-    if (engine) {
-        float deltaSeconds = elapsedMs / 1000.0f;
-        engine->updateSystems(deltaSeconds);
-    }
-
-
-    // STEP 4: Generate Input Packets to Server
+    // STEP 3: Generate Input Packets to Server
 
     std::vector<common::protocol::Packet> outgoingPackets;
     _coordinator->buildClientPacketBasedOnStatus(outgoingPackets, elapsedMs);
@@ -200,7 +207,7 @@ void Game::addIncomingPacket(const common::network::ReceivedPacket &packet)
 {
     std::lock_guard<std::mutex> guard(_incomingMutex);
     _incoming.push_back(packet);
-    LOG_DEBUG("Game: incoming queue size={}", _incoming.size());
+    //LOG_DEBUG("Game: incoming queue size={}", _incoming.size());
 }
 
 std::optional<std::pair<common::protocol::Packet, std::optional<uint32_t>>> Game::popOutgoingPacket()
@@ -228,8 +235,132 @@ std::optional<common::network::ReceivedPacket> Game::popIncomingPacket()
     if (!_incoming.empty()) {
         auto packet = _incoming.front();
         _incoming.pop_front();
-        LOG_DEBUG("Game: popped incoming packet type={} remaining={}", static_cast<int>(packet.packet.header.packet_type), _incoming.size());
+        //LOG_DEBUG("Game: popped incoming packet type={} remaining={}", static_cast<int>(packet.packet.header.packet_type), _incoming.size());
         return packet;
     }
     return std::nullopt;
+}
+
+void Game::onPlayerConnected(uint32_t playerId)
+{
+    if (_type != Type::SERVER) {
+        LOG_WARN("onPlayerConnected called on non-server instance");
+        return;
+    }
+    
+    LOG_INFO("Game: Player {} connected, spawning entity", playerId);
+    
+    // First, send existing players to the new client
+    for (uint32_t existingPlayerId : _connectedPlayers) {
+        LOG_INFO("Game: Sending existing player {} to new client {}", existingPlayerId, playerId);
+        
+        // Get the entity for the existing player (entity ID = player ID)
+        auto engine = _coordinator->getEngine();
+        if (engine) {
+            try {
+                Entity existingEntity = engine->getEntityFromId(existingPlayerId);
+                auto& transforms = engine->getComponents<Transform>();
+                
+                // Use implicit conversion from Entity to size_t
+                std::size_t entityId = existingEntity;
+                if (entityId < transforms.size() && transforms[entityId].has_value()) {
+                    const auto& transform = transforms[entityId].value();
+                    
+                    // Create ENTITY_SPAWN packet manually (don't call spawnPlayerOnServer - entity already exists!)
+                    std::vector<uint8_t> args;
+                    
+                    // flags_count (1 byte)
+                    args.push_back(1);
+                    // flags (FLAG_RELIABLE)
+                    args.push_back(static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE));
+                    // sequence_number (4 bytes)
+                    static uint32_t sequence = 1000; // Different from new spawns
+                    sequence++;
+                    args.push_back(static_cast<uint8_t>(sequence & 0xFF));
+                    args.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
+                    args.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
+                    args.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
+                    // timestamp (4 bytes)
+                    uint32_t timestamp = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch()
+                    ).count());
+                    args.push_back(static_cast<uint8_t>(timestamp & 0xFF));
+                    args.push_back(static_cast<uint8_t>((timestamp >> 8) & 0xFF));
+                    args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
+                    args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
+                    // entity_id (4 bytes)
+                    args.push_back(static_cast<uint8_t>(existingPlayerId & 0xFF));
+                    args.push_back(static_cast<uint8_t>((existingPlayerId >> 8) & 0xFF));
+                    args.push_back(static_cast<uint8_t>((existingPlayerId >> 16) & 0xFF));
+                    args.push_back(static_cast<uint8_t>((existingPlayerId >> 24) & 0xFF));
+                    // entity_type (1 byte)
+                    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
+                    // position_x (2 bytes)
+                    uint16_t px = static_cast<uint16_t>(transform.x);
+                    args.push_back(static_cast<uint8_t>(px & 0xFF));
+                    args.push_back(static_cast<uint8_t>((px >> 8) & 0xFF));
+                    // position_y (2 bytes)
+                    uint16_t py = static_cast<uint16_t>(transform.y);
+                    args.push_back(static_cast<uint8_t>(py & 0xFF));
+                    args.push_back(static_cast<uint8_t>((py >> 8) & 0xFF));
+                    // mob_variant (1 byte)
+                    args.push_back(0);
+                    // initial_health (1 byte)
+                    args.push_back(100);
+                    // initial_velocity_x (2 bytes)
+                    args.push_back(0);
+                    args.push_back(0);
+                    // initial_velocity_y (2 bytes)
+                    args.push_back(0);
+                    args.push_back(0);
+                    // is_playable (1 byte) - NOT playable for the new client
+                    args.push_back(0);
+                    
+                    auto existingPlayerPacket = PacketManager::createEntitySpawn(args);
+                    if (existingPlayerPacket.has_value()) {
+                        // Send to the new client only
+                        addOutgoingPacket(existingPlayerPacket.value(), playerId);
+                        LOG_INFO("Game: Sent existing player {} info to new client {}", existingPlayerId, playerId);
+                    }
+                }
+            } catch (const std::exception& e) {
+                LOG_ERROR("Game: Failed to get entity for existing player {}: {}", existingPlayerId, e.what());
+            }
+        }
+    }
+    
+    // Calculate spawn position (stagger players horizontally)
+    static uint32_t playerCount = 0;
+    playerCount++;
+    
+    float spawnX = 100.0f + (playerCount * 100.0f);  // Stagger players
+    float spawnY = 400.0f;
+    
+    // Spawn the player on the server and get the spawn packet
+    auto spawnPacket = _coordinator->spawnPlayerOnServer(playerId, spawnX, spawnY);
+    
+    if (spawnPacket.has_value()) {
+        // Create a special version for the owning client with is_playable=1
+        auto ownerPacket = spawnPacket.value();
+        if (ownerPacket.data.size() >= 16) {
+            ownerPacket.data[15] = 1;  // Set is_playable=1 for the owning client
+        }
+        
+        // Send to the owning client specifically
+        addOutgoingPacket(ownerPacket, playerId);
+        LOG_INFO("Game: Sent playable ENTITY_SPAWN to owner (player {})", playerId);
+        
+        // Send the non-playable version to all OTHER existing clients
+        for (uint32_t existingPlayerId : _connectedPlayers) {
+            if (existingPlayerId != playerId) {
+                addOutgoingPacket(spawnPacket.value(), existingPlayerId);
+                LOG_INFO("Game: Sent non-playable ENTITY_SPAWN for player {} to existing player {}", playerId, existingPlayerId);
+            }
+        }
+        
+        // Add to connected players list
+        _connectedPlayers.push_back(playerId);
+    } else {
+        LOG_ERROR("Game: Failed to create spawn packet for player {}", playerId);
+    }
 }

@@ -11,11 +11,41 @@ void Coordinator::initEngine()
 {
     this->_engine = std::make_shared<gameEngine::GameEngine>();
     this->_engine->init();
+    
+    // Register all component types used in the game
+    this->_engine->registerComponent<Transform>();
+    this->_engine->registerComponent<Velocity>();
+    this->_engine->registerComponent<NetworkId>();
+    this->_engine->registerComponent<HitBox>();
+    this->_engine->registerComponent<Sprite>();
+    this->_engine->registerComponent<Animation>();
+    this->_engine->registerComponent<Text>();
+    this->_engine->registerComponent<ScrollingBackground>();
+    this->_engine->registerComponent<VisualEffect>();
+    this->_engine->registerComponent<Lifetime>();
+    this->_engine->registerComponent<Health>();
+    this->_engine->registerComponent<Powerup>();
+    this->_engine->registerComponent<Weapon>();
+    this->_engine->registerComponent<Clickable>();
+    this->_engine->registerComponent<Drawable>();
+    this->_engine->registerComponent<Playable>();
+    this->_engine->registerComponent<InputComponent>();
+    this->_engine->registerComponent<Enemy>();
+    this->_engine->registerComponent<Projectile>();
+    this->_engine->registerComponent<MovementPattern>();
+    this->_engine->registerComponent<AI>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
 {
     this->_engine->initRender();
+    this->_engine->initAudio();
+    
+    // Register RenderSystem to handle entity rendering
+    auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
+    
+    // Set signature: RenderSystem needs Transform and Sprite components
+    this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
 }
 
 // ==============================================================
@@ -33,7 +63,8 @@ Entity Coordinator::createPlayerEntity(
     bool withRenderComponents
 )
 {
-    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(playerId));
+    // Use createEntityWithId to ensure the entity ID matches the player ID
+    Entity entity = this->_engine->createEntityWithId(playerId, "Player_" + std::to_string(playerId));
     this->setupPlayerEntity(
         entity,
         playerId,
@@ -323,9 +354,166 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
     }
 }
 
-void Coordinator::buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
+// Should create packets based on server game state using define.hpp 
+void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
-    // TODO
+    // Get all networked entities (entities with NetworkId component)
+    auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
+    
+    if (networkIdComponents.size() == 0) {
+        // No entities to sync
+        return;
+    }
+    
+    // Collect all entity IDs that need to be synchronized
+    std::vector<uint32_t> entityIds;
+    for (size_t i = 0; i < networkIdComponents.size(); ++i) {
+        if (networkIdComponents[i].has_value()) {
+            Entity entity = Entity::fromId(static_cast<uint32_t>(i));
+            if (this->_engine->isAlive(entity)) {
+                entityIds.push_back(networkIdComponents[i].value().id);
+            }
+        }
+    }
+    
+    if (entityIds.empty()) {
+        return;
+    }
+    
+    // Use a static counter for sequence numbers
+    static uint32_t sequenceNumber = 0;
+    sequenceNumber++;
+    
+    // Create Transform Snapshot for all networked entities
+    common::protocol::Packet transformPacket;
+    if (createPacketTransformSnapshot(&transformPacket, entityIds, sequenceNumber)) {
+        outgoingPackets.push_back(transformPacket);
+        LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Transform snapshot for {} entities", entityIds.size());
+    }
+    
+    // Create Health Snapshot for all networked entities with Health component
+    std::vector<uint32_t> healthEntityIds;
+    for (uint32_t entityId : entityIds) {
+        Entity entity = this->_engine->getEntityFromId(entityId);
+        if (this->_engine->isAlive(entity)) {
+            auto healthOpt = this->_engine->getComponentEntity<Health>(entity);
+            if (healthOpt.has_value()) {
+                healthEntityIds.push_back(entityId);
+            }
+        }
+    }
+    
+    if (!healthEntityIds.empty()) {
+        common::protocol::Packet healthPacket;
+        if (createPacketHealthSnapshot(&healthPacket, healthEntityIds, sequenceNumber)) {
+            outgoingPackets.push_back(healthPacket);
+            LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Health snapshot for {} entities", healthEntityIds.size());
+        }
+    }
+    
+    // Create Weapon Snapshot for all networked entities with Weapon component
+    std::vector<uint32_t> weaponEntityIds;
+    for (uint32_t entityId : entityIds) {
+        Entity entity = this->_engine->getEntityFromId(entityId);
+        if (this->_engine->isAlive(entity)) {
+            auto weaponOpt = this->_engine->getComponentEntity<Weapon>(entity);
+            if (weaponOpt.has_value()) {
+                weaponEntityIds.push_back(entityId);
+            }
+        }
+    }
+    
+    if (!weaponEntityIds.empty()) {
+        common::protocol::Packet weaponPacket;
+        if (createPacketWeaponSnapshot(&weaponPacket, weaponEntityIds, sequenceNumber)) {
+            outgoingPackets.push_back(weaponPacket);
+            LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Weapon snapshot for {} entities", weaponEntityIds.size());
+        }
+    }
+    
+    LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created {} snapshot packets total", outgoingPackets.size());
+}
+
+std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_t playerId, float posX, float posY)
+{
+    // Create the player entity on the server
+    Entity playerEntity = this->createPlayerEntity(
+        playerId,
+        posX,
+        posY,
+        0.0f,  // initial velocity X
+        0.0f,  // initial velocity Y
+        100,   // initial health
+        false, // not playable on server
+        false  // no render components on server
+    );
+    
+    LOG_INFO_CAT("Coordinator", "Spawned player entity for client ID {}", playerId);
+    
+    // Create ENTITY_SPAWN packet to broadcast to all clients
+    std::vector<uint8_t> args;
+    
+    // flags_count (1 byte)
+    args.push_back(1);
+    
+    // flags (FLAG_RELIABLE)
+    args.push_back(static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE));
+    
+    // sequence_number (4 bytes)
+    static uint32_t sequence = 0;
+    sequence++;
+    args.push_back(static_cast<uint8_t>(sequence & 0xFF));
+    args.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
+    args.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
+    args.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
+    
+    // timestamp (4 bytes)
+    uint32_t timestamp = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()
+    ).count());
+    args.push_back(static_cast<uint8_t>(timestamp & 0xFF));
+    args.push_back(static_cast<uint8_t>((timestamp >> 8) & 0xFF));
+    args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
+    args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
+    
+    // entity_id (4 bytes)
+    args.push_back(static_cast<uint8_t>(playerId & 0xFF));
+    args.push_back(static_cast<uint8_t>((playerId >> 8) & 0xFF));
+    args.push_back(static_cast<uint8_t>((playerId >> 16) & 0xFF));
+    args.push_back(static_cast<uint8_t>((playerId >> 24) & 0xFF));
+    
+    // entity_type (1 byte) - ENTITY_TYPE_PLAYER
+    args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
+    
+    // position_x (2 bytes)
+    uint16_t px = static_cast<uint16_t>(posX);
+    args.push_back(static_cast<uint8_t>(px & 0xFF));
+    args.push_back(static_cast<uint8_t>((px >> 8) & 0xFF));
+    
+    // position_y (2 bytes)
+    uint16_t py = static_cast<uint16_t>(posY);
+    args.push_back(static_cast<uint8_t>(py & 0xFF));
+    args.push_back(static_cast<uint8_t>((py >> 8) & 0xFF));
+    
+    // mob_variant (1 byte) - not used for player
+    args.push_back(0);
+    
+    // initial_health (1 byte)
+    args.push_back(100);
+    
+    // initial_velocity_x (2 bytes)
+    args.push_back(0);
+    args.push_back(0);
+    
+    // initial_velocity_y (2 bytes)
+    args.push_back(0);
+    args.push_back(0);
+    
+    // is_playable (1 byte) - will be 0 for other clients, 1 for owning client
+    // Note: The network manager should handle setting this to 1 for the owning client
+    args.push_back(0);
+    
+    return PacketManager::createEntitySpawn(args);
 }
 
 std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
@@ -342,6 +530,7 @@ std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
     return playerIds;
 }
 
+// Should only be called on client side to send input packets to server
 void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
     auto playerIds = getPlayablePlayerIds();
@@ -495,8 +684,8 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health);
 
-    // Create the entity
-    Entity newEntity = this->_engine->createEntity("Entity_" + std::to_string(payload.entity_id));
+    // Create the entity with the specific ID from the server
+    Entity newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
 
     // Add type-specific components
     switch (payload.entity_type) {
@@ -1916,6 +2105,8 @@ bool Coordinator::createPacketEntityDestroy(common::protocol::Packet* packet, ui
 std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
 {
     return this->_engine;
+}
+
 Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type, float origin_x, float origin_y, float dir_x, float dir_y)
 {
     bool isFromPlayable = false;
@@ -2238,10 +2429,5 @@ void Coordinator::playMusic(protocol::AudioEffectType musicType)
 void Coordinator::stopMusic()
 {
     this->_engine->getAudioManager()->stopMusic();
-}
-
-std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
-{
-    return this->_engine;
 }
 

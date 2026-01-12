@@ -27,6 +27,13 @@ Server::~Server() {
 }
 
 bool Server::init() {
+    // Set up callback for when players connect
+    _networkManager->setOnPlayerConnectedCallback([this](uint32_t playerId) {
+        if (_game) {
+            _game->onPlayerConnected(playerId);
+        }
+    });
+    
     return true;
 }
 

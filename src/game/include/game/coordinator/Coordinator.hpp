@@ -21,6 +21,7 @@
 #include <common/logger/Logger.hpp>
 #include <common/protocol/Payload.hpp>
 #include <engine/render/SpriteAllocator.hpp>
+#include <game/systems/RenderSystem.hpp>
 
 
 class Coordinator {
@@ -87,13 +88,17 @@ class Coordinator {
         void processClientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
 
         //TODO:
-        void buildSeverPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
+        void buildServerPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
+
+        // Helper to spawn a player entity and broadcast ENTITY_SPAWN packet
+        std::optional<common::protocol::Packet> spawnPlayerOnServer(uint32_t playerId, float posX, float posY);
 
         // HANDLE PACKETS
         std::vector<uint32_t> getPlayablePlayerIds();
         bool createPacketInputClient(common::protocol::Packet *packet, uint32_t playerId);
 
+        // HANDLE PACKETS
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs);
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet);
@@ -161,9 +166,6 @@ class Coordinator {
          * @return true if packet was created successfully, false otherwise
          */
         bool createPacketEntityDestroy(common::protocol::Packet* packet, uint32_t entityId, uint8_t reason, uint32_t sequence_number);
-        Entity spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type,
-                                float origin_x, float origin_y,
-                                float dir_x, float dir_y);
 
         std::shared_ptr<gameEngine::GameEngine> getEngine() const;
 

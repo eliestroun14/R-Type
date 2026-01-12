@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <functional>
 #include <common/constants/defines.hpp>
 #include <common/network/NetworkManager.hpp>
 #include <common/network/sockets/AsioSocket.hpp>
@@ -37,6 +38,11 @@ public:
     std::vector<common::network::ReceivedPacket> fetchIncoming() override;
 
     void run();
+
+    // Set callback for when a player connects
+    void setOnPlayerConnectedCallback(std::function<void(uint32_t)> callback) {
+        _onPlayerConnected = callback;
+    }
 
 private:
     struct ClientSlot {
@@ -70,6 +76,8 @@ private:
     std::mutex _outMutex;
     std::deque<common::network::ReceivedPacket> _incoming;
     std::deque<std::pair<common::protocol::Packet, std::optional<uint32_t>>> _outgoing;
+
+    std::function<void(uint32_t)> _onPlayerConnected;
 };
 
 } // namespace network

@@ -433,19 +433,25 @@ namespace gameEngine {
             /** @brief Processes window events and updates input states. */
             void processInput()
             {
-                this->_renderManager->processInput();
+                if (this->_renderManager) {
+                    this->_renderManager->processInput();
+                }
             }
 
             /** @brief Clears the window and prepares for a new frame. */
             void beginFrame()
             {
-                this->_renderManager->beginFrame();
+                if (this->_renderManager) {
+                    this->_renderManager->beginFrame();
+                }
             }
 
             /** @brief Displays everything that was drawn during the frame. */
             void render()
             {
-                this->_renderManager->render();
+                if (this->_renderManager) {
+                    this->_renderManager->render();
+                }
             }
 
             // ################################################################
@@ -462,7 +468,9 @@ namespace gameEngine {
             void playSound(protocol::AudioEffectType type, float x, float y, 
                         float volume = 1.0f, float pitch = 1.0f)
             {
-                this->_audioManager->playSound(type, x, y, volume, pitch);
+                if (this->_audioManager) {
+                    this->_audioManager->playSound(type, x, y, volume, pitch);
+                }
             }
 
             /**
@@ -474,7 +482,9 @@ namespace gameEngine {
             void playSoundUI(protocol::AudioEffectType type, 
                             float volume = 1.0f, float pitch = 1.0f)
             {
-                this->_audioManager->playSoundUI(type, volume, pitch);
+                if (this->_audioManager) {
+                    this->_audioManager->playSoundUI(type, volume, pitch);
+                }
             }
 
             /**
@@ -484,7 +494,9 @@ namespace gameEngine {
              */
             void playMusic(const std::string& filepath, float volume = 0.5f)
             {
-                this->_audioManager->playMusic(filepath, volume);
+                if (this->_audioManager) {
+                    this->_audioManager->playMusic(filepath, volume);
+                }
             }
 
             /**
@@ -492,7 +504,9 @@ namespace gameEngine {
              */
             void stopMusic()
             {
-                this->_audioManager->stopMusic();
+                if (this->_audioManager) {
+                    this->_audioManager->stopMusic();
+                }
             }
 
             /**
@@ -501,7 +515,9 @@ namespace gameEngine {
              */
             void updateAudioListener(float x, float y)
             {
-                this->_audioManager->setListenerPosition(x, y);
+                if (this->_audioManager) {
+                    this->_audioManager->setListenerPosition(x, y);
+                }
             }
 
             /**

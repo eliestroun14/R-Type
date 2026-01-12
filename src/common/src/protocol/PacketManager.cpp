@@ -100,17 +100,10 @@ static bool validateEntityState(const std::vector<uint8_t> &data, size_t offset,
         return false;
     }
 
-    // Offset +0 to +3: entity_id must not be 0
+    // Offset +0 to +3: entity_id (0 is valid - player IDs start at 0)
     uint32_t entity_id;
     std::memcpy(&entity_id, data.data() + offset + 0, sizeof(uint32_t));
-    if (entity_id == 0) {
-        if (entity_index >= 0) {
-            LOG_ERROR_CAT("PacketManager", "validateEntityState[%d]: entity_id == 0", entity_index);
-        } else {
-            LOG_ERROR_CAT("PacketManager", "validateEntityState: entity_id == 0");
-        }
-        return false;
-    }
+    // Entity ID 0 is now allowed (for player 0)
 
     // Offset +4: entity_type must be valid (0x01 to 0x08)
     uint8_t entity_type;

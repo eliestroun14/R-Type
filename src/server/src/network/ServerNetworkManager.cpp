@@ -109,12 +109,12 @@ void ServerNetworkManager::run()
         std::string remoteAddress;
 
         if (_acceptorSocket->receiveFrom(incoming, remoteAddress)) {
-            LOG_DEBUG("Received packet from {}", remoteAddress);
+            //LOG_DEBUG("Received packet from {}", remoteAddress);
             std::lock_guard<std::mutex> lock(_inMutex);
             auto clientId = findClientIdByAddress(remoteAddress);
             if (clientId.has_value()) {
                 _incoming.push_back({incoming, clientId.value()});
-                LOG_DEBUG("ServerNetworkManager: incoming queue size={}", _incoming.size());
+                //LOG_DEBUG("ServerNetworkManager: incoming queue size={}", _incoming.size());
             }
             if (!shouldForward(incoming)) {
                 handleNetworkPacket(incoming, remoteAddress);
@@ -123,7 +123,7 @@ void ServerNetworkManager::run()
 
         {
             std::lock_guard<std::mutex> lock(_outMutex);
-            LOG_DEBUG("ServerNetworkManager: processing outgoing queue size={}", _outgoing.size());
+            //LOG_DEBUG("ServerNetworkManager: processing outgoing queue size={}", _outgoing.size());
             while (!_outgoing.empty()) {
                 const auto [packet, target] = _outgoing.front();
                 if (target.has_value()) {
@@ -277,6 +277,11 @@ void ServerNetworkManager::handleClientConnect(const std::string& remoteAddress)
         LOG_INFO("Server accept sent to client {}", clientId);
     } else {
         LOG_ERROR("Failed to create ServerAccept packet for client {}", clientId);
+    }
+    
+    // Notify the game that a player has connected
+    if (_onPlayerConnected) {
+        _onPlayerConnected(clientId);
     }
 }
 
