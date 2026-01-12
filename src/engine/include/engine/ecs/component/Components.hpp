@@ -155,8 +155,14 @@ struct Animation
  */
 struct Text
 {
-    std::string data;
-    Text(std::string text) : data(text) {}
+    std::string str;
+    FontAssets fontId;
+    unsigned int size;
+    sf::Color color;
+    ZIndex zIndex;
+
+    Text(std::string s, FontAssets f = DEFAULT_FONT, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
+        : str(s), fontId(f), size(sz), color(sf::Color::White), zIndex(z) {}
 };
 
 /**
