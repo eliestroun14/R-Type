@@ -20,14 +20,14 @@ void RenderSystem::onUpdate(float dt)
     }
 
     auto& sprites = this->_engine.getComponents<Sprite>();
+    auto& texts = this->_engine.getComponents<Text>();
 
     // we need to sort here cuz Z = 0 (background) and Z = 1 (player) and Z = 2 (HUD/UI), to display in the right order
     std::sort(this->_sortedEntities.begin(), this->_sortedEntities.end(),
-        [&sprites](size_t a, size_t b) {
-            // little check au cas ou a sprite doesn't have a zIndex (no reason to append but au cas ou)
-            if (!sprites[a] || !sprites[b])
-                return a < b;
-            return sprites[a]->zIndex < sprites[b]->zIndex;
+        [&sprites, &texts](size_t a, size_t b) {
+            int za = sprites[a] ? sprites[a]->zIndex : (texts[a] ? texts[a]->zIndex : 0);
+            int zb = sprites[b] ? sprites[b]->zIndex : (texts[b] ? texts[b]->zIndex : 0);
+            return za < zb;
         }
     );
 
@@ -42,7 +42,6 @@ void RenderSystem::onUpdate(float dt)
     float scale = std::min(scaleX, scaleY);
 
     auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();
-    auto& texts = this->_engine.getComponents<Text>();
 
     for (const auto& entity : this->_sortedEntities) {
         auto& trans = transforms[entity].value();
