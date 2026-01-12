@@ -11,7 +11,7 @@ void Coordinator::initEngine()
 {
     this->_engine = std::make_shared<gameEngine::GameEngine>();
     this->_engine->init();
-    
+
     // Register all component types used in the game
     this->_engine->registerComponent<Transform>();
     this->_engine->registerComponent<Velocity>();
@@ -40,10 +40,10 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
 {
     this->_engine->initRender();
     this->_engine->initAudio();
-    
+
     // Register RenderSystem to handle entity rendering
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
-    
+
     // Set signature: RenderSystem needs Transform and Sprite components
     this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
 }
@@ -359,12 +359,12 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 {
     // Get all networked entities (entities with NetworkId component)
     auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
-    
+
     if (networkIdComponents.size() == 0) {
         // No entities to sync
         return;
     }
-    
+
     // Collect all entity IDs that need to be synchronized
     std::vector<uint32_t> entityIds;
     for (size_t i = 0; i < networkIdComponents.size(); ++i) {
@@ -375,22 +375,22 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             }
         }
     }
-    
+
     if (entityIds.empty()) {
         return;
     }
-    
+
     // Use a static counter for sequence numbers
     static uint32_t sequenceNumber = 0;
     sequenceNumber++;
-    
+
     // Create Transform Snapshot for all networked entities
     common::protocol::Packet transformPacket;
     if (createPacketTransformSnapshot(&transformPacket, entityIds, sequenceNumber)) {
         outgoingPackets.push_back(transformPacket);
         LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Transform snapshot for {} entities", entityIds.size());
     }
-    
+
     // Create Health Snapshot for all networked entities with Health component
     std::vector<uint32_t> healthEntityIds;
     for (uint32_t entityId : entityIds) {
@@ -402,7 +402,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             }
         }
     }
-    
+
     if (!healthEntityIds.empty()) {
         common::protocol::Packet healthPacket;
         if (createPacketHealthSnapshot(&healthPacket, healthEntityIds, sequenceNumber)) {
@@ -410,7 +410,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Health snapshot for {} entities", healthEntityIds.size());
         }
     }
-    
+
     // Create Weapon Snapshot for all networked entities with Weapon component
     std::vector<uint32_t> weaponEntityIds;
     for (uint32_t entityId : entityIds) {
@@ -422,7 +422,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             }
         }
     }
-    
+
     if (!weaponEntityIds.empty()) {
         common::protocol::Packet weaponPacket;
         if (createPacketWeaponSnapshot(&weaponPacket, weaponEntityIds, sequenceNumber)) {
@@ -430,7 +430,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Weapon snapshot for {} entities", weaponEntityIds.size());
         }
     }
-    
+
     LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created {} snapshot packets total", outgoingPackets.size());
 }
 
@@ -447,18 +447,18 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
         false, // not playable on server
         false  // no render components on server
     );
-    
+
     LOG_INFO_CAT("Coordinator", "Spawned player entity for client ID {}", playerId);
-    
+
     // Create ENTITY_SPAWN packet to broadcast to all clients
     std::vector<uint8_t> args;
-    
+
     // flags_count (1 byte)
     args.push_back(1);
-    
+
     // flags (FLAG_RELIABLE)
     args.push_back(static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE));
-    
+
     // sequence_number (4 bytes)
     static uint32_t sequence = 0;
     sequence++;
@@ -466,7 +466,7 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     args.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
     args.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
     args.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
-    
+
     // timestamp (4 bytes)
     uint32_t timestamp = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()
@@ -475,44 +475,44 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     args.push_back(static_cast<uint8_t>((timestamp >> 8) & 0xFF));
     args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
     args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
-    
+
     // entity_id (4 bytes)
     args.push_back(static_cast<uint8_t>(playerId & 0xFF));
     args.push_back(static_cast<uint8_t>((playerId >> 8) & 0xFF));
     args.push_back(static_cast<uint8_t>((playerId >> 16) & 0xFF));
     args.push_back(static_cast<uint8_t>((playerId >> 24) & 0xFF));
-    
+
     // entity_type (1 byte) - ENTITY_TYPE_PLAYER
     args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
-    
+
     // position_x (2 bytes)
     uint16_t px = static_cast<uint16_t>(posX);
     args.push_back(static_cast<uint8_t>(px & 0xFF));
     args.push_back(static_cast<uint8_t>((px >> 8) & 0xFF));
-    
+
     // position_y (2 bytes)
     uint16_t py = static_cast<uint16_t>(posY);
     args.push_back(static_cast<uint8_t>(py & 0xFF));
     args.push_back(static_cast<uint8_t>((py >> 8) & 0xFF));
-    
+
     // mob_variant (1 byte) - not used for player
     args.push_back(0);
-    
+
     // initial_health (1 byte)
     args.push_back(100);
-    
+
     // initial_velocity_x (2 bytes)
     args.push_back(0);
     args.push_back(0);
-    
+
     // initial_velocity_y (2 bytes)
     args.push_back(0);
     args.push_back(0);
-    
+
     // is_playable (1 byte) - will be 0 for other clients, 1 for owning client
     // Note: The network manager should handle setting this to 1 for the owning client
     args.push_back(0);
-    
+
     return PacketManager::createEntitySpawn(args);
 }
 
@@ -1431,7 +1431,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         // Game is finished - stop running state
         _gameRunning = false;
         LOG_INFO_CAT("Coordinator", "Game ended - all levels completed");
-        
+    
         // Display final game stats
         std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
         Entity timeEntity = this->_engine->createEntity("CompletionTime");
@@ -1441,7 +1441,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     } else {
         // More levels to play - keep game running
         LOG_INFO_CAT("Coordinator", "Waiting for server to start level %u", next_level);
-        
+    
         // Display "Next Level" message
         std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
         Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
@@ -1590,12 +1590,12 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
         if (this->_engine->isAlive(parentEntity)) {
             auto& parentTransform = this->_engine->getComponentEntity<Transform>(parentEntity);
             auto& forceTransform = this->_engine->getComponentEntity<Transform>(forceEntity);
-            
+        
             if (parentTransform.has_value() && forceTransform.has_value()) {
                 // Adjust Force position based on attachment point
                 float offsetX = 0.f;
                 float offsetY = 0.f;
-                
+            
                 switch (attachment_point) {
                     case 0x01: // FRONT
                         offsetX = 30.f;
@@ -1616,10 +1616,10 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
                     default:
                         break;
                 }
-                
+            
                 forceTransform->x = parentTransform->x + offsetX;
                 forceTransform->y = parentTransform->y + offsetY;
-                
+            
                 LOG_DEBUG_CAT("Coordinator", "Force %u attached to parent %u at (%.1f, %.1f)",
                     force_entity_id, parent_ship_id, forceTransform->x, forceTransform->y);
             }
@@ -1641,31 +1641,31 @@ void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
 
     // Parse the AI_STATE payload
     const uint8_t* ptr = packet.data.data();
-    
+
     uint32_t entity_id = 0;
     std::memcpy(&entity_id, ptr, sizeof(entity_id));
     ptr += sizeof(entity_id);
-    
+
     uint8_t current_state = 0;
     std::memcpy(&current_state, ptr, sizeof(current_state));
     ptr += sizeof(current_state);
-    
+
     uint8_t behavior_type = 0;
     std::memcpy(&behavior_type, ptr, sizeof(behavior_type));
     ptr += sizeof(behavior_type);
-    
+
     uint32_t target_entity_id = 0;
     std::memcpy(&target_entity_id, ptr, sizeof(target_entity_id));
     ptr += sizeof(target_entity_id);
-    
+
     int16_t waypoint_x = 0;
     std::memcpy(&waypoint_x, ptr, sizeof(waypoint_x));
     ptr += sizeof(waypoint_x);
-    
+
     int16_t waypoint_y = 0;
     std::memcpy(&waypoint_y, ptr, sizeof(waypoint_y));
     ptr += sizeof(waypoint_y);
-    
+
     uint16_t state_timer = 0;
     std::memcpy(&state_timer, ptr, sizeof(state_timer));
     ptr += sizeof(state_timer);
@@ -1722,31 +1722,31 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     }
 
     Transform& transform = transformOpt.value();
-    
+
     // Build args vector for PacketManager
     std::vector<uint8_t> args;
-    
+
     // flags_count (0 for now)
     uint8_t flags_count = 0;
     args.push_back(flags_count);
-    
+
     // sequence_number
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
                 reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
-    
-    // timestamp
+
+                // timestamp
     uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
                 reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
-    
-    // entity_id
+
+                // entity_id
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
                 reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
-    
-    // entity_type (default to ENEMY if no specific type found)
+
+                // entity_type (default to ENEMY if no specific type found)
     uint8_t entity_type = static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY);
     args.push_back(entity_type);
-    
+
     // position_x, position_y
     uint16_t position_x = static_cast<uint16_t>(transform.x);
     uint16_t position_y = static_cast<uint16_t>(transform.y);
@@ -1754,15 +1754,15 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
                 reinterpret_cast<uint8_t*>(&position_x) + sizeof(position_x));
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&position_y), 
                 reinterpret_cast<uint8_t*>(&position_y) + sizeof(position_y));
-    
-    // mob_variant (0 for default)
+
+                // mob_variant (0 for default)
     uint8_t mob_variant = 0;
     args.push_back(mob_variant);
-    
+
     // initial_health
     uint8_t initial_health = healthOpt.has_value() ? static_cast<uint8_t>(healthOpt.value().currentHealth) : 100;
     args.push_back(initial_health);
-    
+
     // initial_velocity_x, initial_velocity_y
     int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx) : 0;
     int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy) : 0;
@@ -1770,8 +1770,8 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
                 reinterpret_cast<uint8_t*>(&velocity_x) + sizeof(velocity_x));
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_y), 
                 reinterpret_cast<uint8_t*>(&velocity_y) + sizeof(velocity_y));
-    
-    // is_playable (check for InputComponent)
+
+                // is_playable (check for InputComponent)
     uint8_t is_playable = this->_engine->getComponentEntity<InputComponent>(entity).has_value() ? 1 : 0;
     args.push_back(is_playable);
 
@@ -1790,7 +1790,7 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
 
     // Copy to output packet
     *packet = result.value();
-    
+
     LOG_DEBUG_CAT("Coordinator", "createPacketEntitySpawn: created packet for entity %u", entityId);
     return true;
 }
@@ -1804,26 +1804,26 @@ bool Coordinator::createPacketTransformSnapshot(common::protocol::Packet* packet
 
     // Build args vector
     std::vector<uint8_t> args;
-    
+
     // flags_count (0 for now)
     uint8_t flags_count = 0;
     args.push_back(flags_count);
-    
+
     // sequence_numbe
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
                 reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
-    
-    // timestamp
+
+                // timestamp
     uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
                 reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
-    
-    // entity_count
+
+                // entity_count
     uint16_t entity_count = static_cast<uint16_t>(entityIds.size());
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&entity_count), 
                 reinterpret_cast<uint8_t*>(&entity_count) + sizeof(entity_count));
-    
-    // For each entity, add transform data
+
+                // For each entity, add transform data
     for (uint32_t entityId : entityIds) {
         Entity entity = Entity::fromId(entityId);
         if (!this->_engine->isAlive(entity)) {
@@ -1890,26 +1890,26 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
     }
 
     std::vector<uint8_t> args;
-    
+
     // flags_count
     uint8_t flags_count = 0;
     args.push_back(flags_count);
-    
+
     // sequence_number
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
                 reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
-    
-    // timestamp
+
+                // timestamp
     uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
                 reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
-    
-    // entity_count
+
+                // entity_count
     uint16_t entity_count = static_cast<uint16_t>(entityIds.size());
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&entity_count), 
                 reinterpret_cast<uint8_t*>(&entity_count) + sizeof(entity_count));
-    
-    // For each entity, add health data
+
+                // For each entity, add health data
     for (uint32_t entityId : entityIds) {
         Entity entity = Entity::fromId(entityId);
         if (!this->_engine->isAlive(entity)) {
@@ -1962,26 +1962,26 @@ bool Coordinator::createPacketWeaponSnapshot(common::protocol::Packet* packet, c
     }
 
     std::vector<uint8_t> args;
-    
+
     // flags_count
     uint8_t flags_count = 0;
     args.push_back(flags_count);
-    
+
     // sequence_number
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
                 reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
-    
-    // timestamp
+
+                // timestamp
     uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
                 reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
-    
-    // entity_count
+
+                // entity_count
     uint16_t entity_count = static_cast<uint16_t>(entityIds.size());
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&entity_count), 
                 reinterpret_cast<uint8_t*>(&entity_count) + sizeof(entity_count));
-    
-    // For each entity, add weapon data
+
+                // For each entity, add weapon data
     for (uint32_t entityId : entityIds) {
         Entity entity = Entity::fromId(entityId);
         if (!this->_engine->isAlive(entity)) {
@@ -2043,11 +2043,11 @@ bool Coordinator::createPacketEntityDestroy(common::protocol::Packet* packet, ui
     }
 
     Entity entity = Entity::fromId(entityId);
-    
+
     // Get final position if entity still exists
     uint16_t final_x = 0;
     uint16_t final_y = 0;
-    
+
     if (this->_engine->isAlive(entity)) {
         auto transformOpt = this->_engine->getComponentEntity<Transform>(entity);
         if (transformOpt.has_value()) {
@@ -2057,32 +2057,32 @@ bool Coordinator::createPacketEntityDestroy(common::protocol::Packet* packet, ui
     }
 
     std::vector<uint8_t> args;
-    
+
     // flags_count
     uint8_t flags_count = 0;
     args.push_back(flags_count);
-    
+
     // sequence_number
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
                 reinterpret_cast<uint8_t*>(&sequence_number) + sizeof(sequence_number));
-    
-    // timestamp
+
+                // timestamp
     uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), 
                 reinterpret_cast<uint8_t*>(&timestamp) + sizeof(timestamp));
-    
-    // entity_id
+
+                // entity_id
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
                 reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
-    
-    // destroy_reason
+
+                // destroy_reason
     args.push_back(reason);
-    
+
     // final_position_x
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&final_x), 
                 reinterpret_cast<uint8_t*>(&final_x) + sizeof(final_x));
-    
-    // final_position_y
+
+                // final_position_y
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&final_y), 
                 reinterpret_cast<uint8_t*>(&final_y) + sizeof(final_y));
 

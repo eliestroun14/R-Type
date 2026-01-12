@@ -53,6 +53,9 @@ class Game {
 
         // Client-side prediction and reconciliation step
         void clientTick(uint64_t elapsedMs);
+        
+        // Helper method to send existing players to a new client
+        void sendExistingPlayersToNewClient(uint32_t newPlayerId);
 
     private:
         Type _type;

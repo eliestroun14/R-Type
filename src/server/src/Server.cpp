@@ -33,7 +33,7 @@ bool Server::init() {
             _game->onPlayerConnected(playerId);
         }
     });
-    
+
     return true;
 }
 
@@ -116,7 +116,7 @@ static void printHelp(const char* programName) {
 // Parse command line arguments
 static bool parseArguments(int argc, char const *argv[], server::ServerConfig& config) {
     std::map<std::string, std::string> args;
-    
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
@@ -156,7 +156,7 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
                 std::string("Unknown argument: ") + arg);
         }
     }
-    
+
     // Apply parsed values
     try {
         if (args.find("port") != args.end()) {
@@ -192,7 +192,7 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
         throw Error(ErrorType::ConfigurationError, 
             std::string("Argument value out of range: ") + e.what());
     }
-    
+
     return true;
 }
 
@@ -208,11 +208,11 @@ int main(int argc, char const *argv[])
         false,
         true
     );
-    
+
     // Set up signal handlers
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
-    
+
     try {
         // Default configuration
         server::ServerConfig config;
