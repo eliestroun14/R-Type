@@ -1374,7 +1374,7 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
         return;
     }
 
-    // Get or add Force component
+    /* // Get or add Force component
     auto& forceComponent = this->_engine->getComponentEntity<Force>(forceEntity);
     if (!forceComponent.has_value()) {
         // Force component doesn't exist, create it
@@ -1389,7 +1389,7 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
         forceComponent->powerLevel = power_level;
         forceComponent->chargePercentage = charge_percentage;
         forceComponent->isFiring = (is_firing != 0);
-    }
+    } */
 
     // Update Force position based on attachment
     if (parent_ship_id == 0) {
@@ -1826,5 +1826,10 @@ void Coordinator::playMusic(protocol::AudioEffectType musicType)
 void Coordinator::stopMusic()
 {
     this->_engine->getAudioManager()->stopMusic();
+}
+
+std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
+{
+    return this->_engine;
 }
 

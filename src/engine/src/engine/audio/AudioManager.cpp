@@ -33,8 +33,8 @@ void AudioManager::playSound(protocol::AudioEffectType type, float x, float y, f
     auto buffer = this->_audioStorage.getSoundBuffer(assetId);
 
     if (!buffer) {
-        int type = static_cast<int>(type);
-        LOG_ERROR_CAT("[AudioManager] Sound buffer not found for type ", std::to_string(type));
+        int typeValue = static_cast<int>(type);
+        LOG_ERROR("[AudioManager] Sound buffer not found for type {}", typeValue);
         return;
     }
 
@@ -63,8 +63,8 @@ void AudioManager::playSoundUI(protocol::AudioEffectType type, float volume, flo
     auto buffer = this->_audioStorage.getSoundBuffer(assetId);
 
     if (!buffer) {
-        int type = static_cast<int>(type);
-        LOG_ERROR_CAT("[AudioManager] Sound buffer not found for type ", std::to_string(type));
+        int typeValue = static_cast<int>(type);
+        LOG_ERROR("[AudioManager] Sound buffer not found for type {}", typeValue);
         return;
     }
 
@@ -90,14 +90,14 @@ void AudioManager::playMusic(const std::string& filepath, float volume)
         this->_music = std::make_unique<sf::Music>();
 
     if (!this->_music->openFromFile(filepath)) {
-        LOG_ERROR_CAT("[AudioManager] Failed to load music: ", filepath);
+        LOG_ERROR("[AudioManager] Failed to load music: {}", filepath);
         return;
     }
 
     this->_music->setVolume(volume * this->_musicVolume * this->_masterVolume * 100.0f);
     this->_music->setLoop(true);
     this->_music->play();
-    LOG_INFO_CAT("[AudioManager] Music started: ", filepath);
+    LOG_INFO("[AudioManager] Music started: {}", filepath);
 
 }
 
@@ -224,7 +224,7 @@ AudioAssets AudioManager::mapProtocolToAsset(protocol::AudioEffectType type) con
                 return AudioAssets::DEFEAT_MUSIC;
 
             default:
-                LOG_ERROR_CAT("[AudioManager] Unknown audio effect type: ", std::to_string(static_cast<int>(type)));
+                LOG_ERROR("[AudioManager] Unknown audio effect type: {}", static_cast<int>(type));
                 return AudioAssets::SFX_SHOOT_BASIC; // Fallback
         }
     }
