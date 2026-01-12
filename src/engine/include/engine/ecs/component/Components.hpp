@@ -510,4 +510,31 @@ struct AudioSource {
     }
 };
 
+
+// ############################################################################
+// ################################ BUTTON  ###################################
+// ############################################################################
+
+struct ButtonTextures {
+    Assets none;
+    Assets hover;
+    Assets clicked;
+};
+
+enum ButtonState {
+    NONE,
+    HOVER,
+    CLICKED,
+};
+
+struct ButtonComponent {
+    ButtonTextures textures;
+    ButtonState state = ButtonState::NONE;
+    std::function<void()> onClick;
+
+    ButtonComponent(ButtonTextures t, std::function<void()> click)
+        : textures(t), onClick(click) {}
+};
+
+
 #endif /* !COMPONENTS_HPP_ */
