@@ -328,9 +328,133 @@ void Coordinator::buildSeverPacketBasedOnStatus(std::vector<common::protocol::Pa
     // TODO
 }
 
+std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
+{
+    std::vector<uint32_t> playerIds;
+    auto playableEntities = this->_engine->getComponents<Playable>();
+
+    for (size_t i = 0; i < playableEntities.size(); ++i) {
+        if (playableEntities[i].has_value()) {
+            playerIds.push_back(static_cast<uint32_t>(i));
+        }
+    }
+
+    return playerIds;
+}
+
 void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
-    // TODO
+    auto playerIds = getPlayablePlayerIds();
+
+    // TODO: add if for the elapsed time to limit packet sending rate
+    // Should only have one playable per client
+    if (!playerIds.empty()) {
+        common::protocol::Packet packet;
+        if (createPacketInputClient(&packet, playerIds[0])) {
+            outgoingPackets.push_back(packet);
+        }
+    }
+
+    LOG_DEBUG("buildClientPacketBasedOnStatus: sent {} packets", outgoingPackets.size());
+}
+
+bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint32_t playerId)
+{
+    if (!packet) {
+        LOG_ERROR_CAT("Coordinator", "createPacketInputClient: packet pointer is null");
+        return false;
+    }
+
+    // Get the entity for the player ID
+    Entity playerEntity = this->_engine->getEntityFromId(playerId);
+    if (!this->_engine->isAlive(playerEntity)) {
+        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player entity %u is not alive", playerId);
+        return false;
+    }
+
+    auto& inputOpt = this->_engine->getComponentEntity<InputComponent>(playerEntity);
+    if (!inputOpt.has_value()) {
+        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player %u has no input component", playerId);
+        return false;
+    }
+
+    InputComponent& inputComp = inputOpt.value();
+    uint32_t actualPlayerId = inputComp.playerId;
+    uint16_t inputState = 0;
+
+    auto actionIt = inputComp.activeActions.find(GameAction::MOVE_UP);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::MOVE_DOWN);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_DOWN);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::MOVE_LEFT);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_LEFT);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::MOVE_RIGHT);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_RIGHT);
+    }
+    actionIt = inputComp.activeActions.find(GameAction::SHOOT);
+    if (actionIt != inputComp.activeActions.end() && actionIt->second) {
+        inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY);
+    }
+
+    // Format: [flags_count(1) + flags(1) + sequence_number(4) + timestamp(4) + player_id(4) + input_state(2) + aim_dir_x(2) + aim_dir_y(2)]
+    std::vector<uint8_t> inputArgs;
+    inputArgs.resize(20);  // 1 + 1 + 4 + 4 + 4 + 2 + 2 + 2
+    uint8_t* ptr = inputArgs.data();
+
+    // flags_count (1 byte) - 1 flag (RELIABLE)
+    uint8_t flagsCount = 1;
+    std::memcpy(ptr, &flagsCount, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+
+    // flags (1 byte) - FLAG_RELIABLE
+    uint8_t flags = 0x01;  // FLAG_RELIABLE
+    std::memcpy(ptr, &flags, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+
+    // TODO: sequence_number should be based on tick rate, not timestamp
+    // sequence_number (4 bytes) - should be incremented based on tick rate
+    uint32_t sequenceNumber = static_cast<uint32_t>(std::time(nullptr));
+    std::memcpy(ptr, &sequenceNumber, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+
+    // timestamp (4 bytes) - timestamp since epoch
+    uint32_t timestamp = static_cast<uint32_t>(std::time(nullptr));
+    std::memcpy(ptr, &timestamp, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+
+    // player_id (4 bytes)
+    std::memcpy(ptr, &actualPlayerId, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+
+    // input_state (2 bytes)
+    std::memcpy(ptr, &inputState, sizeof(uint16_t));
+    ptr += sizeof(uint16_t);
+
+    // aim_direction_x (2 bytes) - hardcoded to 0 for now
+    int16_t aimX = 0;
+    std::memcpy(ptr, &aimX, sizeof(int16_t));
+    ptr += sizeof(int16_t);
+
+    // aim_direction_y (2 bytes) - hardcoded to 0 for now
+    int16_t aimY = 0;
+    std::memcpy(ptr, &aimY, sizeof(int16_t));
+
+    auto playerInputPacket = PacketManager::createPlayerInput(inputArgs);
+    if (!playerInputPacket.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "createPacketInputClient: failed to create player input packet");
+        return false;
+    }
+
+    *packet = playerInputPacket.value();
+    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: packet created for player %u", actualPlayerId);
+    return true;
 }
 
 void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
@@ -921,7 +1045,8 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
         payload.origin_y, payload.direction_x, payload.direction_y);
 
     // Optional: Play fire effects for the shooter
-    this->_engine->playWeaponFireSound(payload.weapon_type);
+    //TODO: play sound if necessary
+    // this->_engine->playWeaponFireSound(payload.weapon_type);
 
     LOG_INFO_CAT("Coordinator", "Projectile %u spawned from shooter %u", 
                  payload.projectile_id, payload.shooter_id);
@@ -955,7 +1080,7 @@ void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packe
     float color_b = static_cast<float>(payload.color_tint_b) / 255.0f;
 
     // Spawn the visual effect based on effect_type
-    this->_engine->spawnVisualEffect(
+    this->spawnVisualEffect(
         static_cast<protocol::VisualEffectType>(payload.effect_type),
         pos_x, pos_y,
         scale,
@@ -990,7 +1115,7 @@ void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet
     float pitch = static_cast<float>(payload.pitch) / 100.0f;   // 100 = normal pitch
 
     // Play the audio effect with 3D positioning
-    this->_engine->playAudioEffect(
+    this->playAudioEffect(
         static_cast<protocol::AudioEffectType>(payload.effect_type),
         pos_x, pos_y,
         volume,
@@ -1066,14 +1191,254 @@ void Coordinator::handleGameEnd(const common::protocol::Packet& packet)
 
 void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != LEVEL_COMPLETE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_COMPLETE payload size: expected %zu, got %zu",
+            LEVEL_COMPLETE_PAYLOAD_SIZE, packet.data.size());
+        return;
+    }
+
+    // Parse the LEVEL_COMPLETE payload in one memcpy
+    const uint8_t* ptr = packet.data.data();
+
+    uint8_t completed_level = 0;
+    std::memcpy(&completed_level, ptr, sizeof(completed_level));
+    ptr += sizeof(completed_level);
+
+    uint8_t next_level = 0;
+    std::memcpy(&next_level, ptr, sizeof(next_level));
+    ptr += sizeof(next_level);
+
+    uint32_t bonus_score = 0;
+    std::memcpy(&bonus_score, ptr, sizeof(bonus_score));
+    ptr += sizeof(bonus_score);
+
+    uint16_t completion_time = 0;
+    std::memcpy(&completion_time, ptr, sizeof(completion_time));
+
+    LOG_INFO_CAT("Coordinator", "Level completed: level=%u next=%u bonus_score=%u time=%u seconds",
+        completed_level, next_level, bonus_score, completion_time);
+
+    // Display level completion message
+    std::string completionMessage;
+    if (next_level == 0xFF) {
+        // Game is complete
+        completionMessage = "GAME COMPLETE! Final Score Bonus: " + std::to_string(bonus_score);
+        LOG_INFO_CAT("Coordinator", "Game completed! Final bonus: %u", bonus_score);
+    } else {
+        // Level complete, more levels ahead
+        completionMessage = "LEVEL " + std::to_string(completed_level) + " COMPLETE! Bonus: " + std::to_string(bonus_score);
+        LOG_INFO_CAT("Coordinator", "Level %u completed, preparing level %u", completed_level, next_level);
+    }
+
+    // Create a UI text entity to display the completion message
+    Entity messageEntity = this->_engine->createEntity("LevelCompleteMessage");
+    this->_engine->addComponent<Transform>(messageEntity, Transform(400.f, 300.f, 0.f, 1.5f));
+    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage));
+    this->_engine->addComponent<Sprite>(messageEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+
+    // Update game state based on completion
+    if (next_level == 0xFF) {
+        // Game is finished - stop running state
+        _gameRunning = false;
+        LOG_INFO_CAT("Coordinator", "Game ended - all levels completed");
+        
+        // Display final game stats
+        std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
+        Entity timeEntity = this->_engine->createEntity("CompletionTime");
+        this->_engine->addComponent<Transform>(timeEntity, Transform(400.f, 350.f, 0.f, 1.0f));
+        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage));
+        this->_engine->addComponent<Sprite>(timeEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    } else {
+        // More levels to play - keep game running
+        LOG_INFO_CAT("Coordinator", "Waiting for server to start level %u", next_level);
+        
+        // Display "Next Level" message
+        std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
+        Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
+        this->_engine->addComponent<Transform>(nextEntity, Transform(400.f, 350.f, 0.f, 1.0f));
+        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage));
+        this->_engine->addComponent<Sprite>(nextEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    }
 }
 
 void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != LEVEL_START_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_START payload size: expected %zu, got %zu",
+            LEVEL_START_PAYLOAD_SIZE, packet.data.size());
+        return;
+    }
+
+    // Parse the LEVEL_START payload
+    const uint8_t* ptr = packet.data.data();
+
+    uint8_t level_id = 0;
+    std::memcpy(&level_id, ptr, sizeof(level_id));
+    ptr += sizeof(level_id);
+
+    char level_name[32] = {0};
+    std::memcpy(level_name, ptr, LEVEL_START_LEVEL_NAME_SIZE);
+    ptr += LEVEL_START_LEVEL_NAME_SIZE;
+
+    uint16_t estimated_duration = 0;
+    std::memcpy(&estimated_duration, ptr, sizeof(estimated_duration));
+
+    // Ensure level name is null-terminated
+    level_name[31] = '\0';
+    std::string levelNameStr(level_name);
+
+    LOG_INFO_CAT("Coordinator", "Level started: id=%u name=\"%s\" estimated_duration=%u seconds",
+        level_id, levelNameStr.c_str(), estimated_duration);
+
+    // Set game to running state
+    _gameRunning = true;
+
+    // Create UI entity to display level start information
+    std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
+    Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
+    this->_engine->addComponent<Transform>(levelStartEntity, Transform(400.f, 200.f, 0.f, 2.0f));
+    this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage));
+    this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+
+    // Display estimated duration if provided
+    if (estimated_duration > 0) {
+        std::string durationMessage = "Estimated Time: " + std::to_string(estimated_duration) + "s";
+        Entity durationEntity = this->_engine->createEntity("LevelDuration");
+        this->_engine->addComponent<Transform>(durationEntity, Transform(400.f, 250.f, 0.f, 1.0f));
+        this->_engine->addComponent<Text>(durationEntity, Text(durationMessage));
+        this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    }
+
+    // Initialize level component if needed
+    // Note: The server will spawn level entities and waves through TYPE_ENTITY_SPAWN packets
+    LOG_INFO_CAT("Coordinator", "Level %u (%s) ready - waiting for entity spawns", 
+        level_id, levelNameStr.c_str());
 }
 
 void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
 {
+    // Validate payload size using the protocol define
+    if (packet.data.size() != FORCE_STATE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "Invalid FORCE_STATE payload size: expected %zu, got %zu",
+            FORCE_STATE_PAYLOAD_SIZE, packet.data.size());
+        return;
+    }
+
+    // Parse the FORCE_STATE payload
+    const uint8_t* ptr = packet.data.data();
+
+    uint32_t force_entity_id = 0;
+    std::memcpy(&force_entity_id, ptr, sizeof(force_entity_id));
+    ptr += sizeof(force_entity_id);
+
+    uint32_t parent_ship_id = 0;
+    std::memcpy(&parent_ship_id, ptr, sizeof(parent_ship_id));
+    ptr += sizeof(parent_ship_id);
+
+    uint8_t attachment_point = 0;
+    std::memcpy(&attachment_point, ptr, sizeof(attachment_point));
+    ptr += sizeof(attachment_point);
+
+    uint8_t power_level = 0;
+    std::memcpy(&power_level, ptr, sizeof(power_level));
+    ptr += sizeof(power_level);
+
+    uint8_t charge_percentage = 0;
+    std::memcpy(&charge_percentage, ptr, sizeof(charge_percentage));
+    ptr += sizeof(charge_percentage);
+
+    uint8_t is_firing = 0;
+    std::memcpy(&is_firing, ptr, sizeof(is_firing));
+
+    // Log force state update
+    const char* attachment_str = "DETACHED";
+    switch (attachment_point) {
+        case 0x00: attachment_str = "DETACHED"; break;
+        case 0x01: attachment_str = "FRONT"; break;
+        case 0x02: attachment_str = "BACK"; break;
+        case 0x03: attachment_str = "TOP"; break;
+        case 0x04: attachment_str = "BOTTOM"; break;
+        default: attachment_str = "UNKNOWN"; break;
+    }
+
+    LOG_INFO_CAT("Coordinator", "Force state: entity=%u parent=%u attach=%s power=%u charge=%u%% firing=%s",
+        force_entity_id, parent_ship_id, attachment_str, power_level, charge_percentage,
+        is_firing ? "YES" : "NO");
+
+    // Get the Force entity
+    Entity forceEntity = Entity::fromId(force_entity_id);
+    if (!this->_engine->isAlive(forceEntity)) {
+        LOG_WARN_CAT("Coordinator", "Force entity %u does not exist in engine", force_entity_id);
+        return;
+    }
+
+    /* // Get or add Force component
+    auto& forceComponent = this->_engine->getComponentEntity<Force>(forceEntity);
+    if (!forceComponent.has_value()) {
+        // Force component doesn't exist, create it
+        this->_engine->addComponent<Force>(forceEntity, 
+            Force(parent_ship_id, static_cast<ForceAttachmentPoint>(attachment_point), 
+                  power_level, charge_percentage, is_firing != 0));
+        LOG_DEBUG_CAT("Coordinator", "Created Force component for entity %u", force_entity_id);
+    } else {
+        // Update existing Force component
+        forceComponent->parentShipId = parent_ship_id;
+        forceComponent->attachmentPoint = static_cast<ForceAttachmentPoint>(attachment_point);
+        forceComponent->powerLevel = power_level;
+        forceComponent->chargePercentage = charge_percentage;
+        forceComponent->isFiring = (is_firing != 0);
+    } */
+
+    // Update Force position based on attachment
+    if (parent_ship_id == 0) {
+        // Force is detached - it should move independently
+        LOG_DEBUG_CAT("Coordinator", "Force %u is detached and moving independently", force_entity_id);
+    } else {
+        // Force is attached to a parent ship - update its position relative to parent
+        Entity parentEntity = Entity::fromId(parent_ship_id);
+        if (this->_engine->isAlive(parentEntity)) {
+            auto& parentTransform = this->_engine->getComponentEntity<Transform>(parentEntity);
+            auto& forceTransform = this->_engine->getComponentEntity<Transform>(forceEntity);
+            
+            if (parentTransform.has_value() && forceTransform.has_value()) {
+                // Adjust Force position based on attachment point
+                float offsetX = 0.f;
+                float offsetY = 0.f;
+                
+                switch (attachment_point) {
+                    case 0x01: // FRONT
+                        offsetX = 30.f;
+                        offsetY = 0.f;
+                        break;
+                    case 0x02: // BACK
+                        offsetX = -30.f;
+                        offsetY = 0.f;
+                        break;
+                    case 0x03: // TOP
+                        offsetX = 0.f;
+                        offsetY = -20.f;
+                        break;
+                    case 0x04: // BOTTOM
+                        offsetX = 0.f;
+                        offsetY = 20.f;
+                        break;
+                    default:
+                        break;
+                }
+                
+                forceTransform->x = parentTransform->x + offsetX;
+                forceTransform->y = parentTransform->y + offsetY;
+                
+                LOG_DEBUG_CAT("Coordinator", "Force %u attached to parent %u at (%.1f, %.1f)",
+                    force_entity_id, parent_ship_id, forceTransform->x, forceTransform->y);
+            }
+        } else {
+            LOG_WARN_CAT("Coordinator", "Parent ship %u does not exist for Force %u", 
+                parent_ship_id, force_entity_id);
+        }
+    }
 }
 
 void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
@@ -1616,3 +1981,267 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
 
     return projectile;
 }
+
+
+void Coordinator::spawnVisualEffect(protocol::VisualEffectType type, float x, float y,
+    float scale, float duration, float color_r, float color_g, float color_b)
+{
+    Entity visualEffectEntity = this->_engine->createEntity("VisualEffect");
+
+    this->_engine->addComponent<Transform>(visualEffectEntity, Transform(x, y, 0, scale));
+    this->_engine->addComponent<VisualEffect>(visualEffectEntity,
+        VisualEffect(type, scale, duration, color_r, color_g, color_b));
+
+    // set the sprites and animations
+    switch(type) {
+        case protocol::VisualEffectType::VFX_EXPLOSION_SMALL:
+            this->_engine->addComponent<Sprite>(visualEffectEntity,
+                Sprite(Assets::SMALL_EXPLOSION, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, SMALL_EXPLOSION_SPRITE_WIDTH, SMALL_EXPLOSION_SPRITE_HEIGHT)));
+
+            this->_engine->addComponent<Animation>(visualEffectEntity,
+                Animation(SMALL_EXPLOSION_ANIMATION_WIDTH, SMALL_EXPLOSION_ANIMATION_HEIGHT,
+                    SMALL_EXPLOSION_ANIMATION_CURRENT, SMALL_EXPLOSION_ANIMATION_ELAPSED_TIME, SMALL_EXPLOSION_ANIMATION_DURATION,
+                SMALL_EXPLOSION_ANIMATION_START, SMALL_EXPLOSION_ANIMATION_END, SMALL_EXPLOSION_ANIMATION_LOOPING));
+            break;
+
+        case protocol::VisualEffectType::VFX_EXPLOSION_MEDIUM:
+            this->_engine->addComponent<Sprite>(visualEffectEntity,
+                Sprite(Assets::MEDIUM_EXPLOSION, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, MEDIUM_EXPLOSION_SPRITE_WIDTH, MEDIUM_EXPLOSION_SPRITE_HEIGHT)));
+
+            this->_engine->addComponent<Animation>(visualEffectEntity,
+                Animation(MEDIUM_EXPLOSION_ANIMATION_WIDTH, MEDIUM_EXPLOSION_ANIMATION_HEIGHT,
+                    MEDIUM_EXPLOSION_ANIMATION_CURRENT, MEDIUM_EXPLOSION_ANIMATION_ELAPSED_TIME, MEDIUM_EXPLOSION_ANIMATION_DURATION,
+                MEDIUM_EXPLOSION_ANIMATION_START, MEDIUM_EXPLOSION_ANIMATION_END, MEDIUM_EXPLOSION_ANIMATION_LOOPING));
+            break;
+
+        case protocol::VisualEffectType::VFX_EXPLOSION_LARGE:
+            this->_engine->addComponent<Sprite>(visualEffectEntity,
+                Sprite(Assets::BIG_EXPLOSION, ZIndex::IS_GAME,
+                sf::IntRect(0, 0, BIG_EXPLOSION_SPRITE_WIDTH, BIG_EXPLOSION_SPRITE_HEIGHT)));
+
+            this->_engine->addComponent<Animation>(visualEffectEntity,
+                Animation(BIG_EXPLOSION_ANIMATION_WIDTH, BIG_EXPLOSION_ANIMATION_HEIGHT,
+                    BIG_EXPLOSION_ANIMATION_CURRENT, BIG_EXPLOSION_ANIMATION_ELAPSED_TIME, BIG_EXPLOSION_ANIMATION_DURATION,
+                BIG_EXPLOSION_ANIMATION_START, BIG_EXPLOSION_ANIMATION_END, BIG_EXPLOSION_ANIMATION_LOOPING));
+            break;
+
+        case protocol::VisualEffectType::VFX_MUZZLE_FLASH:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_IMPACT_SPARK:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_POWERUP_GLOW:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_SHIELD_HIT:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_WARP_IN:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_WARP_OUT:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_CHARGE_BEAM:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_FORCE_DETACH:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_PLAYER_SPAWN:
+            //TODO:
+            break;
+
+        case protocol::VisualEffectType::VFX_BOSS_INTRO:
+            //TODO:
+            break;
+
+        // Add more as needed
+    }
+
+    // TODO: add a LifeTime Component to destroy it when it is ends
+    this->_engine->addComponent<Lifetime>(visualEffectEntity, Lifetime(duration));
+}
+
+void Coordinator::playAudioEffect(protocol::AudioEffectType type, float x, float y, float volume, float pitch)
+{
+    Entity audioEffectEntity = this->_engine->createEntity("AudioEffect");
+    this->_engine->addComponent<Transform>(audioEffectEntity, Transform(x, y, 0, 0));
+    this->_engine->addComponent<AudioEffect>(audioEffectEntity, AudioEffect(type, volume, pitch));
+
+    switch(type) {
+        // WEAPONS
+        case protocol::AudioEffectType::SFX_SHOOT_BASIC:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f));
+            break;
+
+        case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 150.0f, 0.3f));
+            break;
+
+        case protocol::AudioEffectType::SFX_SHOOT_LASER:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_SHOOT_LASER, false, 120.0f, 0.4f));
+            break;
+
+        // EXPLOSIONS
+        case protocol::AudioEffectType::SFX_EXPLOSION_SMALL_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_SMALL_1, false, 200.0f, 0.2f));
+            break;
+
+        case protocol::AudioEffectType::SFX_EXPLOSION_SMALL_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_SMALL_2, false, 200.0f, 0.2f));
+            break;
+
+        case protocol::AudioEffectType::SFX_EXPLOSION_LARGE_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_LARGE_1, false, 300.0f, 0.1f));
+            break;
+
+        case protocol::AudioEffectType::SFX_EXPLOSION_LARGE_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_EXPLOSION_LARGE_2, false, 300.0f, 0.1f));
+            break;
+
+        // POWERUPS
+        case protocol::AudioEffectType::SFX_POWERUP_COLLECT_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_POWERUP_COLLECT_1, false, 80.0f, 1.0f));
+            break;
+
+        case protocol::AudioEffectType::SFX_POWERUP_COLLECT_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_POWERUP_COLLECT_2, false, 80.0f, 1.0f));
+            break;
+
+        // PLAYER
+        case protocol::AudioEffectType::SFX_PLAYER_HIT:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_HIT, false, 100.0f, 0.5f));
+            break;
+
+        case protocol::AudioEffectType::SFX_PLAYER_DEATH_1:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_DEATH_1, false, 150.0f, 0.3f));
+            break;
+
+        case protocol::AudioEffectType::SFX_PLAYER_DEATH_2:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_DEATH_2, false, 150.0f, 0.3f));
+            break;
+
+        case protocol::AudioEffectType::SFX_PLAYER_DEATH_3:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_PLAYER_DEATH_3, false, 150.0f, 0.3f));
+            break;
+
+        // FORCE
+        case protocol::AudioEffectType::SFX_FORCE_ATTACH:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_FORCE_ATTACH, false, 90.0f, 0.6f));
+            break;
+
+        case protocol::AudioEffectType::SFX_FORCE_DETACH:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_FORCE_DETACH, false, 90.0f, 0.6f));
+            break;
+
+        // BOSS
+        case protocol::AudioEffectType::SFX_BOSS_ROAR:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_BOSS_ROAR, false, 400.0f, 0.05f));
+            break;
+
+        // UI
+        case protocol::AudioEffectType::SFX_MENU_SELECT:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_MENU_SELECT, false, 0.0f, 0.0f, true));
+            break;
+
+        case protocol::AudioEffectType::SFX_MENU_ALERT:
+            this->_engine->addComponent<AudioSource>(audioEffectEntity,
+                AudioSource(AudioAssets::SFX_MENU_ALERT, false, 0.0f, 0.0f, true));
+            break;
+
+        // MUSIC (Musics does not have to be in this method, that's why playMusic method exist, just below)
+        case protocol::AudioEffectType::MAIN_MENU_MUSIC:
+        case protocol::AudioEffectType::FIRST_LEVEL_MUSIC:
+        case protocol::AudioEffectType::SECOND_LEVEL_MUSIC:
+        case protocol::AudioEffectType::THIRD_LEVEL_MUSIC:
+        case protocol::AudioEffectType::FOURTH_LEVEL_MUSIC:
+        case protocol::AudioEffectType::VICTORY_MUSIC:
+        case protocol::AudioEffectType::DEFEAT_MUSIC:
+            LOG_WARN_CAT("Coordinator", "Music type %d should use playMusic() instead of playAudioEffect()", std::to_string(static_cast<int>(type)));
+            this->_engine->destroyEntity(audioEffectEntity);
+            return;
+
+        default:
+            LOG_ERROR_CAT("Coordinator", "Unknown audio effect type: %d", static_cast<int>(type));
+            this->_engine->destroyEntity(audioEffectEntity);
+            return;
+    }
+
+    this->_engine->addComponent<Lifetime>(audioEffectEntity, Lifetime(10.0f)); // 10 secondes max
+}
+
+void Coordinator::playMusic(protocol::AudioEffectType musicType)
+{
+    std::string musicPath;
+
+    switch(musicType) {
+        case protocol::AudioEffectType::MAIN_MENU_MUSIC:
+            musicPath = pathAudioAssets[MAIN_MENU_MUSIC];
+            break;
+        case protocol::AudioEffectType::FIRST_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[FIRST_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::SECOND_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[SECOND_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::THIRD_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[THIRD_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::FOURTH_LEVEL_MUSIC:
+            musicPath = pathAudioAssets[FOURTH_LEVEL_MUSIC];
+            break;
+        case protocol::AudioEffectType::VICTORY_MUSIC:
+            musicPath = pathAudioAssets[VICTORY_MUSIC];
+            break;
+        case protocol::AudioEffectType::DEFEAT_MUSIC:
+            musicPath = pathAudioAssets[DEFEAT_MUSIC];
+            break;
+        default:
+            LOG_ERROR_CAT("Coordinator", "Unknown music type: %d", static_cast<int>(musicType));
+            return;
+    }
+
+    this->_engine->getAudioManager()->playMusic(musicPath, 0.5f); // 50% volume
+
+    LOG_INFO_CAT("Coordinator", "Playing music: %s", musicPath.c_str());
+}
+
+void Coordinator::stopMusic()
+{
+    this->_engine->getAudioManager()->stopMusic();
+}
+
+std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
+{
+    return this->_engine;
+}
+

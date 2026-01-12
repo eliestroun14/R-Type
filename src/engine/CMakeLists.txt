@@ -28,5 +28,6 @@ target_link_libraries(engine PUBLIC
     ${COMMON_LIBS}
     sfml-graphics
     sfml-window
+    sfml-audio
     sfml-system
 )

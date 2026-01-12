@@ -18,6 +18,7 @@
 #include <engine/ecs/system/SystemManager.hpp>
 #include <engine/render/RenderManager.hpp>
 #include <engine/ecs/component/Components.hpp>
+#include <engine/audio/AudioManager.hpp>
 
 /**
  * @namespace gameEngine
@@ -34,6 +35,7 @@ namespace gameEngine {
             std::shared_ptr<EntityManager> _entityManager; ///< Manager handling entity lifecycle and components.
             std::shared_ptr<SystemManager> _systemManager; ///< Manager handling system registration and updates.
             std::shared_ptr<RenderManager> _renderManager; ///< Manager handling windowing, inputs, and drawing.
+            std::shared_ptr<audio::AudioManager> _audioManager;  ///< Manager handling musics and sounds effects.
 
         public:
 
@@ -62,6 +64,16 @@ namespace gameEngine {
             {
                 this->_renderManager = std::make_unique<RenderManager>();
                 this->_renderManager->init();
+            }
+
+            /**
+             * @brief Initializes AudioManager for the gameEngine, client side.
+             * * This method must be called before any other operation.
+             */
+            void initAudio()
+            {
+                this->_audioManager = std::make_unique<audio::AudioManager>();
+                this->_audioManager->init();
             }
 
             // ################################################################
@@ -436,210 +448,104 @@ namespace gameEngine {
                 this->_renderManager->render();
             }
 
-            /** @brief Displays everything that was drawn during the frame.
-             * @param type The player entity.
-             * @param x,y The action to check.
-             * @param scale The action to check.
-             * @param duration The action to check.
-             * @param r,g,b The action to check.
-            */
-            void spawnVisualEffect(protocol::VisualEffectType type, float x, float y,
-                                float scale, float duration,
-                                float color_r, float color_g, float color_b)
-            {
-                Entity visualEffectEntity = this->_entityManager->spawnEntity("VisualEffect");
-
-                this->_entityManager->addComponent<Transform>(visualEffectEntity, Transform(x, y, 0, scale));
-                this->_entityManager->addComponent<VisualEffect>(visualEffectEntity,
-                    VisualEffect(type, scale, duration, color_r, color_g, color_b));
-
-                // set the sprites and animations
-                switch(type) {
-                    case protocol::VisualEffectType::VFX_EXPLOSION_SMALL:
-                        this->_entityManager->addComponent<Sprite>(visualEffectEntity,
-                            Sprite(Assets::SMALL_EXPLOSION, ZIndex::IS_GAME,
-                            sf::IntRect(0, 0, SMALL_EXPLOSION_SPRITE_WIDTH, SMALL_EXPLOSION_SPRITE_HEIGHT)));
-
-                        this->_entityManager->addComponent<Animation>(visualEffectEntity,
-                            Animation(SMALL_EXPLOSION_ANIMATION_WIDTH, SMALL_EXPLOSION_ANIMATION_HEIGHT,
-                                SMALL_EXPLOSION_ANIMATION_CURRENT, SMALL_EXPLOSION_ANIMATION_ELAPSED_TIME, SMALL_EXPLOSION_ANIMATION_DURATION,
-                            SMALL_EXPLOSION_ANIMATION_START, SMALL_EXPLOSION_ANIMATION_END, SMALL_EXPLOSION_ANIMATION_LOOPING));
-                        break;
-
-                    case protocol::VisualEffectType::VFX_EXPLOSION_MEDIUM:
-                        this->_entityManager->addComponent<Sprite>(visualEffectEntity,
-                            Sprite(Assets::MEDIUM_EXPLOSION, ZIndex::IS_GAME,
-                            sf::IntRect(0, 0, MEDIUM_EXPLOSION_SPRITE_WIDTH, MEDIUM_EXPLOSION_SPRITE_HEIGHT)));
-
-                        this->_entityManager->addComponent<Animation>(visualEffectEntity,
-                            Animation(MEDIUM_EXPLOSION_ANIMATION_WIDTH, MEDIUM_EXPLOSION_ANIMATION_HEIGHT,
-                                MEDIUM_EXPLOSION_ANIMATION_CURRENT, MEDIUM_EXPLOSION_ANIMATION_ELAPSED_TIME, MEDIUM_EXPLOSION_ANIMATION_DURATION,
-                            MEDIUM_EXPLOSION_ANIMATION_START, MEDIUM_EXPLOSION_ANIMATION_END, MEDIUM_EXPLOSION_ANIMATION_LOOPING));
-                        break;
-
-                    case protocol::VisualEffectType::VFX_EXPLOSION_LARGE:
-                        this->_entityManager->addComponent<Sprite>(visualEffectEntity,
-                            Sprite(Assets::BIG_EXPLOSION, ZIndex::IS_GAME,
-                            sf::IntRect(0, 0, BIG_EXPLOSION_SPRITE_WIDTH, BIG_EXPLOSION_SPRITE_HEIGHT)));
-
-                        this->_entityManager->addComponent<Animation>(visualEffectEntity,
-                            Animation(BIG_EXPLOSION_ANIMATION_WIDTH, BIG_EXPLOSION_ANIMATION_HEIGHT,
-                                BIG_EXPLOSION_ANIMATION_CURRENT, BIG_EXPLOSION_ANIMATION_ELAPSED_TIME, BIG_EXPLOSION_ANIMATION_DURATION,
-                            BIG_EXPLOSION_ANIMATION_START, BIG_EXPLOSION_ANIMATION_END, BIG_EXPLOSION_ANIMATION_LOOPING));
-                        break;
-
-                    case protocol::VisualEffectType::VFX_MUZZLE_FLASH:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_IMPACT_SPARK:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_POWERUP_GLOW:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_SHIELD_HIT:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_WARP_IN:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_WARP_OUT:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_CHARGE_BEAM:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_FORCE_DETACH:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_PLAYER_SPAWN:
-                        //TODO:
-                        break;
-
-                    case protocol::VisualEffectType::VFX_BOSS_INTRO:
-                        //TODO:
-                        break;
-
-                    // Add more as needed
-                }
-
-                // TODO: add a LifeTime Component to destroy it when it is ends
-                this->_entityManager->addComponent<Lifetime>(visualEffectEntity, Lifetime(duration));
-            }
-
-
             // ################################################################
-            // ########################### SOUNDS #############################
+            // ########################### AUDIO #############################
             // ################################################################
 
-            /** @brief Plays an audio effect at a specific position with volume and pitch.
-             * @param type The type of audio effect to play.
-             * @param x,y The position where the sound originates.
-             * @param volume The volume level (0.0 - 1.0).
-             * @param pitch The pitch modifier (1.0 = normal).
+            /**
+             * @brief Play a positioned 3D sound effect
+             * @param type The audio effect type
+             * @param x,y The position of the sound
+             * @param volume Volume multiplier (0.0 - 1.0)
+             * @param pitch Pitch multiplier (1.0 = normal)
              */
-            void playAudioEffect(protocol::AudioEffectType type, float x, float y,
-                                float volume, float pitch)
+            void playSound(protocol::AudioEffectType type, float x, float y, 
+                        float volume = 1.0f, float pitch = 1.0f)
             {
-                Entity audioEffectEntity = this->_entityManager->spawnEntity("AudioEffect");
-
-                this->_entityManager->addComponent<Transform>(audioEffectEntity, Transform(x, y, 0, 0));
-                this->_entityManager->addComponent<AudioEffect>(audioEffectEntity, AudioEffect(type, volume, pitch));
-
-                // set the sprites and animations
-                switch(type) {
-                    case protocol::AudioEffectType::SFX_SHOOT_BASIC:
-                        // this->_entityManager->addComponent<AudioSource>(audioEffectEntity,
-                        //     AudioSource(AudioAssets::EXPLOSION_AUDIO, false, 100.0f, 0.5f));
-                        break;
-
-                    case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_SHOOT_LASER:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_EXPLOSION_SMALL:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_EXPLOSION_LARGE:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_POWERUP_COLLECT:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_PLAYER_HIT:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_PLAYER_DEATH:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_FORCE_ATTACH:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_FORCE_DETACH:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_BOSS_ROAR:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_MENU_SELECT:
-                        //TODO:
-                        break;
-
-                    case protocol::AudioEffectType::SFX_ALERT:
-                        //TODO:
-                        break;
-
-                    // Add more as needed
-                }
-
-                // Ajouter un composant de durée de vie pour auto-détruire l'entité
-                this->_entityManager->addComponent<Lifetime>(audioEffectEntity, Lifetime(10.0f)); // 10 secondes max
+                this->_audioManager->playSound(type, x, y, volume, pitch);
             }
 
-
-            // TODO: create an audio manager or handle it in renderManager
-            void playWeaponFireSound(uint8_t weapon_type)
+            /**
+             * @brief Play a non-positioned UI sound effect
+             * @param type The audio effect type
+             * @param volume Volume multiplier (0.0 - 1.0)
+             * @param pitch Pitch multiplier (1.0 = normal)
+             */
+            void playSoundUI(protocol::AudioEffectType type, 
+                            float volume = 1.0f, float pitch = 1.0f)
             {
-                // switch(weapon_type) {
-                //     case 0x00: // WEAPON_TYPE_BASIC
-                //         audioManager->playSound(Assets::DEFAULT_BULLET);
-                //         break;
-                //     case 0x01: // WEAPON_TYPE_CHARGED:
-                //         audioManager->playSound(Assets::DEFAULT_BULLET);
-                //         break;
-                //     case 0x02: // WEAPON_TYPE_SPREAD:
-                //         audioManager->playSound(Assets::DEFAULT_BULLET);
-                //         break;
-                //     case 0x03: // WEAPON_TYPE_LASER:
-                //         audioManager->playSound(Assets::DEFAULT_BULLET);
-                //         break;
-                //     case 0x04: // WEAPON_TYPE_MISSILE:
-                //         audioManager->playSound(Assets::DEFAULT_BULLET);
-                //         break;
-                //     case 0x05: // WEAPON_TYPE_FORCE_SHOT:
-                //         audioManager->playSound(Assets::DEFAULT_BULLET);
-                //         break;
-                // }
+                this->_audioManager->playSoundUI(type, volume, pitch);
+            }
+
+            /**
+             * @brief Play background music (stops previous music)
+             * @param filepath Path to the music file
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void playMusic(const std::string& filepath, float volume = 0.5f)
+            {
+                this->_audioManager->playMusic(filepath, volume);
+            }
+
+            /**
+             * @brief Stop the currently playing music
+             */
+            void stopMusic()
+            {
+                this->_audioManager->stopMusic();
+            }
+
+            /**
+             * @brief Update the audio listener position (usually the player's position)
+             * @param x,y The listener position
+             */
+            void updateAudioListener(float x, float y)
+            {
+                this->_audioManager->setListenerPosition(x, y);
+            }
+
+            /**
+             * @brief Set the master volume (affects all audio)
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void setMasterVolume(float volume)
+            {
+                this->_audioManager->setMasterVolume(volume);
+            }
+
+            /**
+             * @brief Set the sound effects volume
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void setSoundVolume(float volume)
+            {
+                this->_audioManager->setSoundVolume(volume);
+            }
+
+            /**
+             * @brief Set the music volume
+             * @param volume Volume level (0.0 - 1.0)
+             */
+            void setMusicVolume(float volume)
+            {
+                this->_audioManager->setMusicVolume(volume);
+            }
+
+            /**
+             * @brief Get the audio manager instance
+             * @return Pointer to the audio manager
+             */
+            audio::AudioManager* getAudioManager()
+            {
+                return this->_audioManager.get();
+            }
+
+            /**
+             * @brief Update audio systems (cleanup finished sounds, etc.)
+             */
+            void updateAudio()
+            {
+                this->_audioManager->update();
             }
     };
 }

@@ -91,6 +91,8 @@ class Coordinator {
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
 
         // HANDLE PACKETS
+        std::vector<uint32_t> getPlayablePlayerIds();
+        bool createPacketInputClient(common::protocol::Packet *packet, uint32_t playerId);
 
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs);
 
@@ -142,7 +144,6 @@ class Coordinator {
          * @see AIBehaviorType
          */
         void handlePacketAIState(const common::protocol::Packet& packet);
-
 
         // CREATE PACKET
 
@@ -204,6 +205,45 @@ class Coordinator {
             uint16_t damage,
             bool withRenderComponents
         );
+
+
+        /** @brief Displays everything that was drawn during the frame.
+             * @param type The player entity.
+             * @param x,y The action to check.
+             * @param scale The action to check.
+             * @param duration The action to check.
+             * @param r,g,b The action to check.
+            */
+        void spawnVisualEffect(protocol::VisualEffectType type, float x, float y,
+                                float scale, float duration,
+                                float color_r, float color_g, float color_b);
+
+        /** @brief Create an projectile entity.
+         * @param shooter The shooter entity.
+         * @param projectile_id The projectile entity.
+         * @param weapon_type The type of weapon to know the type of projectile.
+         * @param origin_x,origin_y Origins of the projectile.
+         * @param dir_x,dir_y Directions of the projectile.
+        */
+        Entity spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type,
+                                float origin_x, float origin_y,
+                                float dir_x, float dir_y);
+
+
+        /** @brief Plays an audio effect at a specific position with volume and pitch.
+         * @param type The type of audio effect to play.
+         * @param x,y The position where the sound originates.
+         * @param volume The volume level (0.0 - 1.0).
+         * @param pitch The pitch modifier (1.0 = normal).
+         */
+        void playAudioEffect(protocol::AudioEffectType type, float x, float y,
+                            float volume, float pitch);
+
+        /** @brief Plays a music. */
+        void playMusic(protocol::AudioEffectType musicType);
+
+        /** @brief Stops a music. */
+        void stopMusic();
 
     private:
         PlayerSpriteAllocator _playerSpriteAllocator;
