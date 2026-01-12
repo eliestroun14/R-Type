@@ -79,6 +79,9 @@ void RenderManager::init()
     
     // load every textures for the game.
     this->_textures.init();
+
+    // load every fonts for the game.
+    this->_fonts.init();
 }
 
 void RenderManager::setLocalPlayer(Coordinator& coordinator, Entity localPlayerEntity)
