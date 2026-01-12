@@ -42,55 +42,84 @@ void RenderSystem::onUpdate(float dt)
     float scale = std::min(scaleX, scaleY);
 
     auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();
+    auto& texts = this->_engine.getComponents<Text>();
 
     for (const auto& entity : this->_sortedEntities) {
         auto& trans = transforms[entity].value();
-        auto& sprite = sprites[entity].value();
 
-        std::shared_ptr<sf::Texture> texture = this->_engine.getTexture(sprite.assetId);
+        // LOGIC SPRITES
+        if (sprites[entity]) {
 
-        if (texture) {
+            auto& sprite = sprites[entity].value();
+            std::shared_ptr<sf::Texture> texture = this->_engine.getTexture(sprite.assetId);
 
-            bool isScrollingBg = backgrounds[entity].has_value();
+            if (texture) {
 
-            if (isScrollingBg && backgrounds[entity]->repeat) {
+                bool isScrollingBg = backgrounds[entity].has_value();
 
-                texture->setRepeated(true);
+                if (isScrollingBg && backgrounds[entity]->repeat) {
 
-                sf::Sprite sfSprite;
-                sfSprite.setTexture(*texture);
+                    texture->setRepeated(true);
 
-                sfSprite.setPosition(trans.x, trans.y);
-                sfSprite.setScale(trans.scale * scale, trans.scale * scale);
-                sfSprite.setRotation(trans.rotation);
+                    sf::Sprite sfSprite;
+                    sfSprite.setTexture(*texture);
 
-                // get how many times we need to draw the background to cover all the screen
-                int textureWidth = sprite.rect.width * trans.scale * scale;
+                    sfSprite.setPosition(trans.x, trans.y);
+                    sfSprite.setScale(trans.scale * scale, trans.scale * scale);
+                    sfSprite.setRotation(trans.rotation);
 
-                sf::IntRect extendedRect(0,0,
-                    sprite.rect.width * 3, // *3 is to be sure we cover all the screen
-                    sprite.rect.height);
+                    // get how many times we need to draw the background to cover all the screen
+                    int textureWidth = sprite.rect.width * trans.scale * scale;
 
-                sfSprite.setTextureRect(extendedRect);
+                    sf::IntRect extendedRect(0,0,
+                        sprite.rect.width * 3, // *3 is to be sure we cover all the screen
+                        sprite.rect.height);
 
-                sprite.globalBounds = sfSprite.getGlobalBounds();
-                window.draw(sfSprite);
+                    sfSprite.setTextureRect(extendedRect);
 
-            } else {
-                sf::Sprite sfSprite;
-                sfSprite.setTexture(*texture);
+                    sprite.globalBounds = sfSprite.getGlobalBounds();
+                    window.draw(sfSprite);
 
-                sfSprite.setPosition(trans.x, trans.y);
-                sfSprite.setScale(trans.scale * scale, trans.scale * scale);
-                sfSprite.setRotation(trans.rotation);
+                } else {
+                    sf::Sprite sfSprite;
+                    sfSprite.setTexture(*texture);
 
-                if (sprite.rect.width > 0)
-                    sfSprite.setTextureRect(sprite.rect);
+                    sfSprite.setPosition(trans.x, trans.y);
+                    sfSprite.setScale(trans.scale * scale, trans.scale * scale);
+                    sfSprite.setRotation(trans.rotation);
 
-                sprite.globalBounds = sfSprite.getGlobalBounds();
+                    if (sprite.rect.width > 0)
+                        sfSprite.setTextureRect(sprite.rect);
 
-                window.draw(sfSprite);
+                    sprite.globalBounds = sfSprite.getGlobalBounds();
+
+                    window.draw(sfSprite);
+                }
             }
+        }
+
+        // LOGIC TEXT
+        if (texts[entity]) {
+            auto& text = texts[entity].value();
+            std::shared_ptr<sf::Font> font = this->_engine.getFont(text.fontId);
+
+            if (font) {
+                sf::Text sfText;
+                sfText.setFont(*font);
+                sfText.setString(text.str);
+                sfText.setCharacterSize(text.size);
+                sfText.setFillColor(text.color);
+
+                sf::FloatRect textBounds = sfText.getGlobalBounds();
+                sfText.setOrigin(textBounds.left + textBounds.width / 2.0f,
+                                 textBounds.top + textBounds.height / 2.0f);
+
+                sfText.setPosition(trans.x, trans.y);
+                sfText.setScale(trans.scale * scale, trans.scale * scale);
+
+                window.draw(sfText);
+            }
+
         }
 
     }
