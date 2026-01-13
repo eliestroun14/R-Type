@@ -9,7 +9,6 @@
 #include <random>
 #include <iostream>
 #include <chrono>
-#include <engine/GameEngine.hpp>
 
 uint32_t generateClientId()
 {

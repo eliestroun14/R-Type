@@ -9,6 +9,7 @@
 #define CLIENTMENU_HPP_
 
 #include <game/Game.hpp>
+#include <game/utils/ClientUtils.hpp>
 
 class ClientMenu {
 
