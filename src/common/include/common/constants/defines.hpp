@@ -489,6 +489,94 @@ enum NetworkType {
 
 //TODO: set defines for each enemies assets!
 
+// BASE ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define BASE_ENEMY_SPRITE_WIDTH 225
+// #define BASE_ENEMY_SPRITE_HEIGHT 225
+// #define BASE_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define BASE_ENEMY_ANIMATION_WIDTH 225
+// #define BASE_ENEMY_ANIMATION_HEIGHT 225
+// #define BASE_ENEMY_ANIMATION_CURRENT 0
+// #define BASE_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define BASE_ENEMY_ANIMATION_DURATION 0.1f
+// #define BASE_ENEMY_ANIMATION_START 0
+// #define BASE_ENEMY_ANIMATION_END 49
+// #define BASE_ENEMY_ANIMATION_LOOPING true
+
+
+// BASE WALKER ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define BASE_WALKER_ENEMY_SPRITE_WIDTH 225
+// #define BASE_WALKER_ENEMY_SPRITE_HEIGHT 225
+// #define BASE_WALKER_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define BASE_WALKER_ENEMY_ANIMATION_WIDTH 225
+// #define BASE_WALKER_ENEMY_ANIMATION_HEIGHT 225
+// #define BASE_WALKER_ENEMY_ANIMATION_CURRENT 0
+// #define BASE_WALKER_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define BASE_WALKER_ENEMY_ANIMATION_DURATION 0.1f
+// #define BASE_WALKER_ENEMY_ANIMATION_START 0
+// #define BASE_WALKER_ENEMY_ANIMATION_END 49
+// #define BASE_WALKER_ENEMY_ANIMATION_LOOPING true
+
+// GREEN BRAIN ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define GREEN_BRAIN_ENEMY_SPRITE_WIDTH 225
+// #define GREEN_BRAIN_ENEMY_SPRITE_HEIGHT 225
+// #define GREEN_BRAIN_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define GREEN_BRAIN_ENEMY_ANIMATION_WIDTH 225
+// #define GREEN_BRAIN_ENEMY_ANIMATION_HEIGHT 225
+// #define GREEN_BRAIN_ENEMY_ANIMATION_CURRENT 0
+// #define GREEN_BRAIN_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define GREEN_BRAIN_ENEMY_ANIMATION_DURATION 0.1f
+// #define GREEN_BRAIN_ENEMY_ANIMATION_START 0
+// #define GREEN_BRAIN_ENEMY_ANIMATION_END 49
+// #define GREEN_BRAIN_ENEMY_ANIMATION_LOOPING true
+
+// TURBINE ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define TURBINE_ENEMY_SPRITE_WIDTH 225
+// #define TURBINE_ENEMY_SPRITE_HEIGHT 225
+// #define TURBINE_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define TURBINE_ENEMY_ANIMATION_WIDTH 225
+// #define TURBINE_ENEMY_ANIMATION_HEIGHT 225
+// #define TURBINE_ENEMY_ANIMATION_CURRENT 0
+// #define TURBINE_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define TURBINE_ENEMY_ANIMATION_DURATION 0.1f
+// #define TURBINE_ENEMY_ANIMATION_START 0
+// #define TURBINE_ENEMY_ANIMATION_END 49
+// #define TURBINE_ENEMY_ANIMATION_LOOPING true
+
+
+// ================================ BOSS ======================================
+
+// GREEN CELLS ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define GREEN_CELLS_BOSS_SPRITE_WIDTH 225
+// #define GREEN_CELLS_BOSS_SPRITE_HEIGHT 225
+// #define GREEN_CELLS_BOSS_SPRITE_SCALE 1.0f
+
+// #define GREEN_CELLS_BOSS_ANIMATION_WIDTH 225
+// #define GREEN_CELLS_BOSS_ANIMATION_HEIGHT 225
+// #define GREEN_CELLS_BOSS_ANIMATION_CURRENT 0
+// #define GREEN_CELLS_BOSS_ANIMATION_ELAPSED_TIME 0.f
+// #define GREEN_CELLS_BOSS_ANIMATION_DURATION 0.1f
+// #define GREEN_CELLS_BOSS_ANIMATION_START 0
+// #define GREEN_CELLS_BOSS_ANIMATION_END 49
+// #define GREEN_CELLS_BOSS_ANIMATION_LOOPING true
+
+// SPACESHIP ENEMY
+#define MAIN_MENU_PLANET_SPRITE_WIDTH 130
+#define MAIN_MENU_PLANET_SPRITE_HEIGHT 50
+#define MAIN_MENU_PLANET_SPRITE_SCALE 2.5f // maybe need to be changed
 
 
 // =============================== POWERUPS ===================================
@@ -581,16 +669,6 @@ enum NetworkType {
 
 
 // =========================== OPTIONS MENU ===================================
-
-
-
-
-// =============================== BACKGROUNDS ================================
-
-
-
-
-
 
 
 
