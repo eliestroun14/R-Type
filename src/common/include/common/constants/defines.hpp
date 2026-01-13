@@ -481,4 +481,42 @@ enum NetworkType {
 
 
 
+
+// UI/HUD
+// BUTTONS
+// DEFAULT BUTTON
+#define DEFAULT_BUTTON_ROTATION 0
+#define DEFAULT_BUTTON_SCALE 1.0f
+
+#define DEFAULT_BUTTON_SPRITE_WIDTH 280
+#define DEFAULT_BUTTON_SPRITE_HEIGHT 80
+#define DEFAULT_BUTTON_SPRITE_SCALE 1.0f
+
+
+// BACK BUTTON
+#define BACK_BUTTON_ROTATION 0
+#define BACK_BUTTON_SCALE 1.0f //FIXME: need to be changed I think
+
+#define BACK_BUTTON_SPRITE_WIDTH 22
+#define BACK_BUTTON_SPRITE_HEIGHT 20
+#define BACK_BUTTON_SPRITE_SCALE 1.0f //FIXME: need to be changed I think
+
+
+// MUSIC BUTTON
+#define MUSIC_BUTTON_ROTATION 0
+#define MUSIC_BUTTON_SCALE 1.0f //FIXME: need to be changed I think
+
+#define MUSIC_BUTTON_SPRITE_WIDTH 16
+#define MUSIC_BUTTON_SPRITE_HEIGHT 14
+#define MUSIC_BUTTON_SPRITE_SCALE 1.0f //FIXME: need to be changed I think
+
+// SOUND BUTTON
+#define SOUND_BUTTON_ROTATION 0
+#define SOUND_BUTTON_SCALE 1.0f //FIXME: need to be changed I think
+
+#define SOUND_BUTTON_SPRITE_WIDTH 16
+#define SOUND_BUTTON_SPRITE_HEIGHT 14
+#define SOUND_BUTTON_SPRITE_SCALE 1.0f //FIXME: need to be changed I think
+
+
 #endif /* !DEFINES_HPP_ */
