@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 39
+#define NUMBER_ASSETS 44
 #define NUMBER_FONT_ASSETS 2
 #define NUMBER_AUDIO_ASSETS 25
 
@@ -38,6 +38,13 @@ enum Assets {
 
     // ENEMIES
     BASE_ENEMY,
+    BASE_WALKER_ENEMY,
+    GREEN_BRAIN_ENEMY,
+    TURBINE_ENEMY,
+
+    // BOSS
+    GREEN_CELLS_BOSS,
+    SPACESHIP_BOSS,
 
     // BULLET
     CHARCHING_BULLET,
@@ -108,6 +115,13 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 
     // ENEMIES
     "../assets/enemies/baseEnemy.png",
+    "../assets/enemies/baseWalkerEnemy.gif",
+    "../assets/enemies/greenBrainEnemy.gif",
+    "../assets/enemies/turbineEnemy.gif",
+
+    // BOSS
+    "../assets/enemies/boss/greeCellsBoss.gif",
+    "../assets/enemies/boss/spaceShipBoss.gif",
 
     // BULLET
     "../assets/bullet/chargingBullet.png",
