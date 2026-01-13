@@ -29,6 +29,28 @@ The system performs the following logic per entity per frame:
         `newLeft = currentFrame * sprite.width`
     * Updates the `Sprite` component so the `RenderSystem` draws the correct image.
 
+### Code reference
+[src/game/src/systems/AnimationSystem.cpp](src/game/src/systems/AnimationSystem.cpp#L1-L55)
+
+```cpp
+void AnimationSystem::onUpdate(float dt) {
+    auto& animations = _engine.getComponents<Animation>();
+    auto& sprites = _engine.getComponents<Sprite>();
+    for (size_t e : _entities) {
+        if (!animations[e] || !sprites[e]) continue;
+        auto& anim = animations[e].value();
+        auto& sprite = sprites[e].value();
+        anim.elapsedTime += dt;
+        if (anim.elapsedTime > anim.frameDuration) {
+            anim.currentFrame++; anim.elapsedTime = 0;
+        }
+        if (anim.currentFrame > anim.endFrame)
+            anim.currentFrame = anim.loop ? anim.startFrame : anim.endFrame;
+        sprite.rect.left = anim.currentFrame * sprite.rect.width;
+    }
+}
+```
+
 ## Visual Representation
 
 Assuming a sprite sheet where frames are aligned horizontally:

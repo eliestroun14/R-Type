@@ -905,6 +905,14 @@ enum class AIBehaviorType : uint8_t {
 
 ## Implementation Notes
 
+### Code References (source of truth)
+- Packet enum and structs: [src/common/include/common/protocol/Protocol.hpp](src/common/include/common/protocol/Protocol.hpp)
+- Validation/serialization handlers: [src/common/include/common/protocol/PacketManager.hpp](src/common/include/common/protocol/PacketManager.hpp) and [src/common/src/protocol/PacketManager.cpp](src/common/src/protocol/PacketManager.cpp)
+- Runtime dispatch (client side): [src/game/src/coordinator/Coordinator.cpp](src/game/src/coordinator/Coordinator.cpp)
+- Legacy minimalist enum (not used by the handler table): [src/common/include/common/protocol/PacketTypes.hpp](src/common/include/common/protocol/PacketTypes.hpp)
+
+All packet types listed in this document are present in the handler table (see `handlers` array) of `PacketManager` and the Coordinator switch; no documented packet type is missing from the codebase as of this branch.
+
 ### Serialization Format
 
 All multi-byte integers are transmitted in **network byte order (big-endian)**.
