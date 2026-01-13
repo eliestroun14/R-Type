@@ -120,7 +120,7 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     "../assets/enemies/turbineEnemy.gif",
 
     // BOSS
-    "../assets/enemies/boss/greeCellsBoss.gif",
+    "../assets/enemies/boss/greenCellsBoss.gif",
     "../assets/enemies/boss/spaceShipBoss.gif",
 
     // BULLET
