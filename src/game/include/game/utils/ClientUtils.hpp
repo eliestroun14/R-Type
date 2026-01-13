@@ -46,10 +46,35 @@ void createButton(gameEngine::GameEngine& engine, std::string label,
  * @param textSize The size of the text inside the button
  * @param textColor The color of the texte inside the button
  * @param pos The pos of the button (sf::Vector2f)
+ * @param rotation The rotation of the Text
  * @param scale The scale of the button
  */
 void createText(gameEngine::GameEngine& engine, std::string label,
     unsigned int textSize, sf::Color textColor, sf::Vector2f pos,
     float rotation, float scale);
+
+
+/**
+ * @brief Create a simple static image
+ * @param engine The GameEngine instance
+ * @param assetId The texture to use
+ * @param pos Position of the image
+ * @param float The rotation of the Text
+ * @param scale Scale factor
+ * @param zIndex Layer (default to 1 or 2 for UI)
+ */
+void createImage(gameEngine::GameEngine& engine, Assets assetId,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite, ZIndex zIndex = ZIndex::IS_UI_HUD);
+
+
+/**
+ * @brief Create a toggleable checkbox
+ * @param initialState true if checked by default
+ * @param onToggle function that receives the new state (bool)
+ */
+void createCheckbox(gameEngine::GameEngine& engine, bool initialState,
+    Assets uncheckedAsset, Assets checkedAsset, sf::Vector2f pos,
+    sf::IntRect rectSprite, float rotation, float scale,
+    std::function<void(bool)> onToggle);
 
 #endif /* !CLIENT_UTILS_HPP */
