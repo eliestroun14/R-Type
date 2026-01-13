@@ -511,7 +511,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
             // Create weapon fire packet to broadcast to clients
             std::vector<uint8_t> weaponFireArgs;
-            weaponFireArgs.resize(21); // shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + direction_x(2) + direction_y(2) + weapon_type(1) + flags_count(1) + flags(1) + seq(4)
+            weaponFireArgs.resize(23); // shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + direction_x(2) + direction_y(2) + weapon_type(1) + flags_count(1) + flags(1) + seq(4)
             uint8_t* ptr = weaponFireArgs.data();
 
             // flags_count (1 byte)
