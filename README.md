@@ -86,7 +86,7 @@ mkdir build
 cd build
 
 # Configure with CMake (Visual Studio)
-cmake .. -G "Visual Studio 17 2022"
+cmake .. -G "Visual Studio 17 2022" -A x64
 
 # Build
 cmake --build . --config Release
@@ -95,6 +95,8 @@ cmake --build . --config Release
 r-type_server.exe
 r-type_client.exe
 ```
+
+> Note: Use a Developer Command Prompt/PowerShell for MSVC, and ensure the “Desktop development with C++” workload is installed in Visual Studio. CPM fetches SFML/Asio/spdlog automatically; no manual SDK installs are required.
 
 ## Usage
 
@@ -224,7 +226,7 @@ For questions or support, please open an issue on the repository
 
 ---
 
-**Status**: In Development | **Version**: 1.0.0 | **Last Updated**: December 2025
+**Status**: In Development | **Version**: 1.0.0 | **Last Updated**: January 2026
 
 ## Contributors
 

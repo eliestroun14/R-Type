@@ -13,6 +13,9 @@
 #include <engine/ecs/component/Components.hpp>
 #include <common/constants/render/Assets.hpp>
 
+// Forward declaration
+class Coordinator;
+
 /**
  * @class ShootSystem
  * @brief Handles shooting logic for entities with weapons.
@@ -28,9 +31,11 @@ class ShootSystem : public System {
 public:
     /**
      * @brief Constructor.
-     * @param engine Reference to the Coordinator.
+     * @param engine Reference to the GameEngine.
+     * @param coordinator Reference to the Coordinator for queuing weapon fire events.
      */
-    ShootSystem(gameEngine::GameEngine& engine) : _engine(engine) {}
+    ShootSystem(gameEngine::GameEngine& engine, Coordinator& coordinator) 
+        : _engine(engine), _coordinator(coordinator) {}
 
     /**
      * @brief Called when the system starts running.
@@ -45,6 +50,7 @@ public:
 
 private:
     gameEngine::GameEngine& _engine;
+    Coordinator& _coordinator;
 
     /**
      * @brief Spawns a projectile entity.

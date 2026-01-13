@@ -31,6 +31,42 @@ The system checks every collidable entity against every other.
 4.  **Physical Collision (Non-Projectile):**
     * If two solid bodies collide (e.g., Player vs Enemy Ship), a default collision damage (10) is applied to both sides.
 
+### Code reference
+[src/game/src/systems/CollisionSystem.cpp](src/game/src/systems/CollisionSystem.cpp#L1-L120)
+
+```cpp
+void CollisionSystem::onUpdate(float dt) {
+    auto& transforms = _engine.getComponents<Transform>();
+    auto& sprites = _engine.getComponents<Sprite>();
+    auto& healths = _engine.getComponents<Health>();
+    auto& hitboxes = _engine.getComponents<HitBox>();
+    auto& projectiles = _engine.getComponents<Projectile>();
+    auto& inputs = _engine.getComponents<InputComponent>();
+
+    std::vector<size_t> entities(_entities.begin(), _entities.end());
+    for (size_t i = 0; i < entities.size(); ++i) {
+        size_t e1 = entities[i];
+        if (!transforms[e1] || !sprites[e1] || !hitboxes[e1]) continue;
+        for (size_t j = i + 1; j < entities.size(); ++j) {
+            size_t e2 = entities[j];
+            if (!transforms[e2] || !sprites[e2] || !hitboxes[e2]) continue;
+            if (!checkAABBCollision(sprites[e1].value(), sprites[e2].value())) continue;
+
+            bool e1Projectile = e1 < projectiles.size() && projectiles[e1].has_value();
+            bool e2Projectile = e2 < projectiles.size() && projectiles[e2].has_value();
+            auto canHit = [&](const Projectile& proj, size_t targetId) {
+                bool targetIsPlayer = targetId < inputs.size() && inputs[targetId].has_value();
+                bool shooterIsPlayer = static_cast<size_t>(proj.shooterId) < inputs.size() && inputs[proj.shooterId].has_value();
+                if (shooterIsPlayer) return !targetIsPlayer; // no friendly fire
+                return targetIsPlayer; // enemy bullets hit players only
+            };
+            // projectile vs entity
+            // ... applyDamage/destroyProjectile helpers in code
+        }
+    }
+}
+```
+
 ## Diagram: AABB Check
 
 ```text

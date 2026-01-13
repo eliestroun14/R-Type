@@ -233,36 +233,36 @@ enum AudioAssets {
 
 static const std::array<std::string, NUMBER_AUDIO_ASSETS> pathAudioAssets = {
     // WEAPONS
-    "../assets/audio/weapons/basic.wav",
-    "../assets/audio/weapons/charged.wav",
-    "../assets/audio/weapons/laser.wav",
+    "../assets/audio/sound/weapons/basic.wav",
+    "../assets/audio/sound/weapons/charged.wav",
+    "../assets/audio/sound/weapons/laser.wav",
 
     // EXPLOSIONS
-    "../assets/audio/explosions/smallExplosion1.wav",
-    "../assets/audio/explosions/smallExplosion2.wav",
-    "../assets/audio/explosions/largeExplosion1.wav",
-    "../assets/audio/explosions/largeExplosion2.wav",
+    "../assets/audio/sound/explosions/smallExplosion1.wav",
+    "../assets/audio/sound/explosions/smallExplosion2.wav",
+    "../assets/audio/sound/explosions/largeExplosion1.wav",
+    "../assets/audio/sound/explosions/largeExplosion2.wav",
 
     // POWERUPS
-    "../assets/audio/powerups/collectPowerup1.wav",
-    "../assets/audio/powerups/collectPowerup2.wav",
+    "../assets/audio/sound/powerups/collectPowerup1.wav",
+    "../assets/audio/sound/powerups/collectPowerup2.wav",
 
     // PLAYER
-    "../assets/audio/player/playerHit.wav",
-    "../assets/audio/player/playerDeath1.wav",
-    "../assets/audio/player/playerDeath2.wav",
-    "../assets/audio/player/playerDeath3.wav",
+    "../assets/audio/sound/player/playerHit.wav",
+    "../assets/audio/sound/player/playerDeath1.wav",
+    "../assets/audio/sound/player/playerDeath2.wav",
+    "../assets/audio/sound/player/playerDeath3.wav",
 
     // FORCE
-    "../assets/audio/force/forceAttach.wav",
-    "../assets/audio/force/forceDetach.wav",
+    "../assets/audio/sound/force/forceAttach.wav",
+    "../assets/audio/sound/force/forceDetach.wav",
 
     // BOSS
-    "../assets/audio/boss/bossRoar.wav",
+    "../assets/audio/sound/boss/bossRoar.wav",
 
     // UI
-    "../assets/audio/ui/select.wav",
-    "../assets/audio/ui/alert.wav",
+    "../assets/audio/sound/ui/select.wav",
+    "../assets/audio/sound/ui/alert.wav",
 
     // MUSIC
     "../assets/audio/music/mainMenuMusic.ogg",

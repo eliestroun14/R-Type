@@ -445,19 +445,68 @@ namespace gameEngine {
             /** @brief Processes window events and updates input states. */
             void processInput()
             {
-                this->_renderManager->processInput();
+                if (this->_renderManager) {
+                    this->_renderManager->processInput();
+                    
+                    // Sync RenderManager inputs to playable player entities
+                    syncInputsToPlayableEntities();
+                }
+            }
+            
+            /** @brief Syncs RenderManager input state to playable entities' InputComponents. */
+            void syncInputsToPlayableEntities()
+            {
+                if (!this->_renderManager) return;
+                
+                // Get current input state from RenderManager
+                auto& activeActions = this->_renderManager->getActiveActions();
+                
+                // Find all playable entities and update their InputComponent
+                auto& playables = this->_entityManager->getComponents<Playable>();
+                auto& inputs = this->_entityManager->getComponents<InputComponent>();
+                
+                int syncedCount = 0;
+                for (size_t entityId = 0; entityId < playables.size(); ++entityId) {
+                    if (playables[entityId].has_value() && inputs[entityId].has_value()) {
+                        // This is a playable entity with an InputComponent
+                        auto& inputComp = inputs[entityId].value();
+                        
+                        // Sync all actions from RenderManager to this entity's InputComponent
+                        for (const auto& [action, isActive] : activeActions) {
+                            inputComp.activeActions[action] = isActive;
+                        }
+                        syncedCount++;
+                    }
+                }
+                
+                // Log if any input is active (to avoid spam)
+                bool hasInput = false;
+                for (const auto& [action, isActive] : activeActions) {
+                    if (isActive) {
+                        hasInput = true;
+                        break;
+                    }
+                }
+                
+                if (hasInput && syncedCount > 0) {
+                    LOG_DEBUG_CAT("GameEngine", "Synced inputs to {} playable entities", syncedCount);
+                }
             }
 
             /** @brief Clears the window and prepares for a new frame. */
             void beginFrame()
             {
-                this->_renderManager->beginFrame();
+                if (this->_renderManager) {
+                    this->_renderManager->beginFrame();
+                }
             }
 
             /** @brief Displays everything that was drawn during the frame. */
             void render()
             {
-                this->_renderManager->render();
+                if (this->_renderManager) {
+                    this->_renderManager->render();
+                }
             }
 
             // ################################################################
@@ -474,7 +523,9 @@ namespace gameEngine {
             void playSound(protocol::AudioEffectType type, float x, float y, 
                         float volume = 1.0f, float pitch = 1.0f)
             {
-                this->_audioManager->playSound(type, x, y, volume, pitch);
+                if (this->_audioManager) {
+                    this->_audioManager->playSound(type, x, y, volume, pitch);
+                }
             }
 
             /**
@@ -486,7 +537,9 @@ namespace gameEngine {
             void playSoundUI(protocol::AudioEffectType type, 
                             float volume = 1.0f, float pitch = 1.0f)
             {
-                this->_audioManager->playSoundUI(type, volume, pitch);
+                if (this->_audioManager) {
+                    this->_audioManager->playSoundUI(type, volume, pitch);
+                }
             }
 
             /**
@@ -496,7 +549,9 @@ namespace gameEngine {
              */
             void playMusic(const std::string& filepath, float volume = 0.5f)
             {
-                this->_audioManager->playMusic(filepath, volume);
+                if (this->_audioManager) {
+                    this->_audioManager->playMusic(filepath, volume);
+                }
             }
 
             /**
@@ -504,7 +559,9 @@ namespace gameEngine {
              */
             void stopMusic()
             {
-                this->_audioManager->stopMusic();
+                if (this->_audioManager) {
+                    this->_audioManager->stopMusic();
+                }
             }
 
             /**
@@ -513,7 +570,9 @@ namespace gameEngine {
              */
             void updateAudioListener(float x, float y)
             {
-                this->_audioManager->setListenerPosition(x, y);
+                if (this->_audioManager) {
+                    this->_audioManager->setListenerPosition(x, y);
+                }
             }
 
             /**

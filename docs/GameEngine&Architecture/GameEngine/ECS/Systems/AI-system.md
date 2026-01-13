@@ -27,6 +27,32 @@ The system runs on every frame (`onUpdate`) and performs the following steps:
     * Applies a constant `KAMIKAZE_SPEED` along the normalized vector.
     * Adjusts the velocity using the global `ScaleFactor` to ensure consistent speed across different window resolutions.
 
+### Code reference
+[src/game/src/systems/AISystem.cpp](src/game/src/systems/AISystem.cpp#L1-L62)
+
+```cpp
+void AISystem::onUpdate(float dt) {
+    auto& positions = _engine.getComponents<Transform>();
+    auto& velocities = _engine.getComponents<Velocity>();
+    auto& ais = _engine.getComponents<AI>();
+    auto& playables = _engine.getComponents<Playable>();
+    float scaleFactor = _engine.getScaleFactor();
+    size_t playerId = findFirstPlayableWithTransform(playables, positions);
+    if (playerId == npos) return;
+    const Transform& playerPos = positions[playerId].value();
+    for (size_t e : _entities) {
+        if (!positions[e] || !velocities[e] || !ais[e]) continue;
+        auto& pos = positions[e].value();
+        auto& vel = velocities[e].value();
+        float dx = playerPos.x - pos.x;
+        float dy = playerPos.y - pos.y;
+        float inv = 1.f / std::sqrt(dx * dx + dy * dy + 0.000001f);
+        vel.vx = dx * inv * 0.5f * scaleFactor;
+        vel.vy = dy * inv * 0.5f * scaleFactor;
+    }
+}
+```
+
 
 ## Usage
 

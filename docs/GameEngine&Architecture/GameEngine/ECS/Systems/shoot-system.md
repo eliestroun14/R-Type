@@ -42,3 +42,28 @@ gameEngine.addComponent(player, Weapon(
     ProjectileType::MISSILE
 ));
 ```
+
+### Code reference
+[src/game/src/systems/ShootSystem.cpp](src/game/src/systems/ShootSystem.cpp#L1-L140)
+
+```cpp
+void ShootSystem::onUpdate(float dt) {
+    uint32_t now = ms_since_epoch();
+    auto& weapons = _engine.getComponents<Weapon>();
+    auto& transforms = _engine.getComponents<Transform>();
+    auto& inputs = _engine.getComponents<InputComponent>();
+    for (size_t e : _entities) {
+        if (!weapons[e] || !transforms[e]) continue;
+        auto& weapon = weapons[e].value();
+        auto& transform = transforms[e].value();
+        bool isPlayer = inputs[e].has_value();
+        bool shouldShoot = isPlayer ? inputs[e]->activeActions[GameAction::SHOOT]
+                                    : (now % 2000) < 100;
+        if (shouldShoot && canShoot(weapon, now)) {
+            auto [dx, dy] = calculateDirection(Entity::fromId(e));
+            weapon.lastShotTime = now;
+            spawnProjectile(Entity::fromId(e), transform.x, transform.y, dx, dy, isPlayer, weapon);
+        }
+    }
+}
+```

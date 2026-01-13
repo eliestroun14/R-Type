@@ -569,5 +569,38 @@ struct ButtonComponent {
         : textures(t), onClick(click) {}
 };
 
+// ############################################################################
+// ########################### R-TYPE SPECIFIC ################################
+// ############################################################################
+
+/**
+ * @enum ForceAttachmentPoint
+ * @brief Defines where the Force is attached to the player ship.
+ */
+enum class ForceAttachmentPoint : uint8_t {
+    FORCE_DETACHED   = 0x00,
+    FORCE_FRONT      = 0x01,
+    FORCE_BACK       = 0x02,
+    FORCE_ORBITING   = 0x03  // For special modes
+};
+
+/**
+ * @brief R-Type Force component - the signature weapon.
+ *
+ * Represents the Force attachment to a player ship.
+ * Used by: ShootSystem, ForceSystem, RenderSystem.
+ */
+struct Force
+{
+    uint32_t parentShipId;                   ///< Ship this Force is attached to (0 = detached)
+    ForceAttachmentPoint attachmentPoint;    ///< Where it's attached
+    uint8_t powerLevel;                      ///< Power level (1-5)
+    uint8_t chargePercentage;                ///< Charge beam state (0-100)
+    bool isFiring;                           ///< Whether the Force is currently firing
+
+    Force(uint32_t parent, ForceAttachmentPoint attach, uint8_t power, uint8_t charge, bool firing)
+        : parentShipId(parent), attachmentPoint(attach), powerLevel(power),
+          chargePercentage(charge), isFiring(firing) {}
+};
 
 #endif /* !COMPONENTS_HPP_ */
