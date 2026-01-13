@@ -47,3 +47,16 @@ void createButton(gameEngine::GameEngine& engine, std::string label,
     engine.addComponent<Text>(textEntity, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
 }
 
+
+void createText(gameEngine::GameEngine& engine, std::string label,
+    unsigned int textSize, sf::Color textColor, sf::Vector2f pos,
+    float rotation, float scale)
+{
+    Entity text = engine.createEntity("Text_" + label);
+    engine.addComponent<Transform>(text, Transform(pos.x, pos.y, rotation, scale));
+
+    engine.addComponent<Text>(text, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+}
+
+
+
