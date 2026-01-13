@@ -155,14 +155,14 @@ void Coordinator::setupPlayerEntity(
     // Common gameplay components (server + client)
     // CRITICAL: Add NetworkId component so entity is included in server snapshots
     this->_engine->addComponent<NetworkId>(entity, NetworkId(playerId));
-    
+
     if (withRenderComponents) {
         Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
         this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
         this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
     }
 
-    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.5f));
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 14.5f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
     this->_engine->addComponent<HitBox>(entity, HitBox());
@@ -226,7 +226,7 @@ void Coordinator::setupProjectileEntity(
 void Coordinator::processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
 {
     LOG_INFO_CAT("Coordinator", "processServerPackets: processing {} packets", packetsToProcess.size());
-    
+
     for (const auto& packet : packetsToProcess) {
         if (PacketManager::assertPlayerInput(packet)) {
             LOG_INFO_CAT("Coordinator", "Processing PLAYER_INPUT packet");
@@ -611,9 +611,9 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
 
     InputComponent& inputComp = inputOpt.value();
     uint32_t actualPlayerId = inputComp.playerId;
-    
+
     LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: retrieved actualPlayerId={} from InputComponent", actualPlayerId);
-    
+
     uint16_t inputState = 0;
 
     auto actionIt = inputComp.activeActions.find(GameAction::MOVE_UP);
@@ -835,7 +835,7 @@ void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& packet)
 {
-    constexpr std::size_t BASE_SIZE  = sizeof(uint32_t) + sizeof(uint16_t);                         // 6
+    constexpr std::size_t BASE_SIZE  = sizeof(uint16_t);                                            // 2 (entity_count)
     constexpr std::size_t ENTRY_SIZE = sizeof(uint32_t) + sizeof(protocol::ComponentTransform);     // 12
 
     const std::size_t size = packet.data.size();
@@ -851,10 +851,10 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
     const std::uint8_t* const data =
         reinterpret_cast<const std::uint8_t*>(packet.data.data());
 
-    uint32_t world_tick = 0;
+    // world_tick is in packet.header.timestamp
+    uint32_t world_tick = packet.header.timestamp;
     uint16_t entity_count = 0;
-    std::memcpy(&world_tick, data, sizeof(world_tick));
-    std::memcpy(&entity_count, data + sizeof(world_tick), sizeof(entity_count));
+    std::memcpy(&entity_count, data, sizeof(entity_count));
 
     const std::size_t computed_count = (size - BASE_SIZE) / ENTRY_SIZE;
     if (static_cast<std::size_t>(entity_count) != computed_count) {
@@ -1489,7 +1489,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         // Game is finished - stop running state
         _gameRunning = false;
         LOG_INFO_CAT("Coordinator", "Game ended - all levels completed");
-    
+
         // Display final game stats
         std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
         Entity timeEntity = this->_engine->createEntity("CompletionTime");
@@ -1499,7 +1499,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     } else {
         // More levels to play - keep game running
         LOG_INFO_CAT("Coordinator", "Waiting for server to start level %u", next_level);
-    
+
         // Display "Next Level" message
         std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
         Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
@@ -1648,12 +1648,12 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
         if (this->_engine->isAlive(parentEntity)) {
             auto& parentTransform = this->_engine->getComponentEntity<Transform>(parentEntity);
             auto& forceTransform = this->_engine->getComponentEntity<Transform>(forceEntity);
-        
+
             if (parentTransform.has_value() && forceTransform.has_value()) {
                 // Adjust Force position based on attachment point
                 float offsetX = 0.f;
                 float offsetY = 0.f;
-            
+
                 switch (attachment_point) {
                     case 0x01: // FRONT
                         offsetX = 30.f;
@@ -1669,15 +1669,17 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
                         break;
                     case 0x04: // BOTTOM
                         offsetX = 0.f;
+
                         offsetY = 20.f;
                         break;
                     default:
-                        break;
+
+                    break;
                 }
-            
+
                 forceTransform->x = parentTransform->x + offsetX;
                 forceTransform->y = parentTransform->y + offsetY;
-            
+
                 LOG_DEBUG_CAT("Coordinator", "Force %u attached to parent %u at (%.1f, %.1f)",
                     force_entity_id, parent_ship_id, forceTransform->x, forceTransform->y);
             }
