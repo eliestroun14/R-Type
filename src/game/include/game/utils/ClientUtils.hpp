@@ -64,7 +64,7 @@ void createText(gameEngine::GameEngine& engine, std::string label,
  * @param zIndex Layer (default to 1 or 2 for UI)
  */
 void createImage(gameEngine::GameEngine& engine, Assets assetId,
-    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite, ZIndex zIndex = ZIndex::IS_UI_HUD);
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite, ZIndex zIndex);
 
 
 /**

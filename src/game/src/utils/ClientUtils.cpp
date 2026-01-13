@@ -59,7 +59,7 @@ void createText(gameEngine::GameEngine& engine, std::string label,
 
 
 void createImage(gameEngine::GameEngine& engine, Assets assetId,
-    sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex = ZIndex::IS_UI_HUD)
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex)
 {
     Entity image = engine.createEntity("Entity");
 
