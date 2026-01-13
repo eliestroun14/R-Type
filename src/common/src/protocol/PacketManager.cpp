@@ -338,11 +338,11 @@ bool PacketManager::assertPlayerInput(const common::protocol::Packet &packet)
         return false;
     }
 
-    // Offset 0-3: player_id must not be 0
+    // Offset 0-3: player_id (valid range: 0 to MAX_PLAYERS-1)
     uint32_t player_id;
     std::memcpy(&player_id, data.data() + 0, sizeof(uint32_t));
-    if (player_id == 0) {
-        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: player_id == 0");
+    if (player_id >= MAX_PLAYERS) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: player_id {} exceeds MAX_PLAYERS {}", player_id, MAX_PLAYERS);
         return false;
     }
 

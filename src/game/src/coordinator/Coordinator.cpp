@@ -153,6 +153,9 @@ void Coordinator::setupPlayerEntity(
 )
 {
     // Common gameplay components (server + client)
+    // CRITICAL: Add NetworkId component so entity is included in server snapshots
+    this->_engine->addComponent<NetworkId>(entity, NetworkId(playerId));
+    
     if (withRenderComponents) {
         Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
         this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
@@ -397,7 +400,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     common::protocol::Packet transformPacket;
     if (createPacketTransformSnapshot(&transformPacket, entityIds, sequenceNumber)) {
         outgoingPackets.push_back(transformPacket);
-        LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Transform snapshot for {} entities", entityIds.size());
+        LOG_INFO_CAT("Coordinator", "buildServerPacketBasedOnStatus: created Transform snapshot for {} entities (seq={})", entityIds.size(), sequenceNumber);
     }
 
     // Create Health Snapshot for all networked entities with Health component
@@ -529,13 +532,20 @@ std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
 {
     std::vector<uint32_t> playerIds;
     auto playableEntities = this->_engine->getComponents<Playable>();
+    auto& inputComponents = this->_engine->getComponents<InputComponent>();
 
     LOG_DEBUG_CAT("Coordinator", "getPlayablePlayerIds: checking {} entities for Playable component", playableEntities.size());
 
     for (size_t i = 0; i < playableEntities.size(); ++i) {
         if (playableEntities[i].has_value()) {
-            playerIds.push_back(static_cast<uint32_t>(i));
-            LOG_DEBUG_CAT("Coordinator", "  Found playable entity at index {}", i);
+            // Get the InputComponent to retrieve the actual player ID
+            if (i < inputComponents.size() && inputComponents[i].has_value()) {
+                uint32_t playerId = inputComponents[i].value().playerId;
+                playerIds.push_back(playerId);
+                LOG_DEBUG_CAT("Coordinator", "  Found playable entity at index {} with playerId {}", i, playerId);
+            } else {
+                LOG_WARN_CAT("Coordinator", "  Playable entity at index {} has no InputComponent", i);
+            }
         }
     }
 
@@ -562,13 +572,13 @@ void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::P
 
     // Should only have one playable per client
     if (!playerIds.empty()) {
-        LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: creating input packet for player {}", playerIds[0]);
+        LOG_INFO_CAT("Coordinator", "buildClientPacketBasedOnStatus: creating input packet for player {}", playerIds[0]);
         common::protocol::Packet packet;
         if (createPacketInputClient(&packet, playerIds[0])) {
             outgoingPackets.push_back(packet);
             LOG_INFO_CAT("Coordinator", "buildClientPacketBasedOnStatus: input packet created and queued for player {}", playerIds[0]);
         } else {
-            LOG_WARN_CAT("Coordinator", "buildClientPacketBasedOnStatus: failed to create input packet");
+            LOG_WARN_CAT("Coordinator", "buildClientPacketBasedOnStatus: failed to create input packet for player {}", playerIds[0]);
         }
     } else {
         LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: no playable players found");
@@ -583,6 +593,8 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
         LOG_ERROR_CAT("Coordinator", "createPacketInputClient: packet pointer is null");
         return false;
     }
+
+    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: called with playerId={}", playerId);
 
     // Get the entity for the player ID
     Entity playerEntity = this->_engine->getEntityFromId(playerId);
@@ -599,6 +611,9 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
 
     InputComponent& inputComp = inputOpt.value();
     uint32_t actualPlayerId = inputComp.playerId;
+    
+    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: retrieved actualPlayerId={} from InputComponent", actualPlayerId);
+    
     uint16_t inputState = 0;
 
     auto actionIt = inputComp.activeActions.find(GameAction::MOVE_UP);
@@ -685,7 +700,7 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
         return;  // Invalid packet, ignore
     }
 
-    LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: playerId={} actionCount={}", 
+    LOG_INFO_CAT("Coordinator", "[SERVER] handlePlayerInputPacket: playerId={} actionCount={}", 
                   parsed->playerId, parsed->actions.size());
 
     // Find the entity for this player by iterating over all InputComponents
@@ -698,13 +713,13 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
             // Update all input actions
             for (const auto& [action, isPressed] : parsed->actions) {
                 this->_engine->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
-                LOG_DEBUG_CAT("Coordinator", "  Updated action {} to {}", static_cast<int>(action), isPressed);
+                LOG_INFO_CAT("Coordinator", "[SERVER]   Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
             }
             foundPlayer = true;
             break;
         }
     }
-    
+
     if (!foundPlayer) {
         LOG_WARN_CAT("Coordinator", "handlePlayerInputPacket: player {} not found in ECS", parsed->playerId);
     }
@@ -722,8 +737,8 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     protocol::EntitySpawnPayload payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u",
-        payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health);
+    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u is_playable=%u",
+        payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
 
     // Create the entity with the specific ID from the server
     Entity newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
@@ -847,7 +862,7 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         return;
     }
 
-    LOG_INFO_CAT("Coordinator", "TransformSnapshot: world_tick=%u entity_count=%u", world_tick, entity_count);
+    LOG_INFO_CAT("Coordinator", "[CLIENT] TransformSnapshot received: world_tick=%u entity_count=%u", world_tick, entity_count);
 
     std::size_t offset = BASE_SIZE;
 
@@ -872,8 +887,10 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
 
         try {
             this->_engine->updateComponent<Transform>(entity, tf);
+            LOG_DEBUG_CAT("Coordinator", "[CLIENT] Updated entity {} position to ({}, {})", entity_id, tf.x, tf.y);
         } catch (const std::exception&) {
             this->_engine->emplaceComponent<Transform>(entity, tf);
+            LOG_DEBUG_CAT("Coordinator", "[CLIENT] Emplaced entity {} position to ({}, {})", entity_id, tf.x, tf.y);
         }
     }
 }
