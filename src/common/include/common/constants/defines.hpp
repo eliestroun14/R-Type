@@ -396,7 +396,10 @@ enum NetworkType {
 #define WINDOW_HEIGHT 1080
 #define FRAMERATE_LIMIT 60
 
-// PLAYER
+// ================================ GAME ======================================
+
+// =============================== PLAYER =====================================
+
 #define PLAYER_SPRITE_WIDTH 33
 #define PLAYER_SPRITE_HEIGHT 15
 #define PLAYER_SPRITE_SCALE 2.5f
@@ -416,7 +419,8 @@ enum NetworkType {
 #define PLAYER_WEAPON_TYPE = ProjectileType::MISSILE
 
 
-// EXPLOSIONS
+// =============================== EXPLOSIONS ================================
+
 // SMALL EXPLOSIONS
 #define SMALL_EXPLOSION_SPRITE_WIDTH 33
 #define SMALL_EXPLOSION_SPRITE_HEIGHT 32
@@ -460,7 +464,8 @@ enum NetworkType {
 #define BIG_EXPLOSION_ANIMATION_LOOPING false
 
 
-// PROJECTILES
+// =============================== PROJECTILES ================================
+
 // BASIC/DEFAULT PROJECTILE
 #define DEFAULT_PROJ_ROTATION 0
 #define DEFAULT_PROJ_SCALE 2.5f
@@ -495,6 +500,192 @@ enum NetworkType {
 #define CHARGED_PROJ_ANIMATION_START 0
 #define CHARGED_PROJ_ANIMATION_END 1
 #define CHARGED_PROJ_ANIMATION_LOOPING true // verify if its better to set to true ou false for this bullets
+
+
+// =============================== ENEMIES ====================================
+
+//TODO: set defines for each enemies assets!
+
+// BASE ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define BASE_ENEMY_SPRITE_WIDTH 225
+// #define BASE_ENEMY_SPRITE_HEIGHT 225
+// #define BASE_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define BASE_ENEMY_ANIMATION_WIDTH 225
+// #define BASE_ENEMY_ANIMATION_HEIGHT 225
+// #define BASE_ENEMY_ANIMATION_CURRENT 0
+// #define BASE_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define BASE_ENEMY_ANIMATION_DURATION 0.1f
+// #define BASE_ENEMY_ANIMATION_START 0
+// #define BASE_ENEMY_ANIMATION_END 49
+// #define BASE_ENEMY_ANIMATION_LOOPING true
+
+
+// BASE WALKER ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define BASE_WALKER_ENEMY_SPRITE_WIDTH 225
+// #define BASE_WALKER_ENEMY_SPRITE_HEIGHT 225
+// #define BASE_WALKER_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define BASE_WALKER_ENEMY_ANIMATION_WIDTH 225
+// #define BASE_WALKER_ENEMY_ANIMATION_HEIGHT 225
+// #define BASE_WALKER_ENEMY_ANIMATION_CURRENT 0
+// #define BASE_WALKER_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define BASE_WALKER_ENEMY_ANIMATION_DURATION 0.1f
+// #define BASE_WALKER_ENEMY_ANIMATION_START 0
+// #define BASE_WALKER_ENEMY_ANIMATION_END 49
+// #define BASE_WALKER_ENEMY_ANIMATION_LOOPING true
+
+// GREEN BRAIN ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define GREEN_BRAIN_ENEMY_SPRITE_WIDTH 225
+// #define GREEN_BRAIN_ENEMY_SPRITE_HEIGHT 225
+// #define GREEN_BRAIN_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define GREEN_BRAIN_ENEMY_ANIMATION_WIDTH 225
+// #define GREEN_BRAIN_ENEMY_ANIMATION_HEIGHT 225
+// #define GREEN_BRAIN_ENEMY_ANIMATION_CURRENT 0
+// #define GREEN_BRAIN_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define GREEN_BRAIN_ENEMY_ANIMATION_DURATION 0.1f
+// #define GREEN_BRAIN_ENEMY_ANIMATION_START 0
+// #define GREEN_BRAIN_ENEMY_ANIMATION_END 49
+// #define GREEN_BRAIN_ENEMY_ANIMATION_LOOPING true
+
+// TURBINE ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define TURBINE_ENEMY_SPRITE_WIDTH 225
+// #define TURBINE_ENEMY_SPRITE_HEIGHT 225
+// #define TURBINE_ENEMY_SPRITE_SCALE 1.0f // maybe need to be changed
+
+// #define TURBINE_ENEMY_ANIMATION_WIDTH 225
+// #define TURBINE_ENEMY_ANIMATION_HEIGHT 225
+// #define TURBINE_ENEMY_ANIMATION_CURRENT 0
+// #define TURBINE_ENEMY_ANIMATION_ELAPSED_TIME 0.f
+// #define TURBINE_ENEMY_ANIMATION_DURATION 0.1f
+// #define TURBINE_ENEMY_ANIMATION_START 0
+// #define TURBINE_ENEMY_ANIMATION_END 49
+// #define TURBINE_ENEMY_ANIMATION_LOOPING true
+
+
+// ================================ BOSS ======================================
+
+// GREEN CELLS ENEMY
+
+//FIXME: not the correct one, fix it (ya plus de co à epitech ptn)
+// #define GREEN_CELLS_BOSS_SPRITE_WIDTH 225
+// #define GREEN_CELLS_BOSS_SPRITE_HEIGHT 225
+// #define GREEN_CELLS_BOSS_SPRITE_SCALE 1.0f
+
+// #define GREEN_CELLS_BOSS_ANIMATION_WIDTH 225
+// #define GREEN_CELLS_BOSS_ANIMATION_HEIGHT 225
+// #define GREEN_CELLS_BOSS_ANIMATION_CURRENT 0
+// #define GREEN_CELLS_BOSS_ANIMATION_ELAPSED_TIME 0.f
+// #define GREEN_CELLS_BOSS_ANIMATION_DURATION 0.1f
+// #define GREEN_CELLS_BOSS_ANIMATION_START 0
+// #define GREEN_CELLS_BOSS_ANIMATION_END 49
+// #define GREEN_CELLS_BOSS_ANIMATION_LOOPING true
+
+// SPACESHIP ENEMY
+#define SPACESHIP_MENU_SPRITE_WIDTH 130
+#define SPACESHIP_MENU_SPRITE_HEIGHT 50
+#define SPACESHIP_MENU_SPRITE_SCALE 2.5f // maybe need to be changed
+
+
+// =============================== POWERUPS ===================================
+
+// PET POWERUP
+#define PET_POWERUP_SPRITE_WIDTH 17
+#define PET_POWERUP_SPRITE_HEIGHT 14
+#define PET_POWERUP_SPRITE_SCALE 2.5f // maybe need to be changed
+
+#define PET_POWERUP_ANIMATION_WIDTH 17
+#define PET_POWERUP_ANIMATION_HEIGHT 14
+#define PET_POWERUP_ANIMATION_CURRENT 0
+#define PET_POWERUP_ANIMATION_ELAPSED_TIME 0.f
+#define PET_POWERUP_ANIMATION_DURATION 0.1f
+#define PET_POWERUP_ANIMATION_START 0
+#define PET_POWERUP_ANIMATION_END 11
+#define PET_POWERUP_ANIMATION_LOOPING true
+
+// =========================== GAME BACKGROUNDS ===============================
+
+// GAME BACKGROUND
+#define GAME_BG_ROTATION 0
+#define GAME_BG_SCALE 1.0f
+#define GAME_BG_SPRITE_WIDTH 1920
+#define GAME_BG_SPRITE_HEIGHT 1080
+
+
+
+// =============================== UI/HUD =====================================
+
+// =============================== BUTTONS ====================================
+// DEFAULT BUTTON
+#define DEFAULT_BUTTON_ROTATION 0
+#define DEFAULT_BUTTON_SCALE 1.0f
+#define DEFAULT_BUTTON_SPRITE_WIDTH 280
+#define DEFAULT_BUTTON_SPRITE_HEIGHT 80
+
+
+// BACK BUTTON
+#define BACK_BUTTON_ROTATION 0
+#define BACK_BUTTON_SCALE 1.0f //FIXME: need to be changed I think
+#define BACK_BUTTON_SPRITE_WIDTH 22
+#define BACK_BUTTON_SPRITE_HEIGHT 20
+
+
+// MUSIC BUTTON
+#define MUSIC_BUTTON_ROTATION 0
+#define MUSIC_BUTTON_SCALE 1.0f //FIXME: need to be changed I think
+#define MUSIC_BUTTON_SPRITE_WIDTH 16
+#define MUSIC_BUTTON_SPRITE_HEIGHT 14
+
+// SOUND BUTTON
+#define SOUND_BUTTON_ROTATION 0
+#define SOUND_BUTTON_SCALE 1.0f //FIXME: need to be changed I think
+#define SOUND_BUTTON_SPRITE_WIDTH 16
+#define SOUND_BUTTON_SPRITE_HEIGHT 14
+
+// ================================ MENUS =====================================
+
+// ============================== MAIN MENU ===================================
+
+// LOGO
+#define LOGO_RTYPE_ROTATION 0
+#define LOGO_RTYPE_SCALE 1.0f // maybe need to be changed
+#define LOGO_RTYPE_SPRITE_WIDTH 500
+#define LOGO_RTYPE_SPRITE_HEIGHT 146
+
+
+// MAIN_MENU BACKGROUND
+#define MAIN_MENU_BG_ROTATION 0
+#define MAIN_MENU_BG_SCALE 1.0f
+#define MAIN_MENU_BG_SPRITE_WIDTH 1920
+#define MAIN_MENU_BG_SPRITE_HEIGHT 1080
+
+
+// MAIN_MENU BACKGROUND
+#define MAIN_MENU_PLANET_SPRITE_WIDTH 225
+#define MAIN_MENU_PLANET_SPRITE_HEIGHT 225
+#define MAIN_MENU_PLANET_SPRITE_SCALE 1.0f // maybe need to be changed
+
+#define MAIN_MENU_PLANET_ANIMATION_WIDTH 225
+#define MAIN_MENU_PLANET_ANIMATION_HEIGHT 225
+#define MAIN_MENU_PLANET_ANIMATION_CURRENT 0
+#define MAIN_MENU_PLANET_ANIMATION_ELAPSED_TIME 0.f
+#define MAIN_MENU_PLANET_ANIMATION_DURATION 0.1f
+#define MAIN_MENU_PLANET_ANIMATION_START 0
+#define MAIN_MENU_PLANET_ANIMATION_END 49
+#define MAIN_MENU_PLANET_ANIMATION_LOOPING true
+
+
+
+// =========================== OPTIONS MENU ===================================
 
 
 

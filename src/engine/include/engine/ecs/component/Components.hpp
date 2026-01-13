@@ -24,6 +24,7 @@
 #include <engine/ecs/entity/Entity.hpp>
 #include <vector>
 #include <common/protocol/Protocol.hpp>
+#include <functional>
 
 // Forward declaration for GameAction enum
 enum class GameAction;
@@ -154,8 +155,14 @@ struct Animation
  */
 struct Text
 {
-    std::string data;
-    Text(std::string text) : data(text) {}
+    std::string str;
+    FontAssets fontId;
+    unsigned int size;
+    sf::Color color;
+    ZIndex zIndex;
+
+    Text(std::string s, FontAssets f = DEFAULT_FONT, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
+        : str(s), color(c), fontId(f), size(sz), zIndex(z) {}
 };
 
 /**
@@ -299,6 +306,32 @@ struct Drawable {};
  * The local player is the one controlled by the keyboard/input on THIS client.
  */
 struct Playable {};
+
+
+/**
+ * @brief Tag component. Marks the entity as the local player controlled character.
+ *
+ * MainMenuScene entities are visible only in main menu.
+ */
+struct MainMenuScene {};
+
+
+/**
+ * @brief Tag component. Marks the entity as the local player controlled character.
+ *
+ * OptionMenuScene entities are visible only in option menu.
+ */
+struct OptionMenuScene {};
+
+
+/**
+ * @brief Tag component. Marks the entity as game scene entity.
+ *
+ * GameScene entities are visible only in game.
+ */
+struct GameScene {};
+
+
 
 /**
  * @brief Stores input state for an entity (player).
@@ -510,6 +543,31 @@ struct AudioSource {
     }
 };
 
+
+// ############################################################################
+// ################################ BUTTON  ###################################
+// ############################################################################
+
+struct ButtonTextures {
+    Assets none;
+    Assets hover;
+    Assets clicked;
+};
+
+enum ButtonState {
+    NONE,
+    HOVER,
+    CLICKED,
+};
+
+struct ButtonComponent {
+    ButtonTextures textures;
+    ButtonState state = ButtonState::NONE;
+    std::function<void()> onClick;
+
+    ButtonComponent(ButtonTextures t, std::function<void()> click)
+        : textures(t), onClick(click) {}
+};
 
 // ############################################################################
 // ########################### R-TYPE SPECIFIC ################################

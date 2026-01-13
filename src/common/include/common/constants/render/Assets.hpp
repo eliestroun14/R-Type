@@ -8,7 +8,8 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 17
+#define NUMBER_ASSETS 44
+#define NUMBER_FONT_ASSETS 2
 #define NUMBER_AUDIO_ASSETS 25
 
 
@@ -37,6 +38,13 @@ enum Assets {
 
     // ENEMIES
     BASE_ENEMY,
+    BASE_WALKER_ENEMY,
+    GREEN_BRAIN_ENEMY,
+    TURBINE_ENEMY,
+
+    // BOSS
+    GREEN_CELLS_BOSS,
+    SPACESHIP_BOSS,
 
     // BULLET
     CHARCHING_BULLET,
@@ -51,6 +59,43 @@ enum Assets {
     SMALL_EXPLOSION,
     MEDIUM_EXPLOSION,
     BIG_EXPLOSION,
+
+    // MENU
+    // LOGO
+    LOGO_RTYPE,
+
+    // MAIN MENU ELEMENTS
+    MAIN_MENU_PLANET,
+    MAIN_MENU_BG,
+    MAIN_MENU_BG_LIGHT,
+
+
+    // BUTTONS
+    DEFAULT_NONE_BUTTON,
+    DEFAULT_HOVER_BUTTON,
+    DEFAULT_CLICKED_BUTTON,
+
+    BACK_NONE_BUTTON,
+    BACK_HOVER_BUTTON,
+    BACK_CLICKED_BUTTON,
+
+    // MENU/OPTIONS -> MUSIC
+    MUSIC_ON_NONE_BUTTON,
+    MUSIC_ON_HOVER_BUTTON,
+    MUSIC_ON_CLICKED_BUTTON,
+
+    MUSIC_OFF_NONE_BUTTON,
+    MUSIC_OFF_HOVER_BUTTON,
+    MUSIC_OFF_CLICKED_BUTTON,
+
+    // MENU/OPTIONS -> SOUND
+    SOUND_ON_NONE_BUTTON,
+    SOUND_ON_HOVER_BUTTON,
+    SOUND_ON_CLICKED_BUTTON,
+
+    SOUND_OFF_NONE_BUTTON,
+    SOUND_OFF_HOVER_BUTTON,
+    SOUND_OFF_CLICKED_BUTTON,
 };
 
 static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
@@ -70,6 +115,13 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 
     // ENEMIES
     "../assets/enemies/baseEnemy.png",
+    "../assets/enemies/baseWalkerEnemy.gif",
+    "../assets/enemies/greenBrainEnemy.gif",
+    "../assets/enemies/turbineEnemy.gif",
+
+    // BOSS
+    "../assets/enemies/boss/greeCellsBoss.gif",
+    "../assets/enemies/boss/spaceShipBoss.gif",
 
     // BULLET
     "../assets/bullet/chargingBullet.png",
@@ -84,6 +136,55 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     "../assets/explosions/smallExplosion.png",
     "../assets/explosions/mediumExplosion.png",
     "../assets/explosions/bigExplosion.png",
+
+    // MENU
+    // LOGO
+    "../assets/menu/mainMenu/logo/logoRType.png",
+
+    // MAIN MENU ELEMENTS
+    "../assets/menu/mainMenu/planet/mainMenuPlanet.png",
+    "../assets/menu/mainMenu/background/mainMenuBg.png",
+    "../assets/menu/mainMenu/background/mainMenuBgLight.png",
+
+
+    // BUTTONS
+    "../assets/button/defaultNoneButton.png",
+    "../assets/button/defaultHoverButton.png",
+    "../assets/button/defaultClickedButton.png",
+
+    "../assets/button/backNoneButton.png",
+    "../assets/button/backHoverButton.png",
+    "../assets/button/backClickedButton.png",
+
+    // MENU/OPTIONS -> MUSIC
+    "../assets/button/options/music/musicOnNoneButton.png",
+    "../assets/button/options/music/musicOnHoverButton.png",
+    "../assets/button/options/music/musicOnClickedButton.png",
+
+    "../assets/button/options/music/musicOffNoneButton.png",
+    "../assets/button/options/music/musicOffHoverButton.png",
+    "../assets/button/options/music/musicOffClickedButton.png",
+
+    // MENU/OPTIONS -> SOUND
+    "../assets/button/options/sound/soundOnNoneButton.png",
+    "../assets/button/options/sound/soundOnHoverButton.png",
+    "../assets/button/options/sound/soundOnClickedButton.png",
+
+    "../assets/button/options/sound/soundOffNoneButton.png",
+    "../assets/button/options/sound/soundOffHoverButton.png",
+    "../assets/button/options/sound/soundOffClickedButton.png",
+};
+
+
+enum FontAssets {
+    DEFAULT_FONT,
+    DYSLEXIC_FONT,
+};
+
+static const std::array<std::string, NUMBER_FONT_ASSETS> pathFontAssets = {
+    // FONT
+    "../assets/font/defaultFont.otf",
+    "../assets/font/dyslexicFont.otf",
 };
 
 
