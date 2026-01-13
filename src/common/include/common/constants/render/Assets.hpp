@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 37
+#define NUMBER_ASSETS 39
 #define NUMBER_FONT_ASSETS 2
 #define NUMBER_AUDIO_ASSETS 25
 
@@ -59,6 +59,9 @@ enum Assets {
 
     // MAIN MENU ELEMENTS
     MAIN_MENU_PLANET,
+    MAIN_MENU_BG,
+    MAIN_MENU_BG_LIGHT,
+
 
     // BUTTONS
     DEFAULT_NONE_BUTTON,
@@ -126,6 +129,9 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 
     // MAIN MENU ELEMENTS
     "../assets/menu/mainMenu/planet/mainMenuPlanet.png",
+    "../assets/menu/mainMenu/background/mainMenuBg.png",
+    "../assets/menu/mainMenu/background/mainMenuBgLight.png",
+
 
     // BUTTONS
     "../assets/button/defaultNoneButton.png",
