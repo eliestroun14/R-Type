@@ -58,6 +58,8 @@ void ClientNetworkManager::queueOutgoing(const common::protocol::Packet& packet,
 {
     std::lock_guard<std::mutex> lock(_outMutex);
     _outgoing.push_back(packet);
+    LOG_DEBUG("ClientNetworkManager: queued outgoing packet type={} queue_size={}", 
+              static_cast<int>(packet.header.packet_type), _outgoing.size());
 }
 
 std::vector<common::network::ReceivedPacket> ClientNetworkManager::fetchIncoming()

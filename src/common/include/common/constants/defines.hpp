@@ -22,6 +22,23 @@
 
 #define MAX_PLAYERS 32
 
+// ==============================================================
+//              PLAYER SPAWN CONSTANTS
+// ==============================================================
+
+#define PLAYER_SPAWN_BASE_X 100.0f
+#define PLAYER_SPAWN_HORIZONTAL_SPACING 100.0f
+#define PLAYER_SPAWN_BASE_Y 400.0f
+#define PLAYER_INITIAL_HEALTH 100
+#define PLAYER_IS_PLAYABLE_FLAG_INDEX 15
+#define ENTITY_SPAWN_SEQUENCE_BASE 1000
+
+// ==============================================================
+//              PLAYER MOVEMENT CONSTANTS
+// ==============================================================
+
+#define PLAYER_BASE_SPEED 300.0f  // pixels per second
+
 enum NetworkType {
     NETWORK_TYPE_UNDEFINED = 0,
     NETWORK_TYPE_CLIENT,
