@@ -22,6 +22,8 @@
 #include <common/protocol/Payload.hpp>
 #include <engine/render/SpriteAllocator.hpp>
 #include <game/systems/RenderSystem.hpp>
+#include <game/systems/PlayerSystem.hpp>
+#include <game/systems/MovementSystem.hpp>
 
 
 class Coordinator {
@@ -118,6 +120,10 @@ class Coordinator {
         void handlePacketVisualEffect(const common::protocol::Packet& packet);
         void handlePacketAudioEffect(const common::protocol::Packet& packet);
         void handlePacketParticleSpawn(const common::protocol::Packet& packet);
+
+        /** @brief Get the GameEngine instance for direct access. */
+        std::shared_ptr<gameEngine::GameEngine> getEngine() { return _engine; }
+
         void handleGameStart(const common::protocol::Packet& packet);
         void handleGameEnd(const common::protocol::Packet& packet);
         void handlePacketLevelComplete(const common::protocol::Packet& packet);

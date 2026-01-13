@@ -332,9 +332,9 @@ bool PacketManager::assertPlayerInput(const common::protocol::Packet &packet)
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // Payload: 12 bytes
-    if (data.size() != 12) {
-        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: payload size != 12, got %zu", data.size());
+    // Payload: 10 bytes (player_id=4 + input_state=2 + aim_x=2 + aim_y=2)
+    if (data.size() != PLAYER_INPUT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: payload size != {}, got {}", PLAYER_INPUT_PAYLOAD_SIZE, data.size());
         return false;
     }
 

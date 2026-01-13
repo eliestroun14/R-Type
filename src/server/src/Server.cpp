@@ -49,8 +49,12 @@ void Server::run() {
     while (_isRunning && !g_shutdownRequested.load()) {
         // Basic game processing: feed incoming packets and run game loop
         auto incomingPackets = _networkManager->fetchIncoming();
+        if (!incomingPackets.empty()) {
+            LOG_DEBUG("Server: fetched {} incoming packets from network", incomingPackets.size());
+        }
         for (const auto &entry : incomingPackets) {
             if (_game) {
+                LOG_DEBUG("Server: forwarding packet type={} to game", static_cast<int>(entry.packet.header.packet_type));
                 _game->addIncomingPacket(entry);
             }
         }
@@ -71,7 +75,9 @@ void Server::run() {
                 _networkManager->queueOutgoing(out.first, out.second);
             }
         }
-        //std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        
+        // Small sleep to prevent busy-waiting and allow time to accumulate for fixed timestep
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     if (g_shutdownRequested.load()) {

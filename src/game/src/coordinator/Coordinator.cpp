@@ -34,6 +34,13 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<Projectile>();
     this->_engine->registerComponent<MovementPattern>();
     this->_engine->registerComponent<AI>();
+
+    // Register gameplay systems (both client and server)
+    auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
+    this->_engine->setSystemSignature<PlayerSystem, Velocity, InputComponent>();
+
+    auto movementSystem = this->_engine->registerSystem<MovementSystem>(*this->_engine);
+    this->_engine->setSystemSignature<MovementSystem, Transform, Velocity>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
@@ -215,12 +222,14 @@ void Coordinator::setupProjectileEntity(
 
 void Coordinator::processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
 {
-    // TODO
+    LOG_INFO_CAT("Coordinator", "processServerPackets: processing {} packets", packetsToProcess.size());
+    
     for (const auto& packet : packetsToProcess) {
-
         if (PacketManager::assertPlayerInput(packet)) {
-
+            LOG_INFO_CAT("Coordinator", "Processing PLAYER_INPUT packet");
             handlePlayerInputPacket(packet, elapsedMs);
+        } else {
+            LOG_WARN_CAT("Coordinator", "Received non-input packet type {} on server", static_cast<int>(packet.header.packet_type));
         }
     }
 }
@@ -521,30 +530,51 @@ std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
     std::vector<uint32_t> playerIds;
     auto playableEntities = this->_engine->getComponents<Playable>();
 
+    LOG_DEBUG_CAT("Coordinator", "getPlayablePlayerIds: checking {} entities for Playable component", playableEntities.size());
+
     for (size_t i = 0; i < playableEntities.size(); ++i) {
         if (playableEntities[i].has_value()) {
             playerIds.push_back(static_cast<uint32_t>(i));
+            LOG_DEBUG_CAT("Coordinator", "  Found playable entity at index {}", i);
         }
     }
 
+    LOG_DEBUG_CAT("Coordinator", "getPlayablePlayerIds: found {} playable entities", playerIds.size());
     return playerIds;
 }
 
 // Should only be called on client side to send input packets to server
 void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
+    // Throttle input packet sending using INPUT_SEND_TICK_INTERVAL
+    static uint64_t tickCounter = 0;
+    tickCounter++;
+
     auto playerIds = getPlayablePlayerIds();
 
-    // TODO: add if for the elapsed time to limit packet sending rate
+    LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: found {} playable players, tick={}", playerIds.size(), tickCounter);
+
+    // Only send input every INPUT_SEND_TICK_INTERVAL ticks (defined in defines.hpp as 2)
+    // This limits input packets to ~30 Hz instead of 60 Hz
+    if (tickCounter % INPUT_SEND_TICK_INTERVAL != 0) {
+        return;
+    }
+
     // Should only have one playable per client
     if (!playerIds.empty()) {
+        LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: creating input packet for player {}", playerIds[0]);
         common::protocol::Packet packet;
         if (createPacketInputClient(&packet, playerIds[0])) {
             outgoingPackets.push_back(packet);
+            LOG_INFO_CAT("Coordinator", "buildClientPacketBasedOnStatus: input packet created and queued for player {}", playerIds[0]);
+        } else {
+            LOG_WARN_CAT("Coordinator", "buildClientPacketBasedOnStatus: failed to create input packet");
         }
+    } else {
+        LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: no playable players found");
     }
 
-    LOG_DEBUG("buildClientPacketBasedOnStatus: sent {} packets", outgoingPackets.size());
+    LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: created {} packets", outgoingPackets.size());
 }
 
 bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint32_t playerId)
@@ -651,11 +681,16 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
     // Parse the player input packet
     auto parsed = PacketManager::parsePlayerInput(packet);
     if (!parsed.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "handlePlayerInputPacket: failed to parse input packet");
         return;  // Invalid packet, ignore
     }
 
+    LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: playerId={} actionCount={}", 
+                  parsed->playerId, parsed->actions.size());
+
     // Find the entity for this player by iterating over all InputComponents
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
+    bool foundPlayer = false;
     for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
         auto& input = inputComponents[entityId];
         if (input.has_value() && input->playerId == parsed->playerId) {
@@ -663,9 +698,15 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
             // Update all input actions
             for (const auto& [action, isPressed] : parsed->actions) {
                 this->_engine->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
+                LOG_DEBUG_CAT("Coordinator", "  Updated action {} to {}", static_cast<int>(action), isPressed);
             }
+            foundPlayer = true;
             break;
         }
+    }
+    
+    if (!foundPlayer) {
+        LOG_WARN_CAT("Coordinator", "handlePlayerInputPacket: player {} not found in ECS", parsed->playerId);
     }
 }
 

@@ -63,6 +63,8 @@ bool Game::runGameLoop()
     // ============================================================================
 
     try {
+        LOG_INFO("runGameLoop: CALLED for type={}", static_cast<int>(_type));
+        
         // Calculate elapsed time since last tick
         auto currentTime = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -71,15 +73,20 @@ bool Game::runGameLoop()
         _lastTickTime = currentTime;
         _accumulatedTime += elapsed;
 
+        LOG_INFO("runGameLoop: elapsed={} accumulated={} tickRate={}", elapsed, _accumulatedTime, TICK_RATE_MS);
+
         // Fixed timestep loop - may execute multiple ticks if frame took too long
         // or skip if not enough time has passed
         while (_accumulatedTime >= TICK_RATE_MS) {
             _accumulatedTime -= TICK_RATE_MS;
 
+            LOG_INFO("runGameLoop: executing tick for type={}", static_cast<int>(_type));
+
             // ====================================================================
             // ROLE-BASED GAME TICK
             // ====================================================================
             if (_type == Type::SERVER) {
+                LOG_INFO("runGameLoop: calling serverTick");
                 serverTick(TICK_RATE_MS);
             } else if (_type == Type::CLIENT) {
                 clientTick(TICK_RATE_MS);
@@ -153,6 +160,10 @@ void Game::serverTick(uint64_t elapsedMs)
             if (!maybePacket.has_value())
                 break;
             packetsToProcess.push_back(maybePacket.value().packet);
+        }
+
+        if (!packetsToProcess.empty()) {
+            LOG_INFO("Server tick: processing {} packets before coordinator", packetsToProcess.size());
         }
 
         // Let coordinator handle packet processing (validation, input queuing)
@@ -293,6 +304,106 @@ std::optional<common::network::ReceivedPacket> Game::popIncomingPacket()
     } catch (const std::exception& e) {
         LOG_ERROR("Failed to pop incoming packet: {}", e.what());
         return std::nullopt;
+    }
+}
+
+void Game::sendExistingPlayersToNewClient(uint32_t newPlayerId)
+{
+    for (uint32_t existingPlayerId : _connectedPlayers) {
+        LOG_INFO("Game: Sending existing player {} to new client {}", existingPlayerId, newPlayerId);
+
+        auto engine = _coordinator->getEngine();
+        if (!engine) {
+            LOG_ERROR("Engine instance is null while sending existing players");
+            continue;
+        }
+
+        try {
+            Entity existingEntity = engine->getEntityFromId(existingPlayerId);
+            auto& transforms = engine->getComponents<Transform>();
+
+            // Use implicit conversion from Entity to size_t
+            std::size_t entityId = existingEntity;
+            if (entityId >= transforms.size() || !transforms[entityId].has_value()) {
+                LOG_WARN("Game: No transform found for existing player {}", existingPlayerId);
+                continue;
+            }
+
+            const auto& transform = transforms[entityId].value();
+
+            // Create ENTITY_SPAWN packet manually (entity already exists!)
+            std::vector<uint8_t> args;
+
+            // flags_count (1 byte)
+            args.push_back(1);
+            // flags (FLAG_RELIABLE)
+            args.push_back(static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE));
+
+            // sequence_number (4 bytes)
+            static uint32_t sequence = ENTITY_SPAWN_SEQUENCE_BASE;
+            sequence++;
+            args.push_back(static_cast<uint8_t>(sequence & 0xFF));
+            args.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
+            args.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
+            args.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
+
+            // timestamp (4 bytes)
+            uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+            args.push_back(static_cast<uint8_t>(timestamp & 0xFF));
+            args.push_back(static_cast<uint8_t>((timestamp >> 8) & 0xFF));
+            args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
+            args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
+
+            // entity_id (4 bytes)
+            args.push_back(static_cast<uint8_t>(existingPlayerId & 0xFF));
+            args.push_back(static_cast<uint8_t>((existingPlayerId >> 8) & 0xFF));
+            args.push_back(static_cast<uint8_t>((existingPlayerId >> 16) & 0xFF));
+            args.push_back(static_cast<uint8_t>((existingPlayerId >> 24) & 0xFF));
+
+            // entity_type (1 byte)
+            args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
+
+            // position_x (2 bytes)
+            uint16_t px = static_cast<uint16_t>(transform.x);
+            args.push_back(static_cast<uint8_t>(px & 0xFF));
+            args.push_back(static_cast<uint8_t>((px >> 8) & 0xFF));
+
+            // position_y (2 bytes)
+            uint16_t py = static_cast<uint16_t>(transform.y);
+            args.push_back(static_cast<uint8_t>(py & 0xFF));
+            args.push_back(static_cast<uint8_t>((py >> 8) & 0xFF));
+
+            // mob_variant (1 byte)
+            args.push_back(0);
+
+            // initial_health (1 byte)
+            args.push_back(PLAYER_INITIAL_HEALTH);
+
+            // initial_velocity_x (2 bytes)
+            args.push_back(0);
+            args.push_back(0);
+
+            // initial_velocity_y (2 bytes)
+            args.push_back(0);
+            args.push_back(0);
+
+            // is_playable (1 byte) - NOT playable for the new client
+            args.push_back(0);
+
+            auto existingPlayerPacket = PacketManager::createEntitySpawn(args);
+            if (existingPlayerPacket.has_value()) {
+                addOutgoingPacket(existingPlayerPacket.value(), newPlayerId);
+                LOG_INFO("Game: Sent existing player {} info to new client {}", 
+                         existingPlayerId, newPlayerId);
+            } else {
+                LOG_ERROR("Game: Failed to create entity spawn packet for existing player {}", 
+                         existingPlayerId);
+            }
+
+        } catch (const std::exception& e) {
+            LOG_ERROR("Game: Failed to get entity for existing player {}: {}", 
+                     existingPlayerId, e.what());
+        }
     }
 }
 

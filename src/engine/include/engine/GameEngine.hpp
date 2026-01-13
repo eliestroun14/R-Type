@@ -435,6 +435,49 @@ namespace gameEngine {
             {
                 if (this->_renderManager) {
                     this->_renderManager->processInput();
+                    
+                    // Sync RenderManager inputs to playable player entities
+                    syncInputsToPlayableEntities();
+                }
+            }
+            
+            /** @brief Syncs RenderManager input state to playable entities' InputComponents. */
+            void syncInputsToPlayableEntities()
+            {
+                if (!this->_renderManager) return;
+                
+                // Get current input state from RenderManager
+                auto& activeActions = this->_renderManager->getActiveActions();
+                
+                // Find all playable entities and update their InputComponent
+                auto& playables = this->_entityManager->getComponents<Playable>();
+                auto& inputs = this->_entityManager->getComponents<InputComponent>();
+                
+                int syncedCount = 0;
+                for (size_t entityId = 0; entityId < playables.size(); ++entityId) {
+                    if (playables[entityId].has_value() && inputs[entityId].has_value()) {
+                        // This is a playable entity with an InputComponent
+                        auto& inputComp = inputs[entityId].value();
+                        
+                        // Sync all actions from RenderManager to this entity's InputComponent
+                        for (const auto& [action, isActive] : activeActions) {
+                            inputComp.activeActions[action] = isActive;
+                        }
+                        syncedCount++;
+                    }
+                }
+                
+                // Log if any input is active (to avoid spam)
+                bool hasInput = false;
+                for (const auto& [action, isActive] : activeActions) {
+                    if (isActive) {
+                        hasInput = true;
+                        break;
+                    }
+                }
+                
+                if (hasInput && syncedCount > 0) {
+                    LOG_DEBUG_CAT("GameEngine", "Synced inputs to {} playable entities", syncedCount);
                 }
             }
 
