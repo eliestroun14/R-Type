@@ -24,6 +24,28 @@ Entities processed by this system must have the following components:
     * **Condition:** `currentOffset <= - (textureSize * scale)`
     * **Action:** Adds the scaled texture size to `currentOffset`, effectively "teleporting" the background back to the start position without visual interruption.
 
+### Code reference
+[src/game/src/systems/BackgroundSystem.cpp](src/game/src/systems/BackgroundSystem.cpp#L1-L68)
+
+```cpp
+void BackgroundSystem::onUpdate(float dt) {
+    auto& transforms = _engine.getComponents<Transform>();
+    auto& sprites = _engine.getComponents<Sprite>();
+    auto& backgrounds = _engine.getComponents<ScrollingBackground>();
+    float scaleFactor = _engine.getScaleFactor();
+    for (size_t e : _entities) {
+        if (!transforms[e] || !sprites[e] || !backgrounds[e]) continue;
+        auto& transform = transforms[e].value();
+        auto& sprite = sprites[e].value();
+        auto& bg = backgrounds[e].value();
+        float scrollAmount = bg.scrollSpeed * scaleFactor * dt;
+        bg.currentOffset -= scrollAmount;
+        if (bg.horizontal) { /* reset using sprite width when repeat */ }
+        else { /* reset using sprite height when repeat */ }
+    }
+}
+```
+
 ## Diagram: Infinite Scrolling
 
 ```text

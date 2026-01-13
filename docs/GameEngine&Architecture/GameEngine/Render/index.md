@@ -54,21 +54,30 @@ The RenderManager owns a `TextureStorage` subsystem. It pre-loads all game asset
 
 ## Default Key Bindings
 
-The `RenderManager` comes pre-configured with the following default mappings:
+Source of truth: see constructor in [src/engine/src/engine/render/RenderManager.cpp](src/engine/src/engine/render/RenderManager.cpp#L15-L44).
 
 | Physical Key | Logical Action | Description |
 | :--- | :--- | :--- |
-| **Arrow Up** | `MOVE_UP` | Move ship up |
-| **Arrow Down** | `MOVE_DOWN` | Move ship down |
-| **Arrow Left** | `MOVE_LEFT` | Move ship left |
-| **Arrow Right** | `MOVE_RIGHT` | Move ship right |
-| **S** | `SHOOT` | Fire main weapon |
-| **D** | `SWITCH_WEAPON` | Cycle through weapons |
-| **Space** | `USE_POWERUP` | Activate current powerup |
-| **F** | `SPECIAL` | Trigger special ability |
-| **Escape** | `EXIT` | Close the game |
+| **Arrow Up** | `MOVE_UP` | Move up |
+| **Arrow Down** | `MOVE_DOWN` | Move down |
+| **Arrow Left** | `MOVE_LEFT` | Move left |
+| **Arrow Right** | `MOVE_RIGHT` | Move right |
+| **Space** | `SHOOT` | Fire primary weapon |
+| **Escape** | `EXIT` | Exit/close |
 
-*(Note: ZQSD bindings are present in the source code but commented out by default)*
+Unbound (but tracked): `SWITCH_WEAPON`, `USE_POWERUP`, `SPECIAL` are initialized to `false` with no default key. Alternative ZQSD bindings are commented in code for convenience.
+
+### Binding snippet (from code)
+
+```cpp
+// Default bindings
+this->_keyBindings[sf::Keyboard::Up] = GameAction::MOVE_UP;
+this->_keyBindings[sf::Keyboard::Down] = GameAction::MOVE_DOWN;
+this->_keyBindings[sf::Keyboard::Left] = GameAction::MOVE_LEFT;
+this->_keyBindings[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
+this->_keyBindings[sf::Keyboard::Space] = GameAction::SHOOT;
+this->_keyBindings[sf::Keyboard::Escape] = GameAction::EXIT;
+```
 
 ## Usage Example
 
