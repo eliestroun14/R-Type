@@ -41,6 +41,9 @@ void Coordinator::initEngine()
 
     auto movementSystem = this->_engine->registerSystem<MovementSystem>(*this->_engine);
     this->_engine->setSystemSignature<MovementSystem, Transform, Velocity>();
+
+    auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this);
+    this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
@@ -214,6 +217,13 @@ void Coordinator::setupProjectileEntity(
     bool withRenderComponents
 )
 {
+    // IMPORTANT: Projectiles do NOT get a NetworkId component!
+    // This is intentional - projectiles have predictable linear movement
+    // and don't need to be synchronized via transform snapshots.
+    // The server spawns them via WEAPON_FIRE packets with position + velocity,
+    // and clients simulate movement locally using the MovementSystem.
+    // The server only sends ENTITY_DESTROY or hit events when needed.
+    
     this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     if (withRenderComponents) {
@@ -366,9 +376,36 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
     }
 }
 
+void Coordinator::queueWeaponFire(uint32_t shooterId, float originX, float originY,
+                                  float directionX, float directionY, uint8_t weaponType)
+{
+    WeaponFireEvent event;
+    event.shooterId = shooterId;
+    event.projectileId = _nextProjectileId++;
+    event.originX = originX;
+    event.originY = originY;
+    event.directionX = directionX;
+    event.directionY = directionY;
+    event.weaponType = weaponType;
+    
+    _pendingWeaponFires.push_back(event);
+    
+    LOG_DEBUG_CAT("Coordinator", "queueWeaponFire: shooter={} projectile={} origin=({}, {}) dir=({}, {})",
+                  shooterId, event.projectileId, originX, originY, directionX, directionY);
+}
+
 // Should create packets based on server game state using define.hpp 
 void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
+    // ============================================================================
+    // SERVER SNAPSHOT GENERATION
+    // ============================================================================
+    // Only entities with NetworkId component are synchronized via snapshots.
+    // Projectiles intentionally DON'T have NetworkId - they are spawned via
+    // WEAPON_FIRE packets and simulated locally on clients using their velocity.
+    // This avoids unnecessary network traffic for predictable linear movement.
+    // ============================================================================
+    
     // Get all networked entities (entities with NetworkId component)
     auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
 
@@ -378,6 +415,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     }
 
     // Collect all entity IDs that need to be synchronized
+    // (Players, enemies, powerups - but NOT projectiles)
     std::vector<uint32_t> entityIds;
     for (size_t i = 0; i < networkIdComponents.size(); ++i) {
         if (networkIdComponents[i].has_value()) {
@@ -442,6 +480,96 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created Weapon snapshot for {} entities", weaponEntityIds.size());
         }
     }
+
+    // ============================================================================
+    // WEAPON FIRE EVENTS → PROJECTILE SPAWNING
+    // ============================================================================
+    // When an entity fires a weapon:
+    // 1. Server spawns projectile locally with spawnProjectile()
+    // 2. Server broadcasts WEAPON_FIRE packet to all clients
+    // 3. Clients receive packet and spawn projectile locally with same velocity
+    // 4. Both server and clients simulate projectile movement via MovementSystem
+    // 5. Server sends ENTITY_DESTROY or collision events when needed
+    // 
+    // This eliminates the need to sync projectile positions every tick!
+    // ============================================================================
+    
+    // Process pending weapon fire events and create packets
+    for (const auto& fireEvent : _pendingWeaponFires) {
+        // Spawn the projectile entity on the server
+        Entity shooterEntity = this->_engine->getEntityFromId(fireEvent.shooterId);
+        if (this->_engine->isAlive(shooterEntity)) {
+            Entity projectile = spawnProjectile(
+                shooterEntity,
+                fireEvent.projectileId,
+                fireEvent.weaponType,
+                fireEvent.originX,
+                fireEvent.originY,
+                fireEvent.directionX,
+                fireEvent.directionY
+            );
+
+            // Create weapon fire packet to broadcast to clients
+            std::vector<uint8_t> weaponFireArgs;
+            weaponFireArgs.resize(21); // shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + direction_x(2) + direction_y(2) + weapon_type(1) + flags_count(1) + flags(1) + seq(4)
+            uint8_t* ptr = weaponFireArgs.data();
+
+            // flags_count (1 byte)
+            uint8_t flagsCount = 1;
+            std::memcpy(ptr, &flagsCount, sizeof(uint8_t));
+            ptr += sizeof(uint8_t);
+
+            // flags (1 byte) - RELIABLE
+            uint8_t flags = 0x01;
+            std::memcpy(ptr, &flags, sizeof(uint8_t));
+            ptr += sizeof(uint8_t);
+
+            // sequence_number (4 bytes)
+            std::memcpy(ptr, &sequenceNumber, sizeof(uint32_t));
+            ptr += sizeof(uint32_t);
+
+            // shooter_id (4 bytes)
+            std::memcpy(ptr, &fireEvent.shooterId, sizeof(uint32_t));
+            ptr += sizeof(uint32_t);
+
+            // projectile_id (4 bytes)
+            std::memcpy(ptr, &fireEvent.projectileId, sizeof(uint32_t));
+            ptr += sizeof(uint32_t);
+
+            // origin_x (2 bytes)
+            int16_t origin_x = static_cast<int16_t>(fireEvent.originX);
+            std::memcpy(ptr, &origin_x, sizeof(int16_t));
+            ptr += sizeof(int16_t);
+
+            // origin_y (2 bytes)
+            int16_t origin_y = static_cast<int16_t>(fireEvent.originY);
+            std::memcpy(ptr, &origin_y, sizeof(int16_t));
+            ptr += sizeof(int16_t);
+
+            // direction_x (2 bytes) - normalized * 1000
+            int16_t direction_x = static_cast<int16_t>(fireEvent.directionX * 1000.0f);
+            std::memcpy(ptr, &direction_x, sizeof(int16_t));
+            ptr += sizeof(int16_t);
+
+            // direction_y (2 bytes) - normalized * 1000
+            int16_t direction_y = static_cast<int16_t>(fireEvent.directionY * 1000.0f);
+            std::memcpy(ptr, &direction_y, sizeof(int16_t));
+            ptr += sizeof(int16_t);
+
+            // weapon_type (1 byte)
+            std::memcpy(ptr, &fireEvent.weaponType, sizeof(uint8_t));
+
+            auto weaponFirePacket = PacketManager::createWeaponFire(weaponFireArgs);
+            if (weaponFirePacket.has_value()) {
+                outgoingPackets.push_back(weaponFirePacket.value());
+                LOG_INFO_CAT("Coordinator", "buildServerPacketBasedOnStatus: created weapon fire packet for shooter {} projectile {}", 
+                             fireEvent.shooterId, fireEvent.projectileId);
+            }
+        }
+    }
+    
+    // Clear processed weapon fires
+    _pendingWeaponFires.clear();
 
     LOG_DEBUG_CAT("Coordinator", "buildSeverPacketBasedOnStatus: created {} snapshot packets total", outgoingPackets.size());
 }
@@ -1291,9 +1419,25 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
     Entity projectile = spawnProjectile(shooter, payload.projectile_id, payload.weapon_type, payload.origin_x,
         payload.origin_y, payload.direction_x, payload.direction_y);
 
-    // Optional: Play fire effects for the shooter
-    //TODO: play sound if necessary
-    // this->_engine->playWeaponFireSound(payload.weapon_type);
+    // Play shooting sound client-side at the projectile origin position
+    // Determine sound type based on weapon type
+    protocol::AudioEffectType soundType;
+    switch (payload.weapon_type) {
+        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC):
+            soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
+            break;
+        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_CHARGED):
+            soundType = protocol::AudioEffectType::SFX_SHOOT_CHARGED;
+            break;
+        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_LASER):
+            soundType = protocol::AudioEffectType::SFX_SHOOT_LASER;
+            break;
+        default:
+            soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
+            break;
+    }
+    
+    playAudioEffect(soundType, origin_x, origin_y, 0.7f, 1.0f);
 
     LOG_INFO_CAT("Coordinator", "Projectile %u spawned from shooter %u", 
                  payload.projectile_id, payload.shooter_id);

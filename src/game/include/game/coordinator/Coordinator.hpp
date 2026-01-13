@@ -24,6 +24,7 @@
 #include <game/systems/RenderSystem.hpp>
 #include <game/systems/PlayerSystem.hpp>
 #include <game/systems/MovementSystem.hpp>
+#include <game/systems/ShootSystem.hpp>
 
 
 class Coordinator {
@@ -74,6 +75,24 @@ class Coordinator {
             bool withRenderComponents = true
         );
 
+        /**
+         * @brief Creates a projectile entity
+         * 
+         * IMPORTANT: Projectiles do NOT receive NetworkId components and are NOT
+         * synchronized via transform snapshots. They have predictable linear movement
+         * and are spawned on clients via WEAPON_FIRE packets containing initial
+         * position and velocity. Clients simulate movement locally.
+         * 
+         * @param projectileId Unique identifier for the projectile
+         * @param posX Initial X position
+         * @param posY Initial Y position
+         * @param velX X velocity (pixels per second)
+         * @param velY Y velocity (pixels per second)
+         * @param isPlayerProjectile True if fired by a player, false if by an enemy
+         * @param damage Damage dealt on hit
+         * @param withRenderComponents Whether to add visual components (client-side)
+         * @return The created projectile entity
+         */
         Entity createProjectileEntity(
             uint32_t projectileId,
             float posX,
@@ -89,7 +108,19 @@ class Coordinator {
         void processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
         void processClientPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs);
 
-        //TODO:
+        /**
+         * @brief Generates snapshot packets for all networked entities
+         * 
+         * Creates transform, health, and weapon snapshots for entities that have
+         * NetworkId components. Projectiles are intentionally excluded as they don't
+         * have NetworkId - they're spawned via WEAPON_FIRE packets and simulated
+         * locally on clients to reduce network bandwidth.
+         * 
+         * Also processes pending weapon fire events and generates WEAPON_FIRE packets.
+         * 
+         * @param outgoingPackets Vector to append generated packets to
+         * @param elapsedMs Milliseconds since last tick
+         */
         void buildServerPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
         void buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs);
 
@@ -99,6 +130,12 @@ class Coordinator {
         // HANDLE PACKETS
         std::vector<uint32_t> getPlayablePlayerIds();
         bool createPacketInputClient(common::protocol::Packet *packet, uint32_t playerId);
+
+        /** @brief Queue a weapon fire event to be processed into packets.
+         * Called by ShootSystem when an entity fires.
+         */
+        void queueWeaponFire(uint32_t shooterId, float originX, float originY,
+                            float directionX, float directionY, uint8_t weaponType);
 
         // HANDLE PACKETS
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs);
@@ -253,10 +290,28 @@ class Coordinator {
         /** @brief Stops a music. */
         void stopMusic();
 
+        // ==============================================================
+        //                      Weapon Fire Events
+        // ==============================================================
+
+        struct WeaponFireEvent {
+            uint32_t shooterId;
+            uint32_t projectileId;
+            float originX;
+            float originY;
+            float directionX;
+            float directionY;
+            uint8_t weaponType;
+        };
+
     private:
         PlayerSpriteAllocator _playerSpriteAllocator;
 
         std::shared_ptr<gameEngine::GameEngine> _engine;
+        
+        // Queue of weapon fire events to process
+        std::vector<WeaponFireEvent> _pendingWeaponFires;
+        uint32_t _nextProjectileId = 10000; // Start projectile IDs at 10000
 };
 
 #endif /* !COORDINATOR_HPP_ */
