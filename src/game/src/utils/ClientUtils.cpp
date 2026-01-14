@@ -68,7 +68,7 @@ std::vector<Entity> createButton(gameEngine::GameEngine& engine, std::string lab
 
     Entity textEntity = engine.createEntity("ButtonText_" + label);
     engine.addComponent<Transform>(textEntity, Transform(centerX, centerY, 0, scale));
-    engine.addComponent<Text>(textEntity, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+    engine.addComponent<Text>(textEntity, Text(label.c_str(), FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
 
     createdEntities.push_back(textEntity);
 
@@ -83,7 +83,7 @@ Entity createText(gameEngine::GameEngine& engine, std::string label,
     Entity text = engine.createEntity("Text_" + label);
     engine.addComponent<Transform>(text, Transform(pos.x, pos.y, rotation, scale));
 
-    engine.addComponent<Text>(text, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+    engine.addComponent<Text>(text, Text(label.c_str(), FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
 
     return text;
 }

@@ -1632,7 +1632,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     // Create a UI text entity to display the completion message
     Entity messageEntity = this->_engine->createEntity("LevelCompleteMessage");
     this->_engine->addComponent<Transform>(messageEntity, Transform(400.f, 300.f, 0.f, 1.5f));
-    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage));
+    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage.c_str()));
     this->_engine->addComponent<Sprite>(messageEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
 
     // Update game state based on completion
@@ -1645,7 +1645,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
         Entity timeEntity = this->_engine->createEntity("CompletionTime");
         this->_engine->addComponent<Transform>(timeEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage));
+        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage.c_str()));
         this->_engine->addComponent<Sprite>(timeEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     } else {
         // More levels to play - keep game running
@@ -1655,7 +1655,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
         Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
         this->_engine->addComponent<Transform>(nextEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage));
+        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage.c_str()));
         this->_engine->addComponent<Sprite>(nextEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     }
 }
@@ -1697,7 +1697,7 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
     Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
     this->_engine->addComponent<Transform>(levelStartEntity, Transform(400.f, 200.f, 0.f, 2.0f));
-    this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage));
+    this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage.c_str()));
     this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
 
     // Display estimated duration if provided
@@ -1705,7 +1705,7 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
         std::string durationMessage = "Estimated Time: " + std::to_string(estimated_duration) + "s";
         Entity durationEntity = this->_engine->createEntity("LevelDuration");
         this->_engine->addComponent<Transform>(durationEntity, Transform(400.f, 250.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(durationEntity, Text(durationMessage));
+        this->_engine->addComponent<Text>(durationEntity, Text(durationMessage.c_str()));
         this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     }
 
