@@ -25,6 +25,7 @@
 #include <vector>
 #include <common/protocol/Protocol.hpp>
 #include <functional>
+#include <cstring>
 
 // Forward declaration for GameAction enum
 enum class GameAction;
@@ -155,14 +156,21 @@ struct Animation
  */
 struct Text
 {
-    std::string str;
+    char str[128];
     FontAssets fontId;
     unsigned int size;
     sf::Color color;
     ZIndex zIndex;
 
-    Text(std::string s, FontAssets f = DEFAULT_FONT, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
-        : str(s), color(c), fontId(f), size(sz), zIndex(z) {}
+    Text(const char *s, FontAssets f = DEFAULT_FONT, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
+        : fontId(f), color(c), size(sz), zIndex(z)
+    {
+        // init tab to 0
+        std::memset(this->str, 0, sizeof(this->str));
+        // copy the text and be sure that we do not go over 127 char
+        if (s)
+            std::strncpy(this->str, s, sizeof(this->str) - 1);
+    }
 };
 
 /**
