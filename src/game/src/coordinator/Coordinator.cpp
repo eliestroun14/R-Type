@@ -511,7 +511,9 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
             // Create weapon fire packet to broadcast to clients
             std::vector<uint8_t> weaponFireArgs;
-            weaponFireArgs.resize(21); // shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + direction_x(2) + direction_y(2) + weapon_type(1) + flags_count(1) + flags(1) + seq(4)
+            // PacketManager expects: flags_count(1) + flags(1) + seq(4) + timestamp(4) + padding(2) + payload(17) = 29 bytes minimum
+            // The padding(2) accounts for HEADER_SIZE calculation quirk in PacketManager
+            weaponFireArgs.resize(29);
             uint8_t* ptr = weaponFireArgs.data();
 
             // flags_count (1 byte)
@@ -527,6 +529,16 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             // sequence_number (4 bytes)
             std::memcpy(ptr, &sequenceNumber, sizeof(uint32_t));
             ptr += sizeof(uint32_t);
+
+            // timestamp (4 bytes)
+            uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+            std::memcpy(ptr, &timestamp, sizeof(uint32_t));
+            ptr += sizeof(uint32_t);
+
+            // padding (2 bytes) - to satisfy PacketManager's HEADER_SIZE check
+            uint16_t padding = 0;
+            std::memcpy(ptr, &padding, sizeof(uint16_t));
+            ptr += sizeof(uint16_t);
 
             // shooter_id (4 bytes)
             std::memcpy(ptr, &fireEvent.shooterId, sizeof(uint32_t));

@@ -24,6 +24,9 @@ Game::Game(Type type)
             throw Error(ErrorType::GameplayError, "Failed to create Coordinator instance");
         }
 
+        // Set server/client mode
+        _coordinator->setIsServer(_type == Type::SERVER);
+
         _coordinator->initEngine();
 
         // Initialize render only for client and standalone

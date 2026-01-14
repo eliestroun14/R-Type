@@ -37,7 +37,7 @@ class Coordinator {
             float velY;
         };
 
-        Coordinator() {
+        Coordinator() : _isServer(false) {
             std::cout << "Coordinator constructor START" << std::endl;
             std::cout << "Coordinator constructor END" << std::endl;
         }
@@ -49,6 +49,12 @@ class Coordinator {
 
         void initEngine();
         void initEngineRender();
+        
+        /** @brief Sets whether this coordinator is running on the server. */
+        void setIsServer(bool isServer) { _isServer = isServer; }
+        
+        /** @brief Returns whether this coordinator is running on the server. */
+        bool isServer() const { return _isServer; }
 
         // ==============================================================
         //                       Entity creation helpers
@@ -308,6 +314,9 @@ class Coordinator {
         PlayerSpriteAllocator _playerSpriteAllocator;
 
         std::shared_ptr<gameEngine::GameEngine> _engine;
+        
+        // Server/Client flag
+        bool _isServer;
         
         // Queue of weapon fire events to process
         std::vector<WeaponFireEvent> _pendingWeaponFires;
