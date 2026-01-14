@@ -47,7 +47,10 @@ void Coordinator::initEngine()
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
 
     auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine);
-    this->_engine->setSystemSignature<ButtonSystem, Weapon, Transform>();
+    this->_engine->setSystemSignature<ButtonSystem, ButtonComponent, Transform>();
+
+    auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
+    this->_engine->setSystemSignature<AnimationSystem, Sprite, Animation>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
