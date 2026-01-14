@@ -34,6 +34,7 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<Projectile>();
     this->_engine->registerComponent<MovementPattern>();
     this->_engine->registerComponent<AI>();
+    this->_engine->registerComponent<ButtonComponent>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -44,6 +45,9 @@ void Coordinator::initEngine()
 
     auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this);
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
+
+    auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine);
+    this->_engine->setSystemSignature<ButtonSystem, Weapon, Transform>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
@@ -55,7 +59,7 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
 
     // Set signature: RenderSystem needs Transform and Sprite components
-    this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
+    this->_engine->setSystemSignature<RenderSystem, Transform>();
 }
 
 // ==============================================================

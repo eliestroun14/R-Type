@@ -25,6 +25,7 @@
 #include <game/systems/PlayerSystem.hpp>
 #include <game/systems/MovementSystem.hpp>
 #include <game/systems/ShootSystem.hpp>
+#include <game/systems/ButtonSystem.hpp>
 
 
 class Coordinator {
