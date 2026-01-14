@@ -223,3 +223,8 @@ float RenderManager::getScaleFactor() const
     float scaleY = windowSize.y / WINDOW_HEIGHT;
     return std::min(scaleX, scaleY);
 }
+
+void RenderManager::closeWindow()
+{
+    this->_window.close();
+}
