@@ -42,7 +42,7 @@ void Coordinator::initEngine()
     auto movementSystem = this->_engine->registerSystem<MovementSystem>(*this->_engine);
     this->_engine->setSystemSignature<MovementSystem, Transform, Velocity>();
 
-    auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this);
+    auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this, this->_isServer);
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
 }
 
@@ -510,10 +510,9 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             );
 
             // Create weapon fire packet to broadcast to clients
+            // Args format: flags_count(1) + flags(1+) + sequence_number(4) + timestamp(4) + payload(17)
             std::vector<uint8_t> weaponFireArgs;
-            // PacketManager expects: flags_count(1) + flags(1) + seq(4) + timestamp(4) + padding(4) + payload(17) = 31 bytes
-            // At offset 2 (after flags), it checks: offset(2) + HEADER_SIZE(12) + PAYLOAD(17) = 31 total
-            weaponFireArgs.resize(31);
+            weaponFireArgs.resize(WEAPON_FIRE_MIN_ARGS_SIZE);
             uint8_t* ptr = weaponFireArgs.data();
 
             // flags_count (1 byte)
@@ -531,13 +530,8 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             ptr += sizeof(uint32_t);
 
             // timestamp (4 bytes)
-            uint32_t timestamp = static_cast<uint32_t>(TIMESTAMP);
+            uint32_t timestamp = static_cast<uint32_t>(elapsedMs);
             std::memcpy(ptr, &timestamp, sizeof(uint32_t));
-            ptr += sizeof(uint32_t);
-
-            // padding (4 bytes) - to satisfy PacketManager's HEADER_SIZE(12) check
-            uint32_t padding = 0;
-            std::memcpy(ptr, &padding, sizeof(uint32_t));
             ptr += sizeof(uint32_t);
 
             // shooter_id (4 bytes)
@@ -570,6 +564,9 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
             // weapon_type (1 byte)
             std::memcpy(ptr, &fireEvent.weaponType, sizeof(uint8_t));
+
+            LOG_DEBUG_CAT("Coordinator", "WeaponFire packet: shooter={} proj={} origin=({},{}) dir=({},{}) weapon_type=0x{:02x}",
+                fireEvent.shooterId, fireEvent.projectileId, origin_x, origin_y, direction_x, direction_y, fireEvent.weaponType);
 
             auto weaponFirePacket = PacketManager::createWeaponFire(weaponFireArgs);
             if (weaponFirePacket.has_value()) {
@@ -1457,7 +1454,7 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != WEAPON_FIRE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_FIRE_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: invalid packet size {}, expected {}", packet.data.size(), WEAPON_FIRE_PAYLOAD_SIZE);
         return;
     }
 
@@ -1465,8 +1462,15 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
     protocol::WeaponFire payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "shooter_id=%u projectile_id=%u weapon_type=%u origin_pos=(%.1f, %.1f), direction_pos=(%.1f, %.1f)",
+    LOG_INFO_CAT("Coordinator", "shooter_id={} projectile_id={} weapon_type={} origin_pos=({}, {}), direction_pos=({}, {})",
                 payload.shooter_id, payload.projectile_id, payload.weapon_type, payload.origin_x, payload.origin_y, payload.direction_x, payload.direction_y);
+
+    // Check if projectile already exists (duplicate packet or not yet cleaned up)
+    Entity existingProjectile = this->_engine->getEntityFromId(payload.projectile_id);
+    if (this->_engine->isAlive(existingProjectile)) {
+        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectile_id);
+        return;
+    }
 
     // get the shooter
     Entity shooter = this->_engine->getEntityFromId(payload.shooter_id);
