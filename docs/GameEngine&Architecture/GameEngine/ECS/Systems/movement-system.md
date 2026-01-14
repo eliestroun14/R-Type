@@ -18,6 +18,24 @@ $$
 P_{new} = P_{old} + (V \times dt \times S)
 $$
 
+### Code reference
+[src/game/src/systems/MovementSystem.cpp](src/game/src/systems/MovementSystem.cpp#L1-L27)
+
+```cpp
+void MovementSystem::onUpdate(float dt) {
+	auto& positions = _engine.getComponents<Transform>();
+	auto& velocities = _engine.getComponents<Velocity>();
+	float scaleFactor = _engine.getScaleFactor();
+	for (size_t e : _entities) {
+		if (!positions[e] || !velocities[e]) continue;
+		auto& pos = positions[e].value();
+		auto& vel = velocities[e].value();
+		pos.x += vel.vx * scaleFactor * dt;
+		pos.y += vel.vy * scaleFactor * dt;
+	}
+}
+```
+
 Where:
 * $P$: Position (`Transform.x`, `Transform.y`)
 * $V$: Velocity (`Velocity.vx`, `Velocity.vy`)

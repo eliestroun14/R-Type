@@ -41,6 +41,9 @@ class Game {
         // Get coordinator for initialization purposes
         std::shared_ptr<Coordinator> getCoordinator() { return _coordinator; }
 
+        // Server-side: Handle a new player connection
+        void onPlayerConnected(uint32_t playerId);
+
     protected:
         void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);
         std::optional<common::network::ReceivedPacket> popIncomingPacket();
@@ -50,6 +53,9 @@ class Game {
 
         // Client-side prediction and reconciliation step
         void clientTick(uint64_t elapsedMs);
+        
+        // Helper method to send existing players to a new client
+        void sendExistingPlayersToNewClient(uint32_t newPlayerId);
 
     private:
         Type _type;
@@ -71,6 +77,9 @@ class Game {
         std::chrono::steady_clock::time_point _lastTickTime;
         static constexpr uint64_t TICK_RATE_MS = 16; // ~60 FPS
         uint64_t _accumulatedTime = 0;
+        
+        // Track connected player IDs for spawning existing players to new clients
+        std::vector<uint32_t> _connectedPlayers;
 };
 
 #endif /* !GAME_HPP_ */

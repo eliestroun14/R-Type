@@ -73,3 +73,39 @@ level.waves.push_back(wave3);
 gameEngine->addComponent<Level>(levelEntity, level);
 ```
 
+### Code reference
+[src/game/src/systems/LevelSystem.cpp](src/game/src/systems/LevelSystem.cpp#L1-L140)
+
+```cpp
+void LevelSystem::onUpdate(float dt) {
+    auto& levels = _engine.getComponents<Level>();
+    for (size_t e : _entities) {
+        if (!levels[e]) continue;
+        auto& level = levels[e].value();
+        if (level.completed) continue;
+        level.elapsedTime += dt;
+        if (_spawnedEnemies.size() != level.waves.size()) {
+            _spawnedEnemies.resize(level.waves.size());
+            for (size_t i = 0; i < level.waves.size(); i++)
+                _spawnedEnemies[i].resize(level.waves[i].enemies.size(), false);
+        }
+        for (size_t waveIdx = 0; waveIdx < level.waves.size(); ++waveIdx) {
+            const Wave& wave = level.waves[waveIdx];
+            if (level.elapsedTime < wave.startTime) continue;
+            float timeInWave = level.elapsedTime - wave.startTime;
+            float cumulativeDelay = 0.f;
+            for (size_t enemyIdx = 0; enemyIdx < wave.enemies.size(); ++enemyIdx) {
+                const EnemySpawn& enemy = wave.enemies[enemyIdx];
+                cumulativeDelay += enemy.delayAfterPrevious;
+                if (timeInWave >= cumulativeDelay && !_spawnedEnemies[waveIdx][enemyIdx]) {
+                    spawnEnemy(enemy);
+                    _spawnedEnemies[waveIdx][enemyIdx] = true;
+                }
+            }
+        }
+        // completion check against last wave end time
+    }
+}
+```
+```
+

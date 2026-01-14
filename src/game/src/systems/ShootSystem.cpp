@@ -6,6 +6,7 @@
 */
 
 #include <game/systems/ShootSystem.hpp>
+#include <game/coordinator/Coordinator.hpp>
 #include <engine/ecs/component/Components.hpp>
 #include <cmath>
 #include <chrono>
@@ -58,10 +59,20 @@ void ShootSystem::onUpdate(float dt)
         if (shouldShoot && canShoot(weapon, currentTime)) {
             auto [dirX, dirY] = calculateDirection(Entity::fromId(e));
             weapon.lastShotTime = currentTime;
-            spawnProjectile(Entity::fromId(e), transform.x, transform.y, dirX, dirY, isPlayer, weapon);
+            
+            // Get the NetworkId component to use as shooter ID
+            auto& networkIdOpt = this->_engine.getComponentEntity<NetworkId>(Entity::fromId(e));
+            uint32_t shooterId = networkIdOpt.has_value() ? networkIdOpt->id : static_cast<uint32_t>(e);
+            
+            // Determine weapon type (for now use basic)
+            uint8_t weaponType = static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC);
+            
+            // Queue the weapon fire event to be processed by Coordinator
+            _coordinator.queueWeaponFire(shooterId, transform.x, transform.y, dirX, dirY, weaponType);
+            
             if (isPlayer) {
-                std::cout << "[ShootSystem] Projectile spawned from player at ("
-                          << transform.x << ", " << transform.y << ")" << std::endl;
+                std::cout << "[ShootSystem] Weapon fire queued from player " << shooterId 
+                          << " at (" << transform.x << ", " << transform.y << ")" << std::endl;
             }
         }
     }
@@ -71,32 +82,12 @@ void ShootSystem::spawnProjectile(Entity shooterId, float originX, float originY
                                   float directionX, float directionY,
                                   bool isFromPlayable, const Weapon& weapon)
 {
-    // Create projectile entity
-    std::string projectileName = isFromPlayable ? "PlayerProjectile" : "EnemyProjectile";
-    Entity projectile = this->_engine.createEntity(projectileName);
-
-    // Calculate projectile velocity (units per millisecond)
-    float projectileSpeed = 1.5f;  // tuned for visible travel with dt in ms
-    float length = std::sqrt(directionX * directionX + directionY * directionY);
-    if (length > 0.0f) {
-        directionX /= length;
-        directionY /= length;
-    }
-
-    float velocityX = directionX * projectileSpeed;
-    float velocityY = directionY * projectileSpeed;
-
-    // Get appropriate sprite for projectile
-    Assets projectileAsset = getProjectileAsset(weapon.projectileType, isFromPlayable);
-
-    // Add components to projectile
-    this->_engine.addComponent<Transform>(projectile, Transform(originX, originY, 0.0f, 2.0f));
-    this->_engine.addComponent<Velocity>(projectile, Velocity(velocityX, velocityY));
-    this->_engine.addComponent<Sprite>(projectile, Sprite(projectileAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 8)));
-    this->_engine.addComponent<HitBox>(projectile, HitBox());
-
-    // Add Projectile component to track ownership and target type
-    this->_engine.addComponent<Projectile>(projectile, Projectile(shooterId, isFromPlayable, weapon.damage));
+    // Server-side: Don't spawn projectile entities here - the Coordinator will handle this
+    // based on weapon fire packets. This method now just serves to trigger the fire event.
+    // The actual projectile spawning happens in Coordinator::handlePacketWeaponFire or
+    // Coordinator::spawnProjectile when processing the weapon fire packet.
+    
+    // Note: Client-side sound playing is handled in Coordinator when receiving weapon fire packet
 }
 
 bool ShootSystem::canShoot(const Weapon& weapon, uint32_t currentTime) const

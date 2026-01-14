@@ -100,17 +100,10 @@ static bool validateEntityState(const std::vector<uint8_t> &data, size_t offset,
         return false;
     }
 
-    // Offset +0 to +3: entity_id must not be 0
+    // Offset +0 to +3: entity_id (0 is valid - player IDs start at 0)
     uint32_t entity_id;
     std::memcpy(&entity_id, data.data() + offset + 0, sizeof(uint32_t));
-    if (entity_id == 0) {
-        if (entity_index >= 0) {
-            LOG_ERROR_CAT("PacketManager", "validateEntityState[%d]: entity_id == 0", entity_index);
-        } else {
-            LOG_ERROR_CAT("PacketManager", "validateEntityState: entity_id == 0");
-        }
-        return false;
-    }
+    // Entity ID 0 is now allowed (for player 0)
 
     // Offset +4: entity_type must be valid (0x01 to 0x08)
     uint8_t entity_type;
@@ -339,17 +332,17 @@ bool PacketManager::assertPlayerInput(const common::protocol::Packet &packet)
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // Payload: 12 bytes
-    if (data.size() != 12) {
-        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: payload size != 12, got %zu", data.size());
+    // Payload: 10 bytes (player_id=4 + input_state=2 + aim_x=2 + aim_y=2)
+    if (data.size() != PLAYER_INPUT_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: payload size != {}, got {}", PLAYER_INPUT_PAYLOAD_SIZE, data.size());
         return false;
     }
 
-    // Offset 0-3: player_id must not be 0
+    // Offset 0-3: player_id (valid range: 0 to MAX_PLAYERS-1)
     uint32_t player_id;
     std::memcpy(&player_id, data.data() + 0, sizeof(uint32_t));
-    if (player_id == 0) {
-        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: player_id == 0");
+    if (player_id >= MAX_PLAYERS) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: player_id {} exceeds MAX_PLAYERS {}", player_id, MAX_PLAYERS);
         return false;
     }
 
@@ -562,29 +555,21 @@ bool PacketManager::assertTransformSnapshot(const common::protocol::Packet &pack
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // TransformSnapshot: 6 + (entity_count × 12) bytes minimum 6 bytes
-    if (data.size() < 6 || (data.size() - 6) % 12 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: invalid payload size %zu", data.size());
+    // TransformSnapshot payload: entity_count (2 bytes) + (entity_count × 12 bytes of data)
+    // Minimum: 2 bytes for entity_count (can be 0 entities)
+    if (data.size() < 2 || (data.size() - 2) % 12 != 0) {
+        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: invalid payload size %zu, expected 2 + N*12", data.size());
         return false;
     }
 
-    // Offset 0-3: world_tick
-    uint32_t world_tick;
-    std::memcpy(&world_tick, data.data() + 0, sizeof(uint32_t));
-    // TODO: Check monotonicity with previous ticks
-
-    // Offset 4-5: entity_count
+    // Offset 0-1: entity_count
     uint16_t entity_count;
-    std::memcpy(&entity_count, data.data() + 4, sizeof(uint16_t));
-    if (entity_count < 0) {
-        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: entity_count < 0 got: %hu", entity_count);
-        return false;
-    }
+    std::memcpy(&entity_count, data.data() + 0, sizeof(uint16_t));
 
     // Validate size matches entity count
-    if (data.size() != 6 + (entity_count * 12)) {
+    if (data.size() != 2 + (entity_count * 12)) {
         LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: size mismatch, got %zu expected %zu",
-                     data.size(), 6 + (entity_count * 12));
+                     data.size(), 2 + (entity_count * 12));
         return false;
     }
 
@@ -649,46 +634,36 @@ bool PacketManager::assertHealthSnapshot(const common::protocol::Packet &packet)
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // HealthSnapshot: 6 + (entity_count × 8) bytes
-    if (data.size() < 6 || (data.size() - 6) % 8 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: invalid payload size %zu", data.size());
+    // HealthSnapshot payload: entity_count (2 bytes) + (entity_count × 8 bytes)
+    // world_tick is in header.timestamp
+    if (data.size() < 2 || (data.size() - 2) % 8 != 0) {
+        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: invalid payload size %zu, expected 2 + N*8", data.size());
         return false;
     }
 
-    // Offset 0-3: world_tick - should be monotonic increasing
-    uint32_t world_tick;
-    std::memcpy(&world_tick, data.data() + 0, sizeof(uint32_t));
-    // TODO: Track previous world_tick and validate monotonic increase
-
-    // Offset 4-5: entity_count - must be valid
+    // Offset 0-1: entity_count
     uint16_t entity_count;
-    std::memcpy(&entity_count, data.data() + 4, sizeof(uint16_t));
-    // entity_count is uint16_t, always >= 0
+    std::memcpy(&entity_count, data.data() + 0, sizeof(uint16_t));
 
     // Validate size matches entity count
-    if (data.size() != 6 + (entity_count * 8)) {
+    if (data.size() != 2 + (entity_count * 8)) {
         LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: size mismatch, got %zu expected %zu",
-                     data.size(), 6 + (entity_count * 8));
+                     data.size(), 2 + (entity_count * 8));
         return false;
     }
 
     // Validate each ComponentHealth entry (8 bytes each)
     // Per entry: [uint32_t entity_id (4 bytes)] + [ComponentHealth: current_health(1) + max_health(1) + current_shield(1) + max_shield(1)]
     for (uint16_t i = 0; i < entity_count; ++i) {
-        size_t entry_offset = 6 + (i * 8);
+        size_t entry_offset = 2 + (i * 8);
 
-        // Offset +0 to +3: entity_id (should not be 0)
+        // Offset +0 to +3: entity_id
         uint32_t entity_id;
         std::memcpy(&entity_id, data.data() + entry_offset + 0, sizeof(uint32_t));
-        if (entity_id == 0) {
-            LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: entry[%hu].entity_id == 0", i);
-            return false;
-        }
 
         // Offset +4: current_health (uint8_t) - can be 0 if entity is dead
         uint8_t current_health;
         std::memcpy(&current_health, data.data() + entry_offset + 4, sizeof(uint8_t));
-        // current_health can be 0 (entity dead) or > 0 (entity alive)
 
         // Offset +5: max_health (uint8_t) - must be > 0
         uint8_t max_health;
@@ -713,24 +688,21 @@ bool PacketManager::assertWeaponSnapshot(const common::protocol::Packet &packet)
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // WeaponSnapshot: 6 + (entity_count × 9) bytes
-    if (data.size() < 6 || (data.size() - 6) % 9 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertWeaponSnapshot: invalid payload size %zu", data.size());
+    // WeaponSnapshot payload: entity_count (2 bytes) + (entity_count × 9 bytes)
+    // world_tick is in header.timestamp
+    if (data.size() < 2 || (data.size() - 2) % 9 != 0) {
+        LOG_ERROR_CAT("PacketManager", "assertWeaponSnapshot: invalid payload size %zu, expected 2 + N*9", data.size());
         return false;
     }
 
-    // Offset 0-3: world_tick
-    uint32_t world_tick;
-    std::memcpy(&world_tick, data.data() + 0, sizeof(uint32_t));
-
-    // Offset 4-5: entity_count
+    // Offset 0-1: entity_count
     uint16_t entity_count;
-    std::memcpy(&entity_count, data.data() + 4, sizeof(uint16_t));
+    std::memcpy(&entity_count, data.data() + 0, sizeof(uint16_t));
 
     // Validate size matches entity count
-    if (data.size() != 6 + (entity_count * 9)) {
+    if (data.size() != 2 + (entity_count * 9)) {
         LOG_ERROR_CAT("PacketManager", "assertWeaponSnapshot: size mismatch, got %zu expected %zu",
-                     data.size(), 6 + (entity_count * 9));
+                     data.size(), 2 + (entity_count * 9));
         return false;
     }
 
