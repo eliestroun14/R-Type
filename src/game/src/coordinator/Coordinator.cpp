@@ -6,6 +6,7 @@
 */
 
 #include "game/coordinator/Coordinator.hpp"
+#include "game/systems/AnimationSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -50,6 +51,10 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
 {
     this->_engine->initRender();
     this->_engine->initAudio();
+
+    // Register AnimationSystem before RenderSystem (animation must update before rendering)
+    auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
+    this->_engine->setSystemSignature<AnimationSystem, Animation, Sprite>();
 
     // Register RenderSystem to handle entity rendering
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
@@ -1498,7 +1503,8 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 
     // Play shooting sound client-side at the projectile origin position
     // Determine sound type based on weapon type
-    protocol::AudioEffectType soundType;
+    // TODO: a fix
+/*     protocol::AudioEffectType soundType;
     switch (payload.weaponType) {
         case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC):
             soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
@@ -1515,7 +1521,7 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
     }
     
     playAudioEffect(soundType, origin_x, origin_y, 0.7f, 1.0f);
-
+ */
     LOG_INFO_CAT("Coordinator", "Projectile {} spawned from shooter {}", 
                  payload.projectileId, payload.shooterId);
 }
@@ -2431,7 +2437,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
     Entity projectile = this->_engine->createEntityWithId(projectile_id, projectileName);
     LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Entity created successfully");
     
-    float projectileSpeed = 1.5f;  // tuned for visible travel with dt in ms
+    float projectileSpeed = PROJECTILE_SPEED;  // tuned for visible travel with dt in ms
 
     switch (weapon_type) {
         case 0x00: // WEAPON_TYPE_BASIC
@@ -2446,7 +2452,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
                 sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Animation component");
             this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
-                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
+                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, 0.05f,
                 DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());

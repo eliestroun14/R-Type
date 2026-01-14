@@ -472,6 +472,9 @@ enum NetworkType {
 
 // =============================== PROJECTILES ================================
 
+// PROJECTILE SPEED (units per millisecond)
+#define PROJECTILE_SPEED 1000.0f
+
 // BASIC/DEFAULT PROJECTILE
 #define DEFAULT_PROJ_ROTATION 0
 #define DEFAULT_PROJ_SCALE 2.5f
