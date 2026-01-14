@@ -999,7 +999,7 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         return;
     }
 
-    LOG_INFO_CAT("Coordinator", "[CLIENT] TransformSnapshot received: world_tick=%u entity_count=%u", world_tick, entity_count);
+    LOG_INFO_CAT("Coordinator", "[CLIENT] TransformSnapshot received: world_tick={} entity_count={}", world_tick, entity_count);
 
     std::size_t offset = BASE_SIZE;
 
@@ -1054,7 +1054,7 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
         return;
     }
 
-    LOG_INFO_CAT("Coordinator", "HealthSnapshot: entity_count=%u", entity_count);
+    LOG_INFO_CAT("Coordinator", "HealthSnapshot: entity_count={}", entity_count);
 
     size_t offset = 2; // Skip entity_count
     for (uint16_t i = 0; i < entity_count; i++) {
@@ -1113,7 +1113,7 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
         return;
     }
 
-    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: entity_count=%u", entity_count);
+    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: entity_count={}", entity_count);
 
     size_t offset = 2; // Skip entity_count
     for (uint16_t i = 0; i < entity_count; i++) {
@@ -1452,44 +1452,54 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 {
-    // Validate payload size using the protocol define
-    if (packet.data.size() != WEAPON_FIRE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: invalid packet size {}, expected {}", packet.data.size(), WEAPON_FIRE_PAYLOAD_SIZE);
+    // Parse the weapon fire packet
+    auto parsed = PacketManager::parseWeaponFire(packet);
+    if (!parsed.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: failed to parse weapon fire packet");
         return;
     }
 
-    // Parse the WEAPON_FIRE_PAYLOAD_SIZE payload in one memcpy
-    protocol::WeaponFire payload;
-    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+    const auto& payload = parsed.value();
 
     LOG_INFO_CAT("Coordinator", "shooter_id={} projectile_id={} weapon_type={} origin_pos=({}, {}), direction_pos=({}, {})",
-                payload.shooter_id, payload.projectile_id, payload.weapon_type, payload.origin_x, payload.origin_y, payload.direction_x, payload.direction_y);
+                payload.shooterId, payload.projectileId, payload.weaponType, 
+                payload.originX, payload.originY, payload.directionX, payload.directionY);
 
     // Check if projectile already exists (duplicate packet or not yet cleaned up)
-    Entity existingProjectile = this->_engine->getEntityFromId(payload.projectile_id);
+    Entity existingProjectile = this->_engine->getEntityFromId(payload.projectileId);
     if (this->_engine->isAlive(existingProjectile)) {
-        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectile_id);
+        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectileId);
         return;
     }
 
     // get the shooter
-    Entity shooter = this->_engine->getEntityFromId(payload.shooter_id);
+    Entity shooter = this->_engine->getEntityFromId(payload.shooterId);
 
-    float origin_x = static_cast<float>(payload.origin_x);
-    float origin_y = static_cast<float>(payload.origin_y);
+    // Convert from int16_t to float
+    float origin_x = static_cast<float>(payload.originX);
+    float origin_y = static_cast<float>(payload.originY);
 
+    // Convert direction from int16_t (normalized*1000) back to float
+    float direction_x = static_cast<float>(payload.directionX) / 1000.0f;
+    float direction_y = static_cast<float>(payload.directionY) / 1000.0f;
 
-    float direction_x = static_cast<float>(payload.direction_x) / 1000.0f;
-    float direction_y = static_cast<float>(payload.direction_y) / 1000.0f;
-
-
-    Entity projectile = spawnProjectile(shooter, payload.projectile_id, payload.weapon_type, payload.origin_x,
-        payload.origin_y, payload.direction_x, payload.direction_y);
+    try {
+        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: About to spawn projectile {}", payload.projectileId);
+        Entity projectile = spawnProjectile(shooter, payload.projectileId, payload.weaponType, 
+                                            origin_x, origin_y, direction_x, direction_y);
+        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: Successfully spawned projectile {}", payload.projectileId);
+    } catch (const Error& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {}: {}", payload.projectileId, e.what());
+        return;
+    } catch (const std::exception& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {} with unexpected error: {}", payload.projectileId, e.what());
+        return;
+    }
 
     // Play shooting sound client-side at the projectile origin position
     // Determine sound type based on weapon type
     protocol::AudioEffectType soundType;
-    switch (payload.weapon_type) {
+    switch (payload.weaponType) {
         case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC):
             soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
             break;
@@ -1506,8 +1516,8 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
     
     playAudioEffect(soundType, origin_x, origin_y, 0.7f, 1.0f);
 
-    LOG_INFO_CAT("Coordinator", "Projectile %u spawned from shooter %u", 
-                 payload.projectile_id, payload.shooter_id);
+    LOG_INFO_CAT("Coordinator", "Projectile {} spawned from shooter {}", 
+                 payload.projectileId, payload.shooterId);
 }
 
 void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)
@@ -2390,34 +2400,63 @@ std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
 
 Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type, float origin_x, float origin_y, float dir_x, float dir_y)
 {
+    LOG_DEBUG_CAT("Coordinator", "spawnProjectile: START - projectile_id={} weapon_type={}", projectile_id, weapon_type);
+    
     bool isFromPlayable = false;
-    std::string projectileName = this->_engine->getEntityName(shooter) + " projectile";
+    std::string projectileName = "projectile_" + std::to_string(projectile_id);
+    
+    // Get damage from shooter's weapon if available, otherwise use default
+    uint16_t projectileDamage = 10; // Default damage
+    
+    // Only access shooter components if entity exists, is alive, AND has all required components
+    // Use try-catch to handle any unexpected component access failures
+    try {
+        if (this->_engine->isAlive(shooter) && 
+            this->_engine->hasComponent<Transform>(shooter) &&
+            this->_engine->hasComponent<Weapon>(shooter)) {
+            
+            if (this->_engine->hasComponent<InputComponent>(shooter)) {
+                isFromPlayable = true;
+            }
+            
+            auto& shooterWeapon = this->_engine->getComponentEntity<Weapon>(shooter);
+            projectileDamage = shooterWeapon->damage;
+        }
+    } catch (...) {
+        // If any component access fails, just use default values
+        LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Failed to access shooter components, using defaults");
+    }
 
-    auto& shooterWeapon = this->_engine->getComponentEntity<Weapon>(shooter);
-
-    if (this->_engine->hasComponent<InputComponent>(shooter))
-        isFromPlayable = true;
-
+    LOG_DEBUG_CAT("Coordinator", "spawnProjectile: About to createEntityWithId {}", projectile_id);
     Entity projectile = this->_engine->createEntityWithId(projectile_id, projectileName);
+    LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Entity created successfully");
+    
     float projectileSpeed = 1.5f;  // tuned for visible travel with dt in ms
 
     switch (weapon_type) {
         case 0x00: // WEAPON_TYPE_BASIC
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Transform component");
             this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_PROJ_ROTATION, DEFAULT_PROJ_SCALE));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Velocity component");
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
-            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Projectile component");
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, projectileDamage));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Sprite component");
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
                 sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Animation component");
             this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
                 DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
                 DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: All components added successfully");
             break;
 
         case 0x01: // WEAPON_TYPE_CHARGED
             this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_PROJ_ROTATION, CHARGED_PROJ_SCALE));
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
-            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, projectileDamage));
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
                 sf::IntRect(0, 0, CHARGED_PROJ_SPRITE_WIDTH, CHARGED_PROJ_SPRITE_HEIGHT)));
             this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_PROJ_ANIMATION_WIDTH,

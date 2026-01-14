@@ -393,6 +393,52 @@ std::optional<ParsedPlayerInput> PacketManager::parsePlayerInput(const common::p
     return result;
 }
 
+std::optional<ParsedWeaponFire> PacketManager::parseWeaponFire(const common::protocol::Packet &packet)
+{
+    // Validate packet first
+    if (!assertWeaponFire(packet)) {
+        return std::nullopt;
+    }
+
+    const auto &data = packet.data;
+    ParsedWeaponFire result;
+
+    // packet.data contains exactly WEAPON_FIRE_PAYLOAD_SIZE (17 bytes):
+    // shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + 
+    // direction_x(2) + direction_y(2) + weapon_type(1)
+
+    size_t offset = 0;
+
+    // Extract shooter_id (4 bytes)
+    std::memcpy(&result.shooterId, data.data() + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    // Extract projectile_id (4 bytes)
+    std::memcpy(&result.projectileId, data.data() + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    // Extract origin_x (2 bytes)
+    std::memcpy(&result.originX, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract origin_y (2 bytes)
+    std::memcpy(&result.originY, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract direction_x (2 bytes)
+    std::memcpy(&result.directionX, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract direction_y (2 bytes)
+    std::memcpy(&result.directionY, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract weapon_type (1 byte)
+    result.weaponType = data[offset];
+
+    return result;
+}
+
 // ==============================================================
 //                  WORLD_STATE (0x20-0x3F)
 // ==============================================================
