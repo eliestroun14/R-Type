@@ -245,7 +245,20 @@ void Coordinator::processServerPackets(const std::vector<common::protocol::Packe
     for (const auto& packet : packetsToProcess) {
         if (PacketManager::assertPlayerInput(packet)) {
             LOG_INFO_CAT("Coordinator", "Processing PLAYER_INPUT packet");
-            handlePlayerInputPacket(packet, elapsedMs);
+            
+            // Parse to get the source player ID
+            auto parsed = PacketManager::parsePlayerInput(packet);
+            if (parsed.has_value()) {
+                handlePlayerInputPacket(packet, elapsedMs);
+                // Queue this packet to be relayed to OTHER clients (exclude the source)
+                RelayPacket relayPacket;
+                relayPacket.packet = packet;
+                relayPacket.sourcePlayerId = parsed->playerId;
+                _packetsToRelay.push_back(relayPacket);
+                LOG_DEBUG_CAT("Coordinator", "Queued PLAYER_INPUT packet from player {} for relay to other clients (excluding source)", parsed->playerId);
+            } else {
+                LOG_ERROR_CAT("Coordinator", "Failed to parse PLAYER_INPUT packet");
+            }
         } else {
             LOG_WARN_CAT("Coordinator", "Received non-input packet type {} on server", static_cast<int>(packet.header.packet_type));
         }
@@ -259,6 +272,12 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
         uint8_t packetType = packet.header.packet_type;
 
         switch (packetType) {
+            case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT):
+                if (PacketManager::assertPlayerInput(packet)) {
+                    LOG_DEBUG_CAT("Coordinator", "Client received relayed PLAYER_INPUT packet");
+                    handleRelayedPlayerInputPacket(packet, elapsedMs);
+                }
+                break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN):
                 if (PacketManager::assertEntitySpawn(packet)) {
                     this->handlePacketCreateEntity(packet);
@@ -402,6 +421,19 @@ void Coordinator::queueWeaponFire(uint32_t shooterId, float originX, float origi
 // Should create packets based on server game state using define.hpp 
 void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
+    // ============================================================================
+    // RELAY PLAYER INPUT PACKETS
+    // ============================================================================
+    // Relay any PLAYER_INPUT packets received from clients to all OTHER clients
+    // This ensures all clients see each other's input for animation updates
+    // IMPORTANT: Each packet is marked with sourcePlayerId so the network layer
+    // can exclude sending the packet back to the originating player
+    for (const auto& relayPacket : _packetsToRelay) {
+        outgoingPackets.push_back(relayPacket.packet);
+        LOG_DEBUG_CAT("Coordinator", "Relaying PLAYER_INPUT packet from player {} to other clients (network layer should exclude source)", relayPacket.sourcePlayerId);
+    }
+    _packetsToRelay.clear();
+
     // ============================================================================
     // SERVER SNAPSHOT GENERATION
     // ============================================================================
@@ -670,6 +702,32 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     return PacketManager::createEntitySpawn(args);
 }
 
+bool Coordinator::shouldSendPacketToPlayer(const common::protocol::Packet& packet, uint32_t targetPlayerId) const
+{
+    // Check if this is a PLAYER_INPUT packet
+    if (packet.header.packet_type != static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT)) {
+        // Non-PLAYER_INPUT packets are sent to all players
+        return true;
+    }
+
+    // This is a PLAYER_INPUT packet - parse it to get the source player
+    auto parsed = PacketManager::parsePlayerInput(packet);
+    if (!parsed.has_value()) {
+        // If we can't parse it, be safe and exclude it
+        LOG_WARN_CAT("Coordinator", "shouldSendPacketToPlayer: Failed to parse PLAYER_INPUT packet");
+        return false;
+    }
+
+    // Don't send the packet to the player who sent it (avoid double-processing)
+    // But send it to all other players
+    if (parsed->playerId == targetPlayerId) {
+        LOG_DEBUG_CAT("Coordinator", "Excluding PLAYER_INPUT from player {} to themselves", targetPlayerId);
+        return false;
+    }
+
+    return true;
+}
+
 std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
 {
     std::vector<uint32_t> playerIds;
@@ -692,6 +750,25 @@ std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
     }
 
     LOG_DEBUG_CAT("Coordinator", "getPlayablePlayerIds: found {} playable entities", playerIds.size());
+    return playerIds;
+}
+
+std::vector<uint32_t> Coordinator::getAllConnectedPlayerIds() const
+{
+    std::vector<uint32_t> playerIds;
+    auto& inputComponents = this->_engine->getComponents<InputComponent>();
+
+    LOG_DEBUG_CAT("Coordinator", "getAllConnectedPlayerIds: checking {} input components", inputComponents.size());
+
+    for (size_t i = 0; i < inputComponents.size(); ++i) {
+        if (inputComponents[i].has_value()) {
+            uint32_t playerId = inputComponents[i].value().playerId;
+            playerIds.push_back(playerId);
+            LOG_DEBUG_CAT("Coordinator", "  Found player entity at index {} with playerId {}", i, playerId);
+        }
+    }
+
+    LOG_DEBUG_CAT("Coordinator", "getAllConnectedPlayerIds: found {} player entities", playerIds.size());
     return playerIds;
 }
 
@@ -842,20 +919,23 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
         return;  // Invalid packet, ignore
     }
 
-    LOG_INFO_CAT("Coordinator", "[SERVER] handlePlayerInputPacket: playerId={} actionCount={}", 
+    LOG_INFO_CAT("Coordinator", "handlePlayerInputPacket: playerId={} actionCount={}",
                   parsed->playerId, parsed->actions.size());
 
     // Find the entity for this player by iterating over all InputComponents
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
+    LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: checking {} input components", inputComponents.size());
+
     bool foundPlayer = false;
     for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
         auto& input = inputComponents[entityId];
         if (input.has_value() && input->playerId == parsed->playerId) {
+            LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
             Entity entity = Entity::fromId(entityId);
             // Update all input actions
             for (const auto& [action, isPressed] : parsed->actions) {
                 this->_engine->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
-                LOG_INFO_CAT("Coordinator", "[SERVER]   Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
+                LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
             }
             foundPlayer = true;
             break;
@@ -864,6 +944,35 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
 
     if (!foundPlayer) {
         LOG_WARN_CAT("Coordinator", "handlePlayerInputPacket: player {} not found in ECS", parsed->playerId);
+    }
+}
+
+void Coordinator::handleRelayedPlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
+{
+    auto parsed = PacketManager::parsePlayerInput(packet);
+    if (!parsed.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "handleRelayedPlayerInputPacket: failed to parse input packet");
+        return;  // Invalid packet, ignore
+    }
+
+    LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: playerId={} actionCount={}",
+                  parsed->playerId, parsed->actions.size());
+
+    auto& inputComponents = this->_engine->getComponents<InputComponent>();
+
+    for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
+        auto& input = inputComponents[entityId];
+        if (input.has_value() && input->playerId == parsed->playerId) {
+            LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
+            Entity entity = Entity::fromId(entityId);
+
+            for (const auto& [action, isPressed] : parsed->actions) {
+                input->activeActions[action] = isPressed;
+                LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: Directly updated Player {} action {} to {}",
+                             parsed->playerId, static_cast<int>(action), isPressed);
+            }
+            break;
+        }
     }
 }
 
@@ -1111,7 +1220,7 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
     // Each weapon entry: entity_id(4) + fire_rate(2) + damage(1) + projectile_type(1) + ammo(1) = 9 bytes
     const size_t WEAPON_ENTRY_SIZE = 9;
     const size_t expected_size = 2 + (entity_count * WEAPON_ENTRY_SIZE);
-    
+
     if (packet.data.size() != expected_size) {
         LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: invalid packet size %zu, expected %zu for %u entities",
             packet.data.size(), expected_size, entity_count);
@@ -2452,7 +2561,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
                 sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Animation component");
             this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
-                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, 0.05f,
+                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
                 DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());
