@@ -101,6 +101,19 @@ Entity createImage(gameEngine::GameEngine& engine, Assets assetId,
 }
 
 
+Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Animation animation,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex)
+{
+    Entity image = engine.createEntity("Entity");
+
+    engine.addComponent<Transform>(image, Transform(pos.x, pos.y, rotation, scale));
+    engine.addComponent<Sprite>(image, Sprite(assetId, zIndex, rect));
+    engine.addComponent<Animation>(image, Animation(animation));
+
+    return image;
+}
+
+
 std::vector<Entity> createCheckbox(gameEngine::GameEngine& engine, bool initialState,
     Assets uncheckedAsset, Assets checkedAsset, sf::Vector2f pos,
     sf::IntRect rectSprite, float rotation, float scale,

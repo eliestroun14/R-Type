@@ -87,6 +87,22 @@ Entity createImage(gameEngine::GameEngine& engine, Assets assetId,
 
 
 /**
+ * @brief Create a simple static image
+ * @param engine The GameEngine instance
+ * @param assetId The texture to use
+ * @param animation The Animation component used to get spriteSheet data
+ * @param pos Position of the image
+ * @param float The rotation of the Text
+ * @param scale Scale factor
+ * @param zIndex Layer (default to 1 or 2 for UI)
+ * @return Entity of the image'sprite
+ */
+Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Animation animation,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite, ZIndex zIndex);
+
+
+
+/**
  * @brief Create a toggleable checkbox
  * @param initialState true if checked by default
  * @param onToggle function that receives the new state (bool)
