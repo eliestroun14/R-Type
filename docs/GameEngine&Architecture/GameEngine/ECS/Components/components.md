@@ -6,21 +6,22 @@ Source of truth: [src/engine/include/engine/ecs/component/Components.hpp](src/en
 - `Transform { float x, y, rotation, scale; }`
 - `Velocity { float vx, vy; }`
 - `NetworkId { uint32_t id; bool isLocal; }`
-- `HitBox {}` (tag; presence only)
+- `HitBox {}` — **Tag component** (empty struct). Collision presence is determined by `Sprite.globalBounds`
 
 ## Render
 - `Sprite { Assets assetId; ZIndex zIndex; sf::Rect<int> rect; sf::FloatRect globalBounds; }`
+  - **globalBounds**: Used for AABB collision detection
 - `Animation { int frameWidth, frameHeight, currentFrame; float elapsedTime, frameDuration; int startFrame, endFrame; bool loop; }`
 - `Text { std::string data; }`
 - `ScrollingBackground { float scrollSpeed, currentOffset; bool horizontal, repeat; }`
 - `VisualEffect { protocol::VisualEffectType type; float scale, duration; float color_r, color_g, color_b; }`
 
 ## Lifecycle
-- `Lifetime { float remainingTime; }`
+- `Lifetime { float remainingTime; }` — Auto-removes entity after countdown (see [LifetimeSystem](../../Systems/lifetime-system.md))
 
 ## Gameplay
 - `Health { int currentHealth, maxHp; }`
-- `Powerup { PowerupType powerupType; float duration; }` with `PowerupType { SPEED_BOOST, WEAPON_UPGRADE, FORCE, SHIELD, EXTRA_LIFE, INVINCIBILITY, HEAL, UNKOWN }`
+- `Powerup { PowerupType powerupType; float duration; }` with `PowerupType { SPEED_BOOST, WEAPON_UPGRADE, FORCE, SHIELD, EXTRA_LIFE, INVINCIBILITY, HEAL, UNKNOWN }`
 - `Projectile { Entity shooterId; bool isFromPlayable; int damage; }`
 - `ProjectileType { MISSILE, LASER, UNKNOWN }`
 - `Weapon { uint32_t fireRateMs, lastShotTime; int damage; ProjectileType projectileType; }`
@@ -47,8 +48,8 @@ Source of truth: [src/engine/include/engine/ecs/component/Components.hpp](src/en
 - `Score { uint32_t score; }`
 
 ## Audio
-- `AudioEffect { protocol::AudioEffectType type; float volume; float pitch; bool isPlaying; }`
-- `AudioSource { AudioAssets assetId; bool loop; float minDistance; float attenuation; bool isUI; }`
+- `AudioSource { AudioAssets assetId; bool loop; float minDistance; float attenuation; bool isUI; }` — See [Audio Components](audio-components.md)
+- `AudioEffect { protocol::AudioEffectType type; float volume; float pitch; bool isPlaying; }` — See [Audio Components](audio-components.md)
 
 ## R-Type specific
-- `Force { uint32_t parentShipId; ForceAttachmentPoint attachmentPoint; uint8_t powerLevel; uint8_t chargePercentage; bool isFiring; }` with `ForceAttachmentPoint { FORCE_DETACHED, FORCE_FRONT, FORCE_BACK, FORCE_ORBITING }`
+- `Force { uint32_t parentShipId; ForceAttachmentPoint attachmentPoint; uint8_t powerLevel; uint8_t chargePercentage; bool isFiring; }` with `ForceAttachmentPoint { FORCE_DETACHED, FORCE_FRONT, FORCE_BACK, FORCE_ORBITING }` — See [Force Component](force-component.md)

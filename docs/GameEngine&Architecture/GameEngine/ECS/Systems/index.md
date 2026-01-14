@@ -2,6 +2,24 @@
 
 In our ECS, we have two classes reserved to systems. We have the System class and the SystemManager class.
 
+## 📋 All Game Systems
+
+| System | Purpose | Key Components | Documentation |
+|--------|---------|-----------------|---|
+| **MovementSystem** | Physics integration (velocity → position) | Transform, Velocity | [Move →](movement-system.md) |
+| **RenderSystem** | Draw all entities to window with Z-ordering | Transform, Sprite, Drawable | [Move →](render-system.md) |
+| **AnimationSystem** | Update sprite frame based on elapsed time | Animation, Sprite | [Move →](animation-system.md) |
+| **PlayerSystem** | Convert input to player movement & animation | InputComponent, Velocity, Animation | [Move →](player-system.md) |
+| **ShootSystem** | Weapon firing & projectile spawning | Weapon, Transform, InputComponent | [Move →](shoot-system.md) |
+| **AISystem** | Enemy pathfinding & behavior logic | AI, Transform, Velocity | [Move →](AI-system.md) |
+| **CollisionSystem** | Detect collisions & apply damage | Sprite (globalBounds), HitBox, Health | [Move →](collision-system.md) |
+| **LevelSystem** | Manage waves & spawn enemies | Level, EnemySpawn | [Move →](lifetime-system.md) |
+| **LifetimeSystem** | Auto-remove entities after timeout | Lifetime | [Move →](lifetime-system.md) |
+| **BackgroundSystem** | Infinite scrolling backgrounds | ScrollingBackground, Transform, Sprite | [Move →](background-system.md) |
+| **PlayerDeadSystem** | Handle player death & respawn timing | DeadPlayer, Transform, Sprite | [Move →](player-dead-system.md) |
+
+---
+
 ## System class
 
 A System is a base class that processes entities with specific component combinations. **It maintains a list of entities** that match its requirements and provides lifecycle hooks for initialization, updates, and cleanup.
