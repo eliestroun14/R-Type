@@ -16,6 +16,7 @@
 #include <common/network/NetworkManager.hpp>
 #include <common/protocol/Packet.hpp>
 #include <game/coordinator/Coordinator.hpp>
+#include <game/menu/IMenu.hpp>
 
 class Game {
     public:
@@ -43,6 +44,9 @@ class Game {
 
         // Server-side: Handle a new player connection
         void onPlayerConnected(uint32_t playerId);
+
+
+        void setMenu(std::shared_ptr<IMenu> menu) { _menu = menu; }
 
     protected:
         void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);
@@ -80,6 +84,9 @@ class Game {
         
         // Track connected player IDs for spawning existing players to new clients
         std::vector<uint32_t> _connectedPlayers;
+
+
+        std::shared_ptr<IMenu> _menu;
 };
 
 #endif /* !GAME_HPP_ */

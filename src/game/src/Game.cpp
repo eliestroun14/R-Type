@@ -105,6 +105,10 @@ bool Game::runGameLoop()
                 return _isRunning;
             }
 
+            if (_menu) {
+                _menu->update();
+            }
+
             // Process window events (CRITICAL: prevents window from freezing)
             engine->processInput();
 
