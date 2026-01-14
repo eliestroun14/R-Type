@@ -511,9 +511,9 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
             // Create weapon fire packet to broadcast to clients
             std::vector<uint8_t> weaponFireArgs;
-            // PacketManager expects: flags_count(1) + flags(1) + seq(4) + timestamp(4) + padding(2) + payload(17) = 29 bytes minimum
-            // The padding(2) accounts for HEADER_SIZE calculation quirk in PacketManager
-            weaponFireArgs.resize(29);
+            // PacketManager expects: flags_count(1) + flags(1) + seq(4) + timestamp(4) + padding(4) + payload(17) = 31 bytes
+            // At offset 2 (after flags), it checks: offset(2) + HEADER_SIZE(12) + PAYLOAD(17) = 31 total
+            weaponFireArgs.resize(31);
             uint8_t* ptr = weaponFireArgs.data();
 
             // flags_count (1 byte)
@@ -535,10 +535,10 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             std::memcpy(ptr, &timestamp, sizeof(uint32_t));
             ptr += sizeof(uint32_t);
 
-            // padding (2 bytes) - to satisfy PacketManager's HEADER_SIZE check
-            uint16_t padding = 0;
-            std::memcpy(ptr, &padding, sizeof(uint16_t));
-            ptr += sizeof(uint16_t);
+            // padding (4 bytes) - to satisfy PacketManager's HEADER_SIZE(12) check
+            uint32_t padding = 0;
+            std::memcpy(ptr, &padding, sizeof(uint32_t));
+            ptr += sizeof(uint32_t);
 
             // shooter_id (4 bytes)
             std::memcpy(ptr, &fireEvent.shooterId, sizeof(uint32_t));
@@ -1037,29 +1037,51 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
 
 void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &packet)
 {
-    // Validate snapshot size using the protocol define
-    if (packet.data.size() != HEALTH_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_BASE_SIZE);
+    // Minimum size check: must have at least entity_count (2 bytes)
+    if (packet.data.size() < 2) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: packet too small, size=%zu", packet.data.size());
         return;
     }
 
-    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
-    protocol::HealthSnapshot snapshot;
-    std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
+    // Parse entity_count first
+    uint16_t entity_count;
+    std::memcpy(&entity_count, packet.data.data(), sizeof(entity_count));
 
-    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick=%u entity_count=%u",
-        snapshot.world_tick, snapshot.entity_count);
+    // Each health entry: entity_id(4) + current_health(1) + max_health(1) + current_shield(1) + max_shield(1) = 8 bytes
+    const size_t HEALTH_ENTRY_SIZE = 8;
+    const size_t expected_size = 2 + (entity_count * HEALTH_ENTRY_SIZE);
+    
+    if (packet.data.size() != expected_size) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size %zu, expected %zu for %u entities",
+            packet.data.size(), expected_size, entity_count);
+        return;
+    }
 
-    size_t offset = sizeof(protocol::HealthSnapshot);
-    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+    LOG_INFO_CAT("Coordinator", "HealthSnapshot: entity_count=%u", entity_count);
+
+    size_t offset = 2; // Skip entity_count
+    for (uint16_t i = 0; i < entity_count; i++) {
         uint32_t entity_id;
-        Health health(0, 0);
+        uint8_t current_health, max_health, current_shield, max_shield;
 
         std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
         offset += sizeof(entity_id);
 
-        std::memcpy(&health, packet.data.data() + offset, sizeof(health));
-        offset += sizeof(health);
+        std::memcpy(&current_health, packet.data.data() + offset, sizeof(current_health));
+        offset += sizeof(current_health);
+
+        std::memcpy(&max_health, packet.data.data() + offset, sizeof(max_health));
+        offset += sizeof(max_health);
+
+        std::memcpy(&current_shield, packet.data.data() + offset, sizeof(current_shield));
+        offset += sizeof(current_shield);
+
+        std::memcpy(&max_shield, packet.data.data() + offset, sizeof(max_shield));
+        offset += sizeof(max_shield);
+
+        // Convert uint8_t network format to int component format
+        Health health(static_cast<int>(current_health), static_cast<int>(max_health));
+        // Note: shields are not currently in the Health component, so we only update health values
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
 
@@ -1074,29 +1096,58 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
 
 void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &packet)
 {
-    // Validate snapshot size using the protocol define
-    if (packet.data.size() != WEAPON_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapthot: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_SNAPSHOT_BASE_SIZE);
+    // Minimum size check: must have at least entity_count (2 bytes)
+    if (packet.data.size() < 2) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: packet too small, size=%zu", packet.data.size());
         return;
     }
 
-    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
-    protocol::WeaponSnapshot snapshot;
-    std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
+    // Parse entity_count first
+    uint16_t entity_count;
+    std::memcpy(&entity_count, packet.data.data(), sizeof(entity_count));
 
-    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: world_tick=%u entity_count=%u",
-        snapshot.world_tick, snapshot.entity_count);
+    // Each weapon entry: entity_id(4) + fire_rate(2) + damage(1) + projectile_type(1) + ammo(1) = 9 bytes
+    const size_t WEAPON_ENTRY_SIZE = 9;
+    const size_t expected_size = 2 + (entity_count * WEAPON_ENTRY_SIZE);
+    
+    if (packet.data.size() != expected_size) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: invalid packet size %zu, expected %zu for %u entities",
+            packet.data.size(), expected_size, entity_count);
+        return;
+    }
 
-    size_t offset = sizeof(protocol::WeaponSnapshot);
-    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: entity_count=%u", entity_count);
+
+    size_t offset = 2; // Skip entity_count
+    for (uint16_t i = 0; i < entity_count; i++) {
         uint32_t entity_id;
-        Weapon weapon(0, 0, 0, ProjectileType::UNKNOWN);
+        uint16_t fire_rate;
+        uint8_t damage, projectile_type, ammo;
 
         std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
         offset += sizeof(entity_id);
 
-        std::memcpy(&weapon, packet.data.data() + offset, sizeof(weapon));
-        offset += sizeof(weapon);
+        std::memcpy(&fire_rate, packet.data.data() + offset, sizeof(fire_rate));
+        offset += sizeof(fire_rate);
+
+        std::memcpy(&damage, packet.data.data() + offset, sizeof(damage));
+        offset += sizeof(damage);
+
+        std::memcpy(&projectile_type, packet.data.data() + offset, sizeof(projectile_type));
+        offset += sizeof(projectile_type);
+
+        std::memcpy(&ammo, packet.data.data() + offset, sizeof(ammo));
+        offset += sizeof(ammo);
+
+        // Convert network format to Weapon component format
+        // Note: lastShotTime is not sent over network, keep existing value or set to 0
+        Weapon weapon(
+            static_cast<uint32_t>(fire_rate),  // fireRateMs
+            0,                                   // lastShotTime (not synced)
+            static_cast<int>(damage),           // damage
+            static_cast<ProjectileType>(projectile_type)  // projectileType
+        );
+        // Note: ammo is not currently in the Weapon component
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
 
@@ -2138,20 +2189,31 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
         }
 
         Health& health = healthOpt.value();
+        
+        // Skip entities with invalid health values
+        if (health.maxHp <= 0) {
+            LOG_DEBUG_CAT("Coordinator", "Skipping entity {} with invalid maxHp: {}", entityId, health.maxHp);
+            continue;
+        }
 
         // entity_id (4 bytes)
         args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
                     reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
 
-                    // current_health (2 bytes)
-        uint16_t current_health = static_cast<uint16_t>(health.currentHealth);
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&current_health), 
-                    reinterpret_cast<uint8_t*>(&current_health) + sizeof(current_health));
+        // ComponentHealth (4 bytes): current_health(1) + max_health(1) + current_shield(1) + max_shield(1)
+        // current_health (1 byte)
+        uint8_t current_health = static_cast<uint8_t>(std::min(255, std::max(0, static_cast<int>(health.currentHealth))));
+        args.push_back(current_health);
 
-                    // max_health (2 bytes)
-        uint16_t max_health = static_cast<uint16_t>(health.maxHp);
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&max_health), 
-                    reinterpret_cast<uint8_t*>(&max_health) + sizeof(max_health));
+        // max_health (1 byte) - must be > 0
+        uint8_t max_health = static_cast<uint8_t>(std::min(255, std::max(1, static_cast<int>(health.maxHp))));
+        args.push_back(max_health);
+
+        // current_shield (1 byte) - 0 for now
+        args.push_back(0);
+
+        // max_shield (1 byte) - 0 for now
+        args.push_back(0);
     }
 
     auto result = PacketManager::createHealthSnapshot(args);
@@ -2215,24 +2277,22 @@ bool Coordinator::createPacketWeaponSnapshot(common::protocol::Packet* packet, c
         args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
                     reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
 
-                    // fire_rate (2 bytes)
+        // ComponentWeapon (5 bytes): fire_rate(2) + damage(1) + projectile_type(1) + ammo(1)
+        // fire_rate (2 bytes)
         uint16_t fire_rate = static_cast<uint16_t>(weapon.fireRateMs);
         args.insert(args.end(), reinterpret_cast<uint8_t*>(&fire_rate), 
                     reinterpret_cast<uint8_t*>(&fire_rate) + sizeof(fire_rate));
 
-                    // damage (2 bytes)
-        uint16_t damage = static_cast<uint16_t>(weapon.damage);
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&damage), 
-                    reinterpret_cast<uint8_t*>(&damage) + sizeof(damage));
+        // damage (1 byte)
+        uint8_t damage = static_cast<uint8_t>(std::min(255, static_cast<int>(weapon.damage)));
+        args.push_back(damage);
 
-                    // projectile_type (1 byte)
+        // projectile_type (1 byte)
         uint8_t projectile_type = static_cast<uint8_t>(weapon.projectileType);
         args.push_back(projectile_type);
 
-        // last_shot_time (4 bytes)
-        uint32_t last_shot_time = weapon.lastShotTime;
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&last_shot_time), 
-                    reinterpret_cast<uint8_t*>(&last_shot_time) + sizeof(last_shot_time));
+        // ammo (1 byte) - 255 for infinite
+        args.push_back(255);
     }
 
     auto result = PacketManager::createWeaponSnapshot(args);
