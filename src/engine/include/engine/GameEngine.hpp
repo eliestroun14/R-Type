@@ -547,6 +547,12 @@ namespace gameEngine {
             {
                 this->_audioManager->update();
             }
+            /**
+             * @brief Structure representing a scoring event in the game.
+             */
+            std::vector<ScoreEvent>& scoreEvents() { return _scoreEvents;}
+        private:
+            std::vector<ScoreEvent> _scoreEvents;
     };
 }
 
