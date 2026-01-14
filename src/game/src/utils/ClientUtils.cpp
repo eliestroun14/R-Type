@@ -28,26 +28,55 @@ uint32_t getCurrentTimeMs()
     return milliseconds;
 }
 
-void createButton(gameEngine::GameEngine& engine, std::string label,
+// void createButton(gameEngine::GameEngine& engine, std::string label,
+//     unsigned int textSize, sf::Color textColor, sf::Vector2f pos, float scale, sf::IntRect rectSprite,
+//     Assets noneAssetId, Assets hoverAssetId, Assets clickedAssetId,
+//     std::function<void ()> onClick)
+// {
+//     Entity button = engine.createEntity("Button_" + label);
+//     engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
+
+//     engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_UI_HUD, rectSprite));
+
+//     ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
+//     engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
+
+//     Entity textEntity = engine.createEntity("ButtonText_" + label);
+//     engine.addComponent<Transform>(textEntity, Transform(pos.x, pos.y, 0, scale));
+//     engine.addComponent<Text>(textEntity, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+// }
+
+std::vector<Entity> createButton(gameEngine::GameEngine& engine, std::string label,
     unsigned int textSize, sf::Color textColor, sf::Vector2f pos, float scale, sf::IntRect rectSprite,
     Assets noneAssetId, Assets hoverAssetId, Assets clickedAssetId,
     std::function<void ()> onClick)
 {
+    std::vector<Entity> createdEntities;
+
+    // button
     Entity button = engine.createEntity("Button_" + label);
     engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
-
     engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_UI_HUD, rectSprite));
-
     ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
     engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
 
+    createdEntities.push_back(button);
+
+    // text
+    float centerX = pos.x + (rectSprite.width * scale) / 2.0f;
+    float centerY = pos.y + (rectSprite.height * scale) / 2.0f;
+
     Entity textEntity = engine.createEntity("ButtonText_" + label);
-    engine.addComponent<Transform>(textEntity, Transform(pos.x, pos.y, 0, scale));
+    engine.addComponent<Transform>(textEntity, Transform(centerX, centerY, 0, scale));
     engine.addComponent<Text>(textEntity, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+
+    createdEntities.push_back(textEntity);
+
+    return createdEntities;
 }
 
 
-void createText(gameEngine::GameEngine& engine, std::string label,
+Entity createText(gameEngine::GameEngine& engine, std::string label,
     unsigned int textSize, sf::Color textColor, sf::Vector2f pos,
     float rotation, float scale)
 {
@@ -55,24 +84,30 @@ void createText(gameEngine::GameEngine& engine, std::string label,
     engine.addComponent<Transform>(text, Transform(pos.x, pos.y, rotation, scale));
 
     engine.addComponent<Text>(text, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+
+    return text;
 }
 
 
-void createImage(gameEngine::GameEngine& engine, Assets assetId,
+Entity createImage(gameEngine::GameEngine& engine, Assets assetId,
     sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex)
 {
     Entity image = engine.createEntity("Entity");
 
     engine.addComponent<Transform>(image, Transform(pos.x, pos.y, rotation, scale));
     engine.addComponent<Sprite>(image, Sprite(assetId, zIndex, rect));
+
+    return image;
 }
 
 
-void createCheckbox(gameEngine::GameEngine& engine, bool initialState,
+std::vector<Entity> createCheckbox(gameEngine::GameEngine& engine, bool initialState,
     Assets uncheckedAsset, Assets checkedAsset, sf::Vector2f pos,
     sf::IntRect rectSprite, float rotation, float scale,
     std::function<void(bool)> onToggle)
 {
+    std::vector<Entity> entities;
+
     //FIXME: check if the method is correct
     Entity uncheckEntity = engine.createEntity("UncheckEntity");
 
@@ -83,4 +118,8 @@ void createCheckbox(gameEngine::GameEngine& engine, bool initialState,
 
     engine.addComponent(checkEntity, Transform(pos.x, pos.y, rotation, scale));
     engine.addComponent(checkEntity, Sprite(checkedAsset, ZIndex::IS_UI_HUD, rectSprite));
+
+    entities.push_back(uncheckEntity);
+    entities.push_back(checkEntity);
+    return entities;
 }
