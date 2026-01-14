@@ -80,12 +80,43 @@ void ClientMenu::createMainMenu()
 
 void ClientMenu::createOptionMenu()
 {
-    std::cout << "ClientMenu Option Menu created" << std::endl;
+    // BACKGROUND
+    addMenuEntity(createImage(*this->_engine, Assets::OPTION_MENU_BG_2,
+        sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+        sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
+        ZIndex::IS_BACKGROUND));
+
+    // TEXT
+    addMenuEntity(createText(*this->_engine, "OPTIONS", 90, sf::Color::White, {485, 160}, 0, 1.5f));
+
+    // ANIMATED IMAGES
+    Animation planetAnimation(OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT, OPTION_MENU_PLANET_ANIMATION_CURRENT,
+        OPTION_MENU_PLANET_ANIMATION_ELAPSED_TIME, OPTION_MENU_PLANET_ANIMATION_DURATION, OPTION_MENU_PLANET_ANIMATION_START,
+        OPTION_MENU_PLANET_ANIMATION_END, OPTION_MENU_PLANET_ANIMATION_LOOPING);
+
+    addMenuEntity(createAnimatedImage(*this->_engine, Assets::OPTION_MENU_PLANET, planetAnimation, {-200, -1300},
+        0, OPTION_MENU_PLANET_SPRITE_SCALE, sf::IntRect(0, 0, OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT), ZIndex::IS_BACKGROUND));
+
+    // BUTTONSs
+    addMenuEntity(createButton(*_engine, "back", 0, sf::Color::White, {30, 30}, BACK_BUTTON_SCALE,
+        sf::IntRect(0, 0, BACK_BUTTON_SPRITE_WIDTH, BACK_BUTTON_SPRITE_HEIGHT),
+        BACK_NONE_BUTTON, BACK_HOVER_BUTTON, BACK_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                this->clearMenuEntities();
+                this->createMainMenu();
+            });
+        }
+    ));
 }
 
 void ClientMenu::clearMenuEntities()
 {
-    for (auto& entity : _menuEntities)
-        _engine->destroyEntity(entity);
+    if (!_engine) return;
+
+    for (auto& entity : _menuEntities) {
+        if (_engine->hasComponent<Transform>(entity))
+            _engine->removeComponent<Transform>(entity);
+    }
     _menuEntities.clear();
 }
