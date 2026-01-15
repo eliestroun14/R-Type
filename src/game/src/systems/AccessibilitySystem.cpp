@@ -19,15 +19,4 @@ void AccessibilitySystem::onUpdate(float dt)
         targetFont = config->activeFont;
         break;
     }
-
-
-    auto& texts = this->_engine.getComponents<Text>();
-
-    for (auto& text : texts) {
-
-        if (!text.has_value())
-            continue;
-
-        text->fontId = targetFont;
-    }
 }

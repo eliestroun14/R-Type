@@ -157,13 +157,12 @@ struct Animation
 struct Text
 {
     char str[128];
-    FontAssets fontId;
     unsigned int size;
     sf::Color color;
     ZIndex zIndex;
 
-    Text(const char *s, FontAssets f = DEFAULT_FONT, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
-        : fontId(f), color(c), size(sz), zIndex(z)
+    Text(const char *s, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
+        : color(c), size(sz), zIndex(z)
     {
         // init tab to 0
         std::memset(this->str, 0, sizeof(this->str));
