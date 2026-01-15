@@ -119,7 +119,7 @@ void ClientMenu::createOptionMenu()
             [this]() {
                 this->_pendingActions.push([this]() {
                     //TODO: set music
-                    // this->_musicOn = false;
+                    this->_musicOn = false;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
@@ -132,7 +132,7 @@ void ClientMenu::createOptionMenu()
             [this]() {
                 this->_pendingActions.push([this]() {
                     //TODO: set music
-                    // this->_musicOn = true;
+                    this->_musicOn = true;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
@@ -148,7 +148,7 @@ void ClientMenu::createOptionMenu()
                 this->_pendingActions.push([this]() {
                     //TODO: set sound
 
-                    // this->_soundOn = false;
+                    this->_soundOn = false;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
@@ -162,7 +162,7 @@ void ClientMenu::createOptionMenu()
                 this->_pendingActions.push([this]() {
                     //TODO: set sound
 
-                    // this->_soundOn = true;
+                    this->_soundOn = true;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
