@@ -2341,26 +2341,26 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
 
     switch (weapon_type) {
         case 0x00: // WEAPON_TYPE_BASIC
-            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_PROJ_ROTATION, DEFAULT_PROJ_SCALE));
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_BULLET_ROTATION, DEFAULT_BULLET_SCALE));
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
             this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
-                sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
-            this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
-                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
-                DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
+                sf::IntRect(0, 0, DEFAULT_BULLET_SPRITE_WIDTH, DEFAULT_BULLET_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_BULLET_ANIMATION_WIDTH,
+                DEFAULT_BULLET_ANIMATION_HEIGHT, DEFAULT_BULLET_ANIMATION_CURRENT, DEFAULT_BULLET_ANIMATION_ELAPSED_TIME, DEFAULT_BULLET_ANIMATION_DURATION,
+                DEFAULT_BULLET_ANIMATION_START, DEFAULT_BULLET_ANIMATION_END, DEFAULT_BULLET_ANIMATION_LOOPING));
             this->_engine->addComponent<HitBox>(projectile, HitBox());
             break;
 
         case 0x01: // WEAPON_TYPE_CHARGED
-            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_PROJ_ROTATION, CHARGED_PROJ_SCALE));
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_BULLET_ROTATION, CHARGED_BULLET_SCALE));
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
             this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
-                sf::IntRect(0, 0, CHARGED_PROJ_SPRITE_WIDTH, CHARGED_PROJ_SPRITE_HEIGHT)));
-            this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_PROJ_ANIMATION_WIDTH,
-                CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
-                CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
+                sf::IntRect(0, 0, CHARGED_BULLET_SPRITE_WIDTH, CHARGED_BULLET_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_BULLET_ANIMATION_WIDTH,
+                CHARGED_BULLET_ANIMATION_HEIGHT, CHARGED_BULLET_ANIMATION_CURRENT, CHARGED_BULLET_ANIMATION_ELAPSED_TIME, CHARGED_BULLET_ANIMATION_DURATION,
+                CHARGED_BULLET_ANIMATION_START, CHARGED_BULLET_ANIMATION_END, CHARGED_BULLET_ANIMATION_LOOPING));
             this->_engine->addComponent<HitBox>(projectile, HitBox());
             break;
 
