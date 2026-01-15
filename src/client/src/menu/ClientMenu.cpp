@@ -28,10 +28,15 @@ void ClientMenu::update() {
 void ClientMenu::createMainMenu()
 {
     // BACKGROUND
-    addMenuEntity(createImage(*this->_engine, Assets::MAIN_MENU_BG,
-        sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    // addMenuEntity(createImage(*this->_engine, Assets::MAIN_MENU_BG,
+    //     sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    //     sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
+    //     ZIndex::IS_BACKGROUND));
+
+    addMenuEntity(createMovingBackground(*this->_engine, Assets::MAIN_MENU_BG, {0, 0},
+        MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
         sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
-        ZIndex::IS_BACKGROUND));
+        35.0, true, true));
 
     // IMAGES
     addMenuEntity(createImage(*this->_engine, Assets::LOGO_RTYPE, {150, 100},
@@ -84,10 +89,15 @@ void ClientMenu::createMainMenu()
 void ClientMenu::createOptionMenu()
 {
     // BACKGROUND
-    addMenuEntity(createImage(*this->_engine, Assets::OPTION_MENU_BG,
-        sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    // addMenuEntity(createImage(*this->_engine, Assets::OPTION_MENU_BG,
+    //     sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    //     sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
+    //     ZIndex::IS_BACKGROUND));
+
+    addMenuEntity(createMovingBackground(*this->_engine, Assets::OPTION_MENU_BG, {0, 0},
+        MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
         sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
-        ZIndex::IS_BACKGROUND));
+        35.0, true, true));
 
     // TEXT
     addMenuEntity(createText(*this->_engine, "OPTIONS", 90, sf::Color::White, {485, 210}, 0, 1.5f));
@@ -196,10 +206,15 @@ void ClientMenu::createOptionMenu()
 void ClientMenu::createKeybindsMenu()
 {
     // BACKGROUND
-    addMenuEntity(createImage(*this->_engine, Assets::KEYBINDS_MENU_BG,
-        sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    // addMenuEntity(createImage(*this->_engine, Assets::KEYBINDS_MENU_BG,
+    //     sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    //     sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
+    //     ZIndex::IS_BACKGROUND));
+
+    addMenuEntity(createMovingBackground(*this->_engine, Assets::KEYBINDS_MENU_BG, {0, 0},
+        MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
         sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
-        ZIndex::IS_BACKGROUND));
+        35.0, true, true));
 
     // TEXT
     addMenuEntity(createText(*this->_engine, "KEYBINDS", 85, sf::Color::White, {485, 210}, 0, 1.5f));
@@ -229,10 +244,15 @@ void ClientMenu::createKeybindsMenu()
 void ClientMenu::createAccessibilityMenu()
 {
     // BACKGROUND
-    addMenuEntity(createImage(*this->_engine, Assets::KEYBINDS_MENU_BG,
-        sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    // addMenuEntity(createImage(*this->_engine, Assets::KEYBINDS_MENU_BG,
+    //     sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    //     sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
+    //     ZIndex::IS_BACKGROUND));
+
+    addMenuEntity(createMovingBackground(*this->_engine, Assets::KEYBINDS_MENU_BG, {0, 0},
+        MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
         sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
-        ZIndex::IS_BACKGROUND));
+        35.0, true, true));
 
     // TEXT
     addMenuEntity(createText(*this->_engine, "ACCESSIBILITY", 80, sf::Color::White, {485, 210}, 0, 1.5f));
