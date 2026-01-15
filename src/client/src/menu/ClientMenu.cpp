@@ -118,7 +118,8 @@ void ClientMenu::createOptionMenu()
             MUSIC_ON_NONE_BUTTON, MUSIC_ON_HOVER_BUTTON, MUSIC_ON_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    this->_musicOn = false;
+                    //TODO: set music
+                    // this->_musicOn = false;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
@@ -130,7 +131,8 @@ void ClientMenu::createOptionMenu()
             MUSIC_OFF_NONE_BUTTON, MUSIC_OFF_HOVER_BUTTON, MUSIC_OFF_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    this->_musicOn = true;
+                    //TODO: set music
+                    // this->_musicOn = true;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
@@ -144,7 +146,9 @@ void ClientMenu::createOptionMenu()
             SOUND_ON_NONE_BUTTON, SOUND_ON_HOVER_BUTTON, SOUND_ON_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    this->_soundOn = false;
+                    //TODO: set sound
+
+                    // this->_soundOn = false;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
@@ -156,7 +160,9 @@ void ClientMenu::createOptionMenu()
             SOUND_OFF_NONE_BUTTON, SOUND_OFF_HOVER_BUTTON, SOUND_OFF_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    this->_soundOn = true;
+                    //TODO: set sound
+
+                    // this->_soundOn = true;
                     this->clearMenuEntities();
                     this->createOptionMenu();
                 });
@@ -250,16 +256,27 @@ void ClientMenu::createAccessibilityMenu()
             });
         }
     ));
-}
 
-void ClientMenu::setMusic(bool *musicOn)
-{
-    *musicOn = !*musicOn;
-}
 
-void ClientMenu::setSound(bool *soundOn)
-{
-    *soundOn = !*soundOn;
+    addMenuEntity(createButton(*_engine, "CHANGE FONT", 35, sf::Color::White, {275, 550}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        if (config->activeFont == FontAssets::DEFAULT_FONT)
+                            config->activeFont = FontAssets::DYSLEXIC_FONT;
+                        else
+                            config->activeFont = FontAssets::DEFAULT_FONT;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
 }
 
 
