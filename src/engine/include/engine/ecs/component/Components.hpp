@@ -529,13 +529,17 @@ struct AudioSource {
     float minDistance;      // Distance avant atténuation
     float attenuation;      // Facteur d'atténuation (plus petit = moins d'atténuation)
     bool isUI;              // Si true, pas de positionnement 3D
-    // sf::Sound* sound;       // Pointeur vers le sf::Sound actif
+    bool playOnce;          // Si true, joue le son une seule fois; si false, rejoue après que le son soit terminé
+    bool hasBeenPlayed;     // Flag to ensure sound plays (reset when sound duration elapsed)
+    float elapsedTimeSincePlay;  // Temps écoulé depuis le dernier play
+    float soundDuration;    // Durée du son en secondes (pour savoir quand il est terminé)
 
     AudioSource(AudioAssets asset, bool looping = false,
-                float minDist = 100.0f, float atten = 0.5f, bool ui = false)
+                float minDist = 100.0f, float atten = 0.5f, bool ui = false, 
+                bool once = true, float duration = 1.0f)
         : assetId(asset), loop(looping), minDistance(minDist),
-          attenuation(atten), isUI(ui)
-        //   sound(nullptr)
+          attenuation(atten), isUI(ui), playOnce(once), hasBeenPlayed(false),
+          elapsedTimeSincePlay(0.0f), soundDuration(duration)
           {}
 
     ~AudioSource() {

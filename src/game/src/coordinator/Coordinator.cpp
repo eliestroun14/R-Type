@@ -7,6 +7,7 @@
 
 #include "game/coordinator/Coordinator.hpp"
 #include "game/systems/AnimationSystem.hpp"
+#include "game/systems/AudioSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -35,6 +36,8 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<Projectile>();
     this->_engine->registerComponent<MovementPattern>();
     this->_engine->registerComponent<AI>();
+    this->_engine->registerComponent<AudioSource>();
+    this->_engine->registerComponent<AudioEffect>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -55,6 +58,10 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     // Register AnimationSystem before RenderSystem (animation must update before rendering)
     auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
     this->_engine->setSystemSignature<AnimationSystem, Animation, Sprite>();
+
+    // Register AudioSystem to handle entity audio
+    auto audioSystem = this->_engine->registerSystem<AudioSystem>(*this->_engine);
+    this->_engine->setSystemSignature<AudioSystem, AudioSource>();
 
     // Register RenderSystem to handle entity rendering
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
@@ -2565,6 +2572,8 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
                 DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding AudioSource component for basic projectile");
+            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f, false, true, 0.3f));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: All components added successfully");
             break;
 
@@ -2578,6 +2587,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
                 CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
                 CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
             this->_engine->addComponent<HitBox>(projectile, HitBox());
+            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 100.0f, 0.5f, false, true, 0.4f));
             break;
 
         // case 0x02: // WEAPON_TYPE_SPREAD
@@ -2710,17 +2720,17 @@ void Coordinator::playAudioEffect(protocol::AudioEffectType type, float x, float
         // WEAPONS
         case protocol::AudioEffectType::SFX_SHOOT_BASIC:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f));
+                AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f, false, true, 0.3f));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 150.0f, 0.3f));
+                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 150.0f, 0.3f, false, true, 0.4f));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_LASER:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_LASER, false, 120.0f, 0.4f));
+                AudioSource(AudioAssets::SFX_SHOOT_LASER, false, 120.0f, 0.4f, false, true, 0.35f));
             break;
 
         // EXPLOSIONS
