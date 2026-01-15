@@ -35,6 +35,7 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<MovementPattern>();
     this->_engine->registerComponent<AI>();
     this->_engine->registerComponent<ButtonComponent>();
+    this->_engine->registerComponent<GameConfig>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -51,6 +52,9 @@ void Coordinator::initEngine()
 
     auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
     this->_engine->setSystemSignature<AnimationSystem, Sprite, Animation>();
+
+    auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
+    this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
