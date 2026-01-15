@@ -100,4 +100,18 @@ Entity createImage(gameEngine::GameEngine& engine, Assets assetId,
 Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Animation animation,
     sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite, ZIndex zIndex);
 
+
+/**
+ * @brief Create a simple static image
+ * @param engine The GameEngine instance
+ * @param assetId The texture to use
+ * @param pos Position of the image
+ * @param float The rotation of the Text
+ * @param scale Scale factor
+ * @return Entity of the image'sprite
+ */
+Entity createMovingBackground(gameEngine::GameEngine& engine, Assets assetId,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite,
+    float speed, bool isHorizontal, bool shouldRepeat);
+
 #endif /* !CLIENT_UTILS_HPP */

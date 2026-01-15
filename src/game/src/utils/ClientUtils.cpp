@@ -112,3 +112,16 @@ Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Anima
 
     return image;
 }
+
+Entity createMovingBackground(gameEngine::GameEngine &engine, Assets assetId,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite,
+    float speed, bool isHorizontal, bool shouldRepeat)
+{
+    Entity movingBg = engine.createEntity("MovingBackground");
+
+    engine.addComponent<Transform>(movingBg, Transform(pos.x, pos.y, rotation, scale));
+    engine.addComponent<Sprite>(movingBg, Sprite(assetId, ZIndex::IS_BACKGROUND, rectSprite));
+    engine.addComponent<ScrollingBackground>(movingBg, ScrollingBackground(speed, isHorizontal, shouldRepeat));
+
+    return movingBg;
+}
