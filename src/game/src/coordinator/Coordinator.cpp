@@ -2573,7 +2573,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding AudioSource component for basic projectile");
-            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f, false, true, 0.3f));
+            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_BASIC, AUDIO_BASIC_PROJECTILE_LOOP, AUDIO_BASIC_PROJECTILE_MIN_DISTANCE, AUDIO_BASIC_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_BASIC_DURATION));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: All components added successfully");
             break;
 
@@ -2587,7 +2587,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
                 CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
                 CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
             this->_engine->addComponent<HitBox>(projectile, HitBox());
-            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 100.0f, 0.5f, false, true, 0.4f));
+            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_CHARGED, AUDIO_CHARGED_PROJECTILE_LOOP, AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE, AUDIO_CHARGED_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_CHARGED_DURATION));
             break;
 
         // case 0x02: // WEAPON_TYPE_SPREAD
@@ -2720,17 +2720,17 @@ void Coordinator::playAudioEffect(protocol::AudioEffectType type, float x, float
         // WEAPONS
         case protocol::AudioEffectType::SFX_SHOOT_BASIC:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f, false, true, 0.3f));
+                AudioSource(AudioAssets::SFX_SHOOT_BASIC, AUDIO_BASIC_PROJECTILE_LOOP, AUDIO_BASIC_PROJECTILE_MIN_DISTANCE, AUDIO_BASIC_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_BASIC_DURATION));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 150.0f, 0.3f, false, true, 0.4f));
+                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, AUDIO_CHARGED_PROJECTILE_LOOP, AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE, AUDIO_CHARGED_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_CHARGED_DURATION));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_LASER:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_LASER, false, 120.0f, 0.4f, false, true, 0.35f));
+                AudioSource(AudioAssets::SFX_SHOOT_LASER, AUDIO_LASER_PROJECTILE_LOOP, AUDIO_LASER_PROJECTILE_MIN_DISTANCE, AUDIO_LASER_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_LASER_DURATION));
             break;
 
         // EXPLOSIONS

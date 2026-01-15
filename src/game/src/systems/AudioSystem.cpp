@@ -8,6 +8,39 @@
 #include "game/systems/AudioSystem.hpp"
 #include <spdlog/spdlog.h>
 
+/**
+ * @brief Update audio playback for all entities with AudioSource components
+ *
+ * **Algorithm:**
+ * 1. Get references to AudioSource and Transform component arrays
+ * 2. For each entity with both components:
+ *    a. Increment elapsed time since last play
+ *    b. Determine if sound should play based on:
+ *       - loop flag (false = one-shot, true = repeating)
+ *       - hasBeenPlayed state
+ *       - elapsed time vs. sound duration (for replay)
+ *    c. If sound should play:
+ *       - Determine audio type from AssetId
+ *       - Play via 3D audio (with position) or UI audio (no position)
+ *       - Mark as played and reset elapsed time
+ *
+ * **One-Shot Behavior (loop=false):**
+ * - Sound plays once when component is added
+ * - Never plays again, even if entity persists
+ * - Typical use: bullet hit sounds, explosions
+ *
+ * **Looping Behavior (loop=true):**
+ * - Sound plays initially
+ * - After soundDuration seconds, it replays
+ * - Repeats indefinitely until component removed
+ * - Typical use: ambient loops, engine rumble
+ *
+ * @param dt Delta time since last frame update (in milliseconds)
+ *
+ * @note Only processes entities in this->_entities (set by engine)
+ * @note Safely skips entities missing components
+ * @see AudioSource for component details
+ */
 void AudioSystem::onUpdate(float dt)
 {
     // Get component arrays
@@ -31,11 +64,11 @@ void AudioSystem::onUpdate(float dt)
             // Determine if we should play the sound
             bool shouldPlay = false;
             
-            if (audioSource.playOnce) {
-                // Play only once
+            if (!audioSource.loop) {
+                // Play only once (loop=false means one-shot)
                 shouldPlay = !audioSource.hasBeenPlayed;
             } else {
-                // Play repeatedly when the sound finishes
+                // Play repeatedly when the sound finishes (loop=true means replay)
                 shouldPlay = !audioSource.hasBeenPlayed || 
                            audioSource.elapsedTimeSincePlay >= audioSource.soundDuration;
             }
@@ -67,6 +100,21 @@ void AudioSystem::onUpdate(float dt)
 
 protocol::AudioEffectType AudioSystem::getAudioEffectFromAsset(AudioAssets assetId)
 {
+    /**
+     * @brief Maps internal AudioAssets enum to protocol audio effect types
+     *
+     * This function provides a conversion layer between the engine's internal
+     * audio asset identifiers and the network protocol's audio effect types,
+     * ensuring consistency across all audio systems.
+     *
+     * **Mapping Strategy:**
+     * - Each AudioAssets entry has a corresponding protocol::AudioEffectType
+     * - Maintains 1:1 correspondence for proper audio playback
+     * - Unknown assets return SFX_SHOOT_BASIC as fallback
+     *
+     * @param assetId The internal AudioAssets enum value to convert
+     * @return The corresponding protocol::AudioEffectType for network/playback use
+     */
     // Map AudioAssets enum to protocol::AudioEffectType
     switch (assetId) {
         case AudioAssets::SFX_SHOOT_BASIC:

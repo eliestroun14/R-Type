@@ -697,5 +697,38 @@ enum NetworkType {
 // =========================== OPTIONS MENU ===================================
 
 
+// ==============================================================
+//                        AUDIO SYSTEM
+// ==============================================================
+
+// Audio source default parameters
+#define AUDIO_SOURCE_DEFAULT_LOOP false
+#define AUDIO_SOURCE_DEFAULT_MIN_DISTANCE 100.0f
+#define AUDIO_SOURCE_DEFAULT_ATTENUATION 0.5f
+#define AUDIO_SOURCE_DEFAULT_IS_UI false
+#define AUDIO_SOURCE_DEFAULT_PLAY_ONCE true
+#define AUDIO_SOURCE_DEFAULT_DURATION 1.0f
+
+// Weapon sound durations (in seconds)
+#define AUDIO_SHOOT_BASIC_DURATION 0.3f
+#define AUDIO_SHOOT_CHARGED_DURATION 0.4f
+#define AUDIO_SHOOT_LASER_DURATION 0.35f
+
+// Explosion sound durations
+#define AUDIO_EXPLOSION_SMALL_DURATION 0.5f
+#define AUDIO_EXPLOSION_LARGE_DURATION 0.7f
+
+// Projectile audio parameters (weapon-specific)
+#define AUDIO_BASIC_PROJECTILE_LOOP false
+#define AUDIO_BASIC_PROJECTILE_MIN_DISTANCE 100.0f
+#define AUDIO_BASIC_PROJECTILE_ATTENUATION 0.5f
+
+#define AUDIO_CHARGED_PROJECTILE_LOOP false
+#define AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE 150.0f
+#define AUDIO_CHARGED_PROJECTILE_ATTENUATION 0.3f
+
+#define AUDIO_LASER_PROJECTILE_LOOP false
+#define AUDIO_LASER_PROJECTILE_MIN_DISTANCE 120.0f
+#define AUDIO_LASER_PROJECTILE_ATTENUATION 0.4f
 
 #endif /* !DEFINES_HPP_ */
