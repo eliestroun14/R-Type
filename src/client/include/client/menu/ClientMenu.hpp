@@ -50,16 +50,6 @@ class ClientMenu : public IMenu {
         void createAccessibilityMenu();
 
         /**
-         * @brief Method that create every entity for the accessibility menu.
-         */
-        void setMusic(bool *musicOn) override;
-
-        /**
-         * @brief Method that create every entity for the accessibility menu.
-         */
-        void setSound(bool *soundOn) override;
-
-        /**
          * @brief Method that remove every entities'components to diseable and hide them.
          */
         void clearMenuEntities();
