@@ -94,10 +94,14 @@ void ClientMenu::createOptionMenu()
     //     sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
     //     ZIndex::IS_BACKGROUND));
 
-    addMenuEntity(createMovingBackground(*this->_engine, Assets::OPTION_MENU_BG, {0, 0},
-        MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
-        sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
-        35.0, true, true));
+    if (_currentBackgroundAsset != Assets::OPTION_MENU_BG) {
+         addMenuEntity(createMovingBackground(*this->_engine, Assets::OPTION_MENU_BG, {0, 0},
+            MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+            sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
+            35.0, true, true));
+        _currentBackgroundAsset = Assets::OPTION_MENU_BG;
+    }
+
 
     // TEXT
     addMenuEntity(createText(*this->_engine, "OPTIONS", 90, sf::Color::White, {485, 210}, 0, 1.5f));
@@ -130,7 +134,7 @@ void ClientMenu::createOptionMenu()
                 this->_pendingActions.push([this]() {
                     //TODO: set music
                     this->_musicOn = false;
-                    this->clearMenuEntities();
+                    this->clearMenuEntities(true);
                     this->createOptionMenu();
                 });
             }
@@ -143,7 +147,7 @@ void ClientMenu::createOptionMenu()
                 this->_pendingActions.push([this]() {
                     //TODO: set music
                     this->_musicOn = true;
-                    this->clearMenuEntities();
+                    this->clearMenuEntities(true);
                     this->createOptionMenu();
                 });
             }
@@ -159,7 +163,7 @@ void ClientMenu::createOptionMenu()
                     //TODO: set sound
 
                     this->_soundOn = false;
-                    this->clearMenuEntities();
+                    this->clearMenuEntities(true);
                     this->createOptionMenu();
                 });
             }
@@ -173,7 +177,7 @@ void ClientMenu::createOptionMenu()
                     //TODO: set sound
 
                     this->_soundOn = true;
-                    this->clearMenuEntities();
+                    this->clearMenuEntities(true);
                     this->createOptionMenu();
                 });
             }
@@ -300,11 +304,21 @@ void ClientMenu::createAccessibilityMenu()
 }
 
 
-void ClientMenu::clearMenuEntities()
+void ClientMenu::clearMenuEntities(bool keepBackground)
 {
     if (!_engine) return;
 
-    for (auto& entity : _menuEntities) {
+    for (auto it = _menuEntities.begin(); it != _menuEntities.end(); ) {
+        Entity entity = *it;
+
+        // Si on doit garder le background, on vérifie si l'entité en est un
+        // On peut vérifier via le composant ScrollingBackground
+        if (keepBackground && _engine->hasComponent<ScrollingBackground>(entity)) {
+            ++it; // On passe à l'entité suivante sans rien supprimer
+            continue;
+        }
+
+        // --- Nettoyage habituel ---
         if (_engine->hasComponent<ButtonComponent>(entity)) {
             auto& btn = _engine->getComponentEntity<ButtonComponent>(entity);
             btn->onClick = nullptr;
@@ -319,6 +333,13 @@ void ClientMenu::clearMenuEntities()
 
         if (_engine->hasComponent<Text>(entity))
             _engine->removeComponent<Text>(entity);
+
+        // On retire l'entité du vecteur et on récupère l'itérateur suivant
+        it = _menuEntities.erase(it);
     }
-    _menuEntities.clear();
+
+    // Si on a tout supprimé (pas de background gardé), on remet à zéro l'asset actuel
+    if (!keepBackground) {
+        _currentBackgroundAsset = Assets::MAIN_MENU_BG;
+    }
 }

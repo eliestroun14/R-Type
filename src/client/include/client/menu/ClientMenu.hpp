@@ -52,13 +52,15 @@ class ClientMenu : public IMenu {
         /**
          * @brief Method that remove every entities'components to diseable and hide them.
          */
-        void clearMenuEntities();
+        void clearMenuEntities(bool keepBackground = false);
 
     private:
         bool _isConnected;
         std::shared_ptr<gameEngine::GameEngine> _engine;
         std::vector<Entity> _menuEntities;
         std::queue<std::function<void()>> _pendingActions;
+
+        Assets _currentBackgroundAsset = Assets::MAIN_MENU_BG;
 
         bool _musicOn;
         bool _soundOn;
