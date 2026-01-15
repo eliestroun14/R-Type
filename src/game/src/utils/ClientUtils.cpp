@@ -56,7 +56,7 @@ std::vector<Entity> createButton(gameEngine::GameEngine& engine, std::string lab
     // button
     Entity button = engine.createEntity("Button_" + label);
     engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
-    engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_UI_HUD, rectSprite));
+    engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_GAME, rectSprite));
     ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
     engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
 
