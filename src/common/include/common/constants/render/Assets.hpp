@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 48
+#define NUMBER_ASSETS 50
 #define NUMBER_FONT_ASSETS 2
 #define NUMBER_AUDIO_ASSETS 25
 
@@ -70,11 +70,19 @@ enum Assets {
     MAIN_MENU_BG_LIGHT,
 
 
-    // MAIN MENU ELEMENTS
+    // OPTIONS ELEMENTS
     OPTION_MENU_PLANET,
-    OPTION_MENU_PLANET_2,
     OPTION_MENU_BG,
-    OPTION_MENU_BG_2,
+
+
+    // KEYBINDS ELEMENTS
+    KEYBINDS_MENU_PLANET,
+    KEYBINDS_MENU_BG,
+
+
+    // ACCESIBILITY ELEMENTS
+    ACCESSIBILITY_MENU_PLANET,
+    ACCESSIBILITY_MENU_BG,
 
     // BUTTONS
     DEFAULT_NONE_BUTTON,
@@ -155,9 +163,17 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 
     // OPTION MENU ELEMENTS
     "../assets/menu/options/planet/optionMenuPlanet.png",
-    "../assets/menu/options/planet/optionMenuPlanet2.png",
     "../assets/menu/options/background/optionMenuBg.png",
-    "../assets/menu/options/background/optionMenuBg2.png",
+
+
+    // KEYBINDS ELEMENTS
+    "../assets/menu/keybinds/planet/keybindsMenuPlanet.png",
+    "../assets/menu/keybinds/background/keybindsMenuBg.png",
+
+
+    // ACCESSIBILITY ELEMENTS
+    "../assets/menu/accessibility/planet/accessibilityMenuPlanet.png",
+    "../assets/menu/accessibility/background/accessibilityMenuBg.png",
 
 
     // BUTTONS
