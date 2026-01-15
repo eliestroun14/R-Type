@@ -100,17 +100,4 @@ Entity createImage(gameEngine::GameEngine& engine, Assets assetId,
 Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Animation animation,
     sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite, ZIndex zIndex);
 
-
-
-/**
- * @brief Create a toggleable checkbox
- * @param initialState true if checked by default
- * @param onToggle function that receives the new state (bool)
- * @return A vector of entity created, the sprite two sprites
- */
-std::vector<Entity> createCheckbox(gameEngine::GameEngine& engine, bool initialState,
-    Assets uncheckedAsset, Assets checkedAsset, sf::Vector2f pos,
-    sf::IntRect rectSprite, float rotation, float scale,
-    std::function<void(bool)> onToggle);
-
 #endif /* !CLIENT_UTILS_HPP */

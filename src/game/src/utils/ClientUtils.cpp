@@ -112,27 +112,3 @@ Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Anima
 
     return image;
 }
-
-
-std::vector<Entity> createCheckbox(gameEngine::GameEngine& engine, bool initialState,
-    Assets uncheckedAsset, Assets checkedAsset, sf::Vector2f pos,
-    sf::IntRect rectSprite, float rotation, float scale,
-    std::function<void(bool)> onToggle)
-{
-    std::vector<Entity> entities;
-
-    //FIXME: check if the method is correct
-    Entity uncheckEntity = engine.createEntity("UncheckEntity");
-
-    engine.addComponent(uncheckEntity, Transform(pos.x, pos.y, rotation, scale));
-    engine.addComponent(uncheckEntity, Sprite(uncheckedAsset, ZIndex::IS_UI_HUD, rectSprite));
-
-    Entity checkEntity = engine.createEntity("CheckEntity");
-
-    engine.addComponent(checkEntity, Transform(pos.x, pos.y, rotation, scale));
-    engine.addComponent(checkEntity, Sprite(checkedAsset, ZIndex::IS_UI_HUD, rectSprite));
-
-    entities.push_back(uncheckEntity);
-    entities.push_back(checkEntity);
-    return entities;
-}
