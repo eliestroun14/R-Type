@@ -31,6 +31,9 @@ Game::Game(Type type)
             _coordinator->initEngineRender();
         }
 
+        Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
+        this->getCoordinator()->getEngine()->addComponent<GameConfig>(configurationEntity, GameConfig(FontAssets::DEFAULT_FONT, true, true));
+
         // Initialize timing
         _lastTickTime = std::chrono::steady_clock::now();
         _accumulatedTime = 0;
