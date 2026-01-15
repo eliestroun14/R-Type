@@ -50,6 +50,11 @@ class ClientMenu : public IMenu {
         void createAccessibilityMenu();
 
         /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void createPlayMenu();
+
+        /**
          * @brief Method that remove every entities'components to diseable and hide them.
          */
         void clearMenuEntities(bool keepBackground = false);

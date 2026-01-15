@@ -58,7 +58,7 @@ void ClientMenu::createMainMenu()
         [this]() {
             this->_pendingActions.push([this]() {
                 this->clearMenuEntities();
-                // this->createOptionMenu();
+                this->createPlayMenu();
             });
         }
     ));
@@ -301,6 +301,55 @@ void ClientMenu::createAccessibilityMenu()
             });
         }
     ));
+}
+
+
+
+void ClientMenu::createPlayMenu()
+{
+    // BACKGROUND
+    // addMenuEntity(createImage(*this->_engine, Assets::MAIN_MENU_BG,
+    //     sf::Vector2f(0, 0), MAIN_MENU_BG_ROTATION, MAIN_MENU_BG_SCALE,
+    //     sf::IntRect(0, 0, MAIN_MENU_BG_SPRITE_WIDTH, MAIN_MENU_BG_SPRITE_HEIGHT),
+    //     ZIndex::IS_BACKGROUND));
+
+    addMenuEntity(createMovingBackground(*this->_engine, Assets::GAME_BG, {0, 0},
+        GAME_BG_ROTATION, GAME_BG_SCALE,
+        sf::IntRect(0, 0, GAME_BG_SPRITE_WIDTH, GAME_BG_SPRITE_HEIGHT),
+        35.0, true, true));
+
+    // TEXTS
+
+    addMenuEntity(createText(*this->_engine, "Waiting for players", 60, sf::Color::White,
+        {950, 500}, 0, 1.5f));
+
+    // ANIMATED ENTITIES
+
+    Animation spiralAnimation(SPIRAL_BULLET_SPRITE_WIDTH, SPIRAL_BULLET_SPRITE_HEIGHT, SPIRAL_BULLET_ANIMATION_CURRENT,
+        SPIRAL_BULLET_ANIMATION_ELAPSED_TIME, SPIRAL_BULLET_ANIMATION_DURATION, SPIRAL_BULLET_ANIMATION_START,
+        SPIRAL_BULLET_ANIMATION_END, SPIRAL_BULLET_ANIMATION_LOOPING);
+
+    addMenuEntity(createAnimatedImage(*this->_engine, Assets::SPIRAL_BULLET, spiralAnimation,
+        {300, 455}, 0, SPIRAL_BULLET_SCALE,
+        sf::IntRect(0, 0, SPIRAL_BULLET_SPRITE_WIDTH, SPIRAL_BULLET_SPRITE_HEIGHT), ZIndex::IS_UI_HUD));
+
+    addMenuEntity(createAnimatedImage(*this->_engine, Assets::SPIRAL_BULLET, spiralAnimation,
+        {1510, 455}, 0, SPIRAL_BULLET_SCALE,
+        sf::IntRect(0, 0, SPIRAL_BULLET_SPRITE_WIDTH, SPIRAL_BULLET_SPRITE_HEIGHT), ZIndex::IS_UI_HUD));
+
+
+    // BUTTONSs
+    addMenuEntity(createButton(*_engine, "back", 0, sf::Color::White, {30, 30}, BACK_BUTTON_SCALE,
+        sf::IntRect(0, 0, BACK_BUTTON_SPRITE_WIDTH, BACK_BUTTON_SPRITE_HEIGHT),
+        BACK_NONE_BUTTON, BACK_HOVER_BUTTON, BACK_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                this->clearMenuEntities();
+                this->createMainMenu();
+            });
+        }
+    ));
+
 }
 
 
