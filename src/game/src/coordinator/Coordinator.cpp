@@ -55,6 +55,9 @@ void Coordinator::initEngine()
 
     auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
     this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
+
+    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine);
+    this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode

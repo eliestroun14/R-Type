@@ -28,6 +28,7 @@
 #include <game/systems/ButtonSystem.hpp>
 #include <game/systems/AnimationSystem.hpp>
 #include <game/systems/AccessibilitySystem.hpp>
+#include <game/systems/BackgroundSystem.hpp>
 
 
 class Coordinator {
