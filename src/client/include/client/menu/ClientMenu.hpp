@@ -39,7 +39,29 @@ class ClientMenu : public IMenu {
          */
         void createOptionMenu() override;
 
+        /**
+         * @brief Method that create every entity for the keybinds menu.
+         */
+        void createKeybindsMenu();
 
+        /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void createAccessibilityMenu();
+
+        /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void setMusic(bool *musicOn) override;
+
+        /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void setSound(bool *soundOn) override;
+
+        /**
+         * @brief Method that remove every entities'components to diseable and hide them.
+         */
         void clearMenuEntities();
 
     private:
@@ -48,6 +70,8 @@ class ClientMenu : public IMenu {
         std::vector<Entity> _menuEntities;
         std::queue<std::function<void()>> _pendingActions;
 
+        bool _musicOn;
+        bool _soundOn;
 };
 
 #endif /* !CLIENTMENU_HPP_ */
