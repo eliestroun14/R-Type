@@ -6,6 +6,8 @@
 */
 
 #include "game/coordinator/Coordinator.hpp"
+#include "game/systems/AnimationSystem.hpp"
+#include "game/systems/AudioSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -34,6 +36,8 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<Projectile>();
     this->_engine->registerComponent<MovementPattern>();
     this->_engine->registerComponent<AI>();
+    this->_engine->registerComponent<AudioSource>();
+    this->_engine->registerComponent<AudioEffect>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -42,7 +46,7 @@ void Coordinator::initEngine()
     auto movementSystem = this->_engine->registerSystem<MovementSystem>(*this->_engine);
     this->_engine->setSystemSignature<MovementSystem, Transform, Velocity>();
 
-    auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this);
+    auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this, this->_isServer);
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
 }
 
@@ -50,6 +54,14 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
 {
     this->_engine->initRender();
     this->_engine->initAudio();
+
+    // Register AnimationSystem before RenderSystem (animation must update before rendering)
+    auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
+    this->_engine->setSystemSignature<AnimationSystem, Animation, Sprite>();
+
+    // Register AudioSystem to handle entity audio
+    auto audioSystem = this->_engine->registerSystem<AudioSystem>(*this->_engine);
+    this->_engine->setSystemSignature<AudioSystem, AudioSource>();
 
     // Register RenderSystem to handle entity rendering
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
@@ -240,7 +252,20 @@ void Coordinator::processServerPackets(const std::vector<common::protocol::Packe
     for (const auto& packet : packetsToProcess) {
         if (PacketManager::assertPlayerInput(packet)) {
             LOG_INFO_CAT("Coordinator", "Processing PLAYER_INPUT packet");
-            handlePlayerInputPacket(packet, elapsedMs);
+            
+            // Parse to get the source player ID
+            auto parsed = PacketManager::parsePlayerInput(packet);
+            if (parsed.has_value()) {
+                handlePlayerInputPacket(packet, elapsedMs);
+                // Queue this packet to be relayed to OTHER clients (exclude the source)
+                RelayPacket relayPacket;
+                relayPacket.packet = packet;
+                relayPacket.sourcePlayerId = parsed->playerId;
+                _packetsToRelay.push_back(relayPacket);
+                LOG_DEBUG_CAT("Coordinator", "Queued PLAYER_INPUT packet from player {} for relay to other clients (excluding source)", parsed->playerId);
+            } else {
+                LOG_ERROR_CAT("Coordinator", "Failed to parse PLAYER_INPUT packet");
+            }
         } else {
             LOG_WARN_CAT("Coordinator", "Received non-input packet type {} on server", static_cast<int>(packet.header.packet_type));
         }
@@ -254,6 +279,12 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
         uint8_t packetType = packet.header.packet_type;
 
         switch (packetType) {
+            case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT):
+                if (PacketManager::assertPlayerInput(packet)) {
+                    LOG_DEBUG_CAT("Coordinator", "Client received relayed PLAYER_INPUT packet");
+                    handleRelayedPlayerInputPacket(packet, elapsedMs);
+                }
+                break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN):
                 if (PacketManager::assertEntitySpawn(packet)) {
                     this->handlePacketCreateEntity(packet);
@@ -398,6 +429,19 @@ void Coordinator::queueWeaponFire(uint32_t shooterId, float originX, float origi
 void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
     // ============================================================================
+    // RELAY PLAYER INPUT PACKETS
+    // ============================================================================
+    // Relay any PLAYER_INPUT packets received from clients to all OTHER clients
+    // This ensures all clients see each other's input for animation updates
+    // IMPORTANT: Each packet is marked with sourcePlayerId so the network layer
+    // can exclude sending the packet back to the originating player
+    for (const auto& relayPacket : _packetsToRelay) {
+        outgoingPackets.push_back(relayPacket.packet);
+        LOG_DEBUG_CAT("Coordinator", "Relaying PLAYER_INPUT packet from player {} to other clients (network layer should exclude source)", relayPacket.sourcePlayerId);
+    }
+    _packetsToRelay.clear();
+
+    // ============================================================================
     // SERVER SNAPSHOT GENERATION
     // ============================================================================
     // Only entities with NetworkId component are synchronized via snapshots.
@@ -510,8 +554,9 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
             );
 
             // Create weapon fire packet to broadcast to clients
+            // Args format: flags_count(1) + flags(1+) + sequence_number(4) + timestamp(4) + payload(17)
             std::vector<uint8_t> weaponFireArgs;
-            weaponFireArgs.resize(21); // shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + direction_x(2) + direction_y(2) + weapon_type(1) + flags_count(1) + flags(1) + seq(4)
+            weaponFireArgs.resize(WEAPON_FIRE_MIN_ARGS_SIZE);
             uint8_t* ptr = weaponFireArgs.data();
 
             // flags_count (1 byte)
@@ -526,6 +571,11 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
             // sequence_number (4 bytes)
             std::memcpy(ptr, &sequenceNumber, sizeof(uint32_t));
+            ptr += sizeof(uint32_t);
+
+            // timestamp (4 bytes)
+            uint32_t timestamp = static_cast<uint32_t>(elapsedMs);
+            std::memcpy(ptr, &timestamp, sizeof(uint32_t));
             ptr += sizeof(uint32_t);
 
             // shooter_id (4 bytes)
@@ -558,6 +608,9 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
             // weapon_type (1 byte)
             std::memcpy(ptr, &fireEvent.weaponType, sizeof(uint8_t));
+
+            LOG_DEBUG_CAT("Coordinator", "WeaponFire packet: shooter={} proj={} origin=({},{}) dir=({},{}) weapon_type=0x{:02x}",
+                fireEvent.shooterId, fireEvent.projectileId, origin_x, origin_y, direction_x, direction_y, fireEvent.weaponType);
 
             auto weaponFirePacket = PacketManager::createWeaponFire(weaponFireArgs);
             if (weaponFirePacket.has_value()) {
@@ -656,6 +709,32 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     return PacketManager::createEntitySpawn(args);
 }
 
+bool Coordinator::shouldSendPacketToPlayer(const common::protocol::Packet& packet, uint32_t targetPlayerId) const
+{
+    // Check if this is a PLAYER_INPUT packet
+    if (packet.header.packet_type != static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT)) {
+        // Non-PLAYER_INPUT packets are sent to all players
+        return true;
+    }
+
+    // This is a PLAYER_INPUT packet - parse it to get the source player
+    auto parsed = PacketManager::parsePlayerInput(packet);
+    if (!parsed.has_value()) {
+        // If we can't parse it, be safe and exclude it
+        LOG_WARN_CAT("Coordinator", "shouldSendPacketToPlayer: Failed to parse PLAYER_INPUT packet");
+        return false;
+    }
+
+    // Don't send the packet to the player who sent it (avoid double-processing)
+    // But send it to all other players
+    if (parsed->playerId == targetPlayerId) {
+        LOG_DEBUG_CAT("Coordinator", "Excluding PLAYER_INPUT from player {} to themselves", targetPlayerId);
+        return false;
+    }
+
+    return true;
+}
+
 std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
 {
     std::vector<uint32_t> playerIds;
@@ -678,6 +757,25 @@ std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
     }
 
     LOG_DEBUG_CAT("Coordinator", "getPlayablePlayerIds: found {} playable entities", playerIds.size());
+    return playerIds;
+}
+
+std::vector<uint32_t> Coordinator::getAllConnectedPlayerIds() const
+{
+    std::vector<uint32_t> playerIds;
+    auto& inputComponents = this->_engine->getComponents<InputComponent>();
+
+    LOG_DEBUG_CAT("Coordinator", "getAllConnectedPlayerIds: checking {} input components", inputComponents.size());
+
+    for (size_t i = 0; i < inputComponents.size(); ++i) {
+        if (inputComponents[i].has_value()) {
+            uint32_t playerId = inputComponents[i].value().playerId;
+            playerIds.push_back(playerId);
+            LOG_DEBUG_CAT("Coordinator", "  Found player entity at index {} with playerId {}", i, playerId);
+        }
+    }
+
+    LOG_DEBUG_CAT("Coordinator", "getAllConnectedPlayerIds: found {} player entities", playerIds.size());
     return playerIds;
 }
 
@@ -828,20 +926,23 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
         return;  // Invalid packet, ignore
     }
 
-    LOG_INFO_CAT("Coordinator", "[SERVER] handlePlayerInputPacket: playerId={} actionCount={}", 
+    LOG_INFO_CAT("Coordinator", "handlePlayerInputPacket: playerId={} actionCount={}",
                   parsed->playerId, parsed->actions.size());
 
     // Find the entity for this player by iterating over all InputComponents
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
+    LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: checking {} input components", inputComponents.size());
+
     bool foundPlayer = false;
     for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
         auto& input = inputComponents[entityId];
         if (input.has_value() && input->playerId == parsed->playerId) {
+            LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
             Entity entity = Entity::fromId(entityId);
             // Update all input actions
             for (const auto& [action, isPressed] : parsed->actions) {
                 this->_engine->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
-                LOG_INFO_CAT("Coordinator", "[SERVER]   Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
+                LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
             }
             foundPlayer = true;
             break;
@@ -850,6 +951,35 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
 
     if (!foundPlayer) {
         LOG_WARN_CAT("Coordinator", "handlePlayerInputPacket: player {} not found in ECS", parsed->playerId);
+    }
+}
+
+void Coordinator::handleRelayedPlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs)
+{
+    auto parsed = PacketManager::parsePlayerInput(packet);
+    if (!parsed.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "handleRelayedPlayerInputPacket: failed to parse input packet");
+        return;  // Invalid packet, ignore
+    }
+
+    LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: playerId={} actionCount={}",
+                  parsed->playerId, parsed->actions.size());
+
+    auto& inputComponents = this->_engine->getComponents<InputComponent>();
+
+    for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
+        auto& input = inputComponents[entityId];
+        if (input.has_value() && input->playerId == parsed->playerId) {
+            LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
+            Entity entity = Entity::fromId(entityId);
+
+            for (const auto& [action, isPressed] : parsed->actions) {
+                input->activeActions[action] = isPressed;
+                LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: Directly updated Player {} action {} to {}",
+                             parsed->playerId, static_cast<int>(action), isPressed);
+            }
+            break;
+        }
     }
 }
 
@@ -990,7 +1120,7 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         return;
     }
 
-    LOG_INFO_CAT("Coordinator", "[CLIENT] TransformSnapshot received: world_tick=%u entity_count=%u", world_tick, entity_count);
+    LOG_INFO_CAT("Coordinator", "[CLIENT] TransformSnapshot received: world_tick={} entity_count={}", world_tick, entity_count);
 
     std::size_t offset = BASE_SIZE;
 
@@ -1025,29 +1155,51 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
 
 void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &packet)
 {
-    // Validate snapshot size using the protocol define
-    if (packet.data.size() != HEALTH_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_BASE_SIZE);
+    // Minimum size check: must have at least entity_count (2 bytes)
+    if (packet.data.size() < 2) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: packet too small, size=%zu", packet.data.size());
         return;
     }
 
-    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
-    protocol::HealthSnapshot snapshot;
-    std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
+    // Parse entity_count first
+    uint16_t entity_count;
+    std::memcpy(&entity_count, packet.data.data(), sizeof(entity_count));
 
-    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick=%u entity_count=%u",
-        snapshot.world_tick, snapshot.entity_count);
+    // Each health entry: entity_id(4) + current_health(1) + max_health(1) + current_shield(1) + max_shield(1) = 8 bytes
+    const size_t HEALTH_ENTRY_SIZE = 8;
+    const size_t expected_size = 2 + (entity_count * HEALTH_ENTRY_SIZE);
+    
+    if (packet.data.size() != expected_size) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size %zu, expected %zu for %u entities",
+            packet.data.size(), expected_size, entity_count);
+        return;
+    }
 
-    size_t offset = sizeof(protocol::HealthSnapshot);
-    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+    LOG_INFO_CAT("Coordinator", "HealthSnapshot: entity_count={}", entity_count);
+
+    size_t offset = 2; // Skip entity_count
+    for (uint16_t i = 0; i < entity_count; i++) {
         uint32_t entity_id;
-        Health health(0, 0);
+        uint8_t current_health, max_health, current_shield, max_shield;
 
         std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
         offset += sizeof(entity_id);
 
-        std::memcpy(&health, packet.data.data() + offset, sizeof(health));
-        offset += sizeof(health);
+        std::memcpy(&current_health, packet.data.data() + offset, sizeof(current_health));
+        offset += sizeof(current_health);
+
+        std::memcpy(&max_health, packet.data.data() + offset, sizeof(max_health));
+        offset += sizeof(max_health);
+
+        std::memcpy(&current_shield, packet.data.data() + offset, sizeof(current_shield));
+        offset += sizeof(current_shield);
+
+        std::memcpy(&max_shield, packet.data.data() + offset, sizeof(max_shield));
+        offset += sizeof(max_shield);
+
+        // Convert uint8_t network format to int component format
+        Health health(static_cast<int>(current_health), static_cast<int>(max_health));
+        // Note: shields are not currently in the Health component, so we only update health values
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
 
@@ -1062,29 +1214,58 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
 
 void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &packet)
 {
-    // Validate snapshot size using the protocol define
-    if (packet.data.size() != WEAPON_SNAPSHOT_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapthot: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_SNAPSHOT_BASE_SIZE);
+    // Minimum size check: must have at least entity_count (2 bytes)
+    if (packet.data.size() < 2) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: packet too small, size=%zu", packet.data.size());
         return;
     }
 
-    // Parse the HEALTH_SNAPSHOT snapshot in one memcpy
-    protocol::WeaponSnapshot snapshot;
-    std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
+    // Parse entity_count first
+    uint16_t entity_count;
+    std::memcpy(&entity_count, packet.data.data(), sizeof(entity_count));
 
-    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: world_tick=%u entity_count=%u",
-        snapshot.world_tick, snapshot.entity_count);
+    // Each weapon entry: entity_id(4) + fire_rate(2) + damage(1) + projectile_type(1) + ammo(1) = 9 bytes
+    const size_t WEAPON_ENTRY_SIZE = 9;
+    const size_t expected_size = 2 + (entity_count * WEAPON_ENTRY_SIZE);
 
-    size_t offset = sizeof(protocol::WeaponSnapshot);
-    for (uint16_t i = 0; i < snapshot.entity_count; i++) {
+    if (packet.data.size() != expected_size) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: invalid packet size %zu, expected %zu for %u entities",
+            packet.data.size(), expected_size, entity_count);
+        return;
+    }
+
+    LOG_INFO_CAT("Coordinator", "WeaponSnapshot: entity_count={}", entity_count);
+
+    size_t offset = 2; // Skip entity_count
+    for (uint16_t i = 0; i < entity_count; i++) {
         uint32_t entity_id;
-        Weapon weapon(0, 0, 0, ProjectileType::UNKNOWN);
+        uint16_t fire_rate;
+        uint8_t damage, projectile_type, ammo;
 
         std::memcpy(&entity_id, packet.data.data() + offset, sizeof(entity_id));
         offset += sizeof(entity_id);
 
-        std::memcpy(&weapon, packet.data.data() + offset, sizeof(weapon));
-        offset += sizeof(weapon);
+        std::memcpy(&fire_rate, packet.data.data() + offset, sizeof(fire_rate));
+        offset += sizeof(fire_rate);
+
+        std::memcpy(&damage, packet.data.data() + offset, sizeof(damage));
+        offset += sizeof(damage);
+
+        std::memcpy(&projectile_type, packet.data.data() + offset, sizeof(projectile_type));
+        offset += sizeof(projectile_type);
+
+        std::memcpy(&ammo, packet.data.data() + offset, sizeof(ammo));
+        offset += sizeof(ammo);
+
+        // Convert network format to Weapon component format
+        // Note: lastShotTime is not sent over network, keep existing value or set to 0
+        Weapon weapon(
+            static_cast<uint32_t>(fire_rate),  // fireRateMs
+            0,                                   // lastShotTime (not synced)
+            static_cast<int>(damage),           // damage
+            static_cast<ProjectileType>(projectile_type)  // projectileType
+        );
+        // Note: ammo is not currently in the Weapon component
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
 
@@ -1392,37 +1573,55 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 {
-    // Validate payload size using the protocol define
-    if (packet.data.size() != WEAPON_FIRE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: invalid packet size %zu, expected %d", packet.data.size(), WEAPON_FIRE_PAYLOAD_SIZE);
+    // Parse the weapon fire packet
+    auto parsed = PacketManager::parseWeaponFire(packet);
+    if (!parsed.has_value()) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: failed to parse weapon fire packet");
         return;
     }
 
-    // Parse the WEAPON_FIRE_PAYLOAD_SIZE payload in one memcpy
-    protocol::WeaponFire payload;
-    std::memcpy(&payload, packet.data.data(), sizeof(payload));
+    const auto& payload = parsed.value();
 
-    LOG_INFO_CAT("Coordinator", "shooter_id=%u projectile_id=%u weapon_type=%u origin_pos=(%.1f, %.1f), direction_pos=(%.1f, %.1f)",
-                payload.shooter_id, payload.projectile_id, payload.weapon_type, payload.origin_x, payload.origin_y, payload.direction_x, payload.direction_y);
+    LOG_INFO_CAT("Coordinator", "shooter_id={} projectile_id={} weapon_type={} origin_pos=({}, {}), direction_pos=({}, {})",
+                payload.shooterId, payload.projectileId, payload.weaponType, 
+                payload.originX, payload.originY, payload.directionX, payload.directionY);
+
+    // Check if projectile already exists (duplicate packet or not yet cleaned up)
+    Entity existingProjectile = this->_engine->getEntityFromId(payload.projectileId);
+    if (this->_engine->isAlive(existingProjectile)) {
+        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectileId);
+        return;
+    }
 
     // get the shooter
-    Entity shooter = this->_engine->getEntityFromId(payload.shooter_id);
+    Entity shooter = this->_engine->getEntityFromId(payload.shooterId);
 
-    float origin_x = static_cast<float>(payload.origin_x);
-    float origin_y = static_cast<float>(payload.origin_y);
+    // Convert from int16_t to float
+    float origin_x = static_cast<float>(payload.originX);
+    float origin_y = static_cast<float>(payload.originY);
 
+    // Convert direction from int16_t (normalized*1000) back to float
+    float direction_x = static_cast<float>(payload.directionX) / 1000.0f;
+    float direction_y = static_cast<float>(payload.directionY) / 1000.0f;
 
-    float direction_x = static_cast<float>(payload.direction_x) / 1000.0f;
-    float direction_y = static_cast<float>(payload.direction_y) / 1000.0f;
-
-
-    Entity projectile = spawnProjectile(shooter, payload.projectile_id, payload.weapon_type, payload.origin_x,
-        payload.origin_y, payload.direction_x, payload.direction_y);
+    try {
+        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: About to spawn projectile {}", payload.projectileId);
+        Entity projectile = spawnProjectile(shooter, payload.projectileId, payload.weaponType, 
+                                            origin_x, origin_y, direction_x, direction_y);
+        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: Successfully spawned projectile {}", payload.projectileId);
+    } catch (const Error& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {}: {}", payload.projectileId, e.what());
+        return;
+    } catch (const std::exception& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {} with unexpected error: {}", payload.projectileId, e.what());
+        return;
+    }
 
     // Play shooting sound client-side at the projectile origin position
     // Determine sound type based on weapon type
-    protocol::AudioEffectType soundType;
-    switch (payload.weapon_type) {
+    // TODO: a fix
+/*     protocol::AudioEffectType soundType;
+    switch (payload.weaponType) {
         case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC):
             soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
             break;
@@ -1438,9 +1637,9 @@ void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
     }
     
     playAudioEffect(soundType, origin_x, origin_y, 0.7f, 1.0f);
-
-    LOG_INFO_CAT("Coordinator", "Projectile %u spawned from shooter %u", 
-                 payload.projectile_id, payload.shooter_id);
+ */
+    LOG_INFO_CAT("Coordinator", "Projectile {} spawned from shooter {}", 
+                 payload.projectileId, payload.shooterId);
 }
 
 void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)
@@ -2126,20 +2325,31 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
         }
 
         Health& health = healthOpt.value();
+        
+        // Skip entities with invalid health values
+        if (health.maxHp <= 0) {
+            LOG_DEBUG_CAT("Coordinator", "Skipping entity {} with invalid maxHp: {}", entityId, health.maxHp);
+            continue;
+        }
 
         // entity_id (4 bytes)
         args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
                     reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
 
-                    // current_health (2 bytes)
-        uint16_t current_health = static_cast<uint16_t>(health.currentHealth);
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&current_health), 
-                    reinterpret_cast<uint8_t*>(&current_health) + sizeof(current_health));
+        // ComponentHealth (4 bytes): current_health(1) + max_health(1) + current_shield(1) + max_shield(1)
+        // current_health (1 byte)
+        uint8_t current_health = static_cast<uint8_t>(std::min(255, std::max(0, static_cast<int>(health.currentHealth))));
+        args.push_back(current_health);
 
-                    // max_health (2 bytes)
-        uint16_t max_health = static_cast<uint16_t>(health.maxHp);
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&max_health), 
-                    reinterpret_cast<uint8_t*>(&max_health) + sizeof(max_health));
+        // max_health (1 byte) - must be > 0
+        uint8_t max_health = static_cast<uint8_t>(std::min(255, std::max(1, static_cast<int>(health.maxHp))));
+        args.push_back(max_health);
+
+        // current_shield (1 byte) - 0 for now
+        args.push_back(0);
+
+        // max_shield (1 byte) - 0 for now
+        args.push_back(0);
     }
 
     auto result = PacketManager::createHealthSnapshot(args);
@@ -2203,24 +2413,22 @@ bool Coordinator::createPacketWeaponSnapshot(common::protocol::Packet* packet, c
         args.insert(args.end(), reinterpret_cast<uint8_t*>(&entityId), 
                     reinterpret_cast<uint8_t*>(&entityId) + sizeof(entityId));
 
-                    // fire_rate (2 bytes)
+        // ComponentWeapon (5 bytes): fire_rate(2) + damage(1) + projectile_type(1) + ammo(1)
+        // fire_rate (2 bytes)
         uint16_t fire_rate = static_cast<uint16_t>(weapon.fireRateMs);
         args.insert(args.end(), reinterpret_cast<uint8_t*>(&fire_rate), 
                     reinterpret_cast<uint8_t*>(&fire_rate) + sizeof(fire_rate));
 
-                    // damage (2 bytes)
-        uint16_t damage = static_cast<uint16_t>(weapon.damage);
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&damage), 
-                    reinterpret_cast<uint8_t*>(&damage) + sizeof(damage));
+        // damage (1 byte)
+        uint8_t damage = static_cast<uint8_t>(std::min(255, static_cast<int>(weapon.damage)));
+        args.push_back(damage);
 
-                    // projectile_type (1 byte)
+        // projectile_type (1 byte)
         uint8_t projectile_type = static_cast<uint8_t>(weapon.projectileType);
         args.push_back(projectile_type);
 
-        // last_shot_time (4 bytes)
-        uint32_t last_shot_time = weapon.lastShotTime;
-        args.insert(args.end(), reinterpret_cast<uint8_t*>(&last_shot_time), 
-                    reinterpret_cast<uint8_t*>(&last_shot_time) + sizeof(last_shot_time));
+        // ammo (1 byte) - 255 for infinite
+        args.push_back(255);
     }
 
     auto result = PacketManager::createWeaponSnapshot(args);
@@ -2314,40 +2522,72 @@ std::shared_ptr<gameEngine::GameEngine> Coordinator::getEngine() const
 
 Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint8_t weapon_type, float origin_x, float origin_y, float dir_x, float dir_y)
 {
+    LOG_DEBUG_CAT("Coordinator", "spawnProjectile: START - projectile_id={} weapon_type={}", projectile_id, weapon_type);
+    
     bool isFromPlayable = false;
-    std::string projectileName = this->_engine->getEntityName(shooter) + " projectile";
+    std::string projectileName = "projectile_" + std::to_string(projectile_id);
+    
+    // Get damage from shooter's weapon if available, otherwise use default
+    uint16_t projectileDamage = 10; // Default damage
+    
+    // Only access shooter components if entity exists, is alive, AND has all required components
+    // Use try-catch to handle any unexpected component access failures
+    try {
+        if (this->_engine->isAlive(shooter) && 
+            this->_engine->hasComponent<Transform>(shooter) &&
+            this->_engine->hasComponent<Weapon>(shooter)) {
+            
+            if (this->_engine->hasComponent<InputComponent>(shooter)) {
+                isFromPlayable = true;
+            }
+            
+            auto& shooterWeapon = this->_engine->getComponentEntity<Weapon>(shooter);
+            projectileDamage = shooterWeapon->damage;
+        }
+    } catch (...) {
+        // If any component access fails, just use default values
+        LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Failed to access shooter components, using defaults");
+    }
 
-    auto& shooterWeapon = this->_engine->getComponentEntity<Weapon>(shooter);
-
-    if (this->_engine->hasComponent<InputComponent>(shooter))
-        isFromPlayable = true;
-
+    LOG_DEBUG_CAT("Coordinator", "spawnProjectile: About to createEntityWithId {}", projectile_id);
     Entity projectile = this->_engine->createEntityWithId(projectile_id, projectileName);
-    float projectileSpeed = 1.5f;  // tuned for visible travel with dt in ms
+    LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Entity created successfully");
+    
+    float projectileSpeed = PROJECTILE_SPEED;  // tuned for visible travel with dt in ms
 
     switch (weapon_type) {
         case 0x00: // WEAPON_TYPE_BASIC
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Transform component");
             this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_PROJ_ROTATION, DEFAULT_PROJ_SCALE));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Velocity component");
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
-            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Projectile component");
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, projectileDamage));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Sprite component");
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
                 sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Animation component");
             this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
                 DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
                 DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding AudioSource component for basic projectile");
+            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_BASIC, AUDIO_BASIC_PROJECTILE_LOOP, AUDIO_BASIC_PROJECTILE_MIN_DISTANCE, AUDIO_BASIC_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_BASIC_DURATION));
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: All components added successfully");
             break;
 
         case 0x01: // WEAPON_TYPE_CHARGED
             this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_PROJ_ROTATION, CHARGED_PROJ_SCALE));
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
-            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, shooterWeapon->damage));
+            this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, projectileDamage));
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
                 sf::IntRect(0, 0, CHARGED_PROJ_SPRITE_WIDTH, CHARGED_PROJ_SPRITE_HEIGHT)));
             this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_PROJ_ANIMATION_WIDTH,
                 CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
                 CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
             this->_engine->addComponent<HitBox>(projectile, HitBox());
+            this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_CHARGED, AUDIO_CHARGED_PROJECTILE_LOOP, AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE, AUDIO_CHARGED_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_CHARGED_DURATION));
             break;
 
         // case 0x02: // WEAPON_TYPE_SPREAD
@@ -2480,17 +2720,17 @@ void Coordinator::playAudioEffect(protocol::AudioEffectType type, float x, float
         // WEAPONS
         case protocol::AudioEffectType::SFX_SHOOT_BASIC:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_BASIC, false, 100.0f, 0.5f));
+                AudioSource(AudioAssets::SFX_SHOOT_BASIC, AUDIO_BASIC_PROJECTILE_LOOP, AUDIO_BASIC_PROJECTILE_MIN_DISTANCE, AUDIO_BASIC_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_BASIC_DURATION));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_CHARGED:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, false, 150.0f, 0.3f));
+                AudioSource(AudioAssets::SFX_SHOOT_CHARGED, AUDIO_CHARGED_PROJECTILE_LOOP, AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE, AUDIO_CHARGED_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_CHARGED_DURATION));
             break;
 
         case protocol::AudioEffectType::SFX_SHOOT_LASER:
             this->_engine->addComponent<AudioSource>(audioEffectEntity,
-                AudioSource(AudioAssets::SFX_SHOOT_LASER, false, 120.0f, 0.4f));
+                AudioSource(AudioAssets::SFX_SHOOT_LASER, AUDIO_LASER_PROJECTILE_LOOP, AUDIO_LASER_PROJECTILE_MIN_DISTANCE, AUDIO_LASER_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_LASER_DURATION));
             break;
 
         // EXPLOSIONS

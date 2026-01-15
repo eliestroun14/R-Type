@@ -393,6 +393,52 @@ std::optional<ParsedPlayerInput> PacketManager::parsePlayerInput(const common::p
     return result;
 }
 
+std::optional<ParsedWeaponFire> PacketManager::parseWeaponFire(const common::protocol::Packet &packet)
+{
+    // Validate packet first
+    if (!assertWeaponFire(packet)) {
+        return std::nullopt;
+    }
+
+    const auto &data = packet.data;
+    ParsedWeaponFire result;
+
+    // packet.data contains exactly WEAPON_FIRE_PAYLOAD_SIZE (17 bytes):
+    // shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + 
+    // direction_x(2) + direction_y(2) + weapon_type(1)
+
+    size_t offset = 0;
+
+    // Extract shooter_id (4 bytes)
+    std::memcpy(&result.shooterId, data.data() + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    // Extract projectile_id (4 bytes)
+    std::memcpy(&result.projectileId, data.data() + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    // Extract origin_x (2 bytes)
+    std::memcpy(&result.originX, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract origin_y (2 bytes)
+    std::memcpy(&result.originY, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract direction_x (2 bytes)
+    std::memcpy(&result.directionX, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract direction_y (2 bytes)
+    std::memcpy(&result.directionY, data.data() + offset, sizeof(int16_t));
+    offset += sizeof(int16_t);
+
+    // Extract weapon_type (1 byte)
+    result.weaponType = data[offset];
+
+    return result;
+}
+
 // ==============================================================
 //                  WORLD_STATE (0x20-0x3F)
 // ==============================================================
@@ -1163,37 +1209,29 @@ bool PacketManager::assertWeaponFire(const common::protocol::Packet &packet)
     const auto &data = packet.data;
     const auto &header = packet.header;
 
-    // Payload: 19 bytes
-    if (data.size() != 19) {
-        LOG_ERROR_CAT("PacketManager", "assertWeaponFire: payload size != 19, got %zu", data.size());
+    // Payload: 17 bytes (shooter_id(4) + projectile_id(4) + origin_x(2) + origin_y(2) + direction_x(2) + direction_y(2) + weapon_type(1))
+    if (data.size() != 17) {
+        LOG_ERROR_CAT("PacketManager", "assertWeaponFire: payload size != 17, got {}", data.size());
         return false;
     }
 
-    // Offset 0-3: shooter_id must not be 0
-    uint32_t shooter_id;
+    // Debug: Log all 17 bytes to diagnose weapon_type issue
+    uint32_t shooter_id, projectile_id;
+    int16_t origin_x, origin_y, direction_x, direction_y;
+    uint8_t weapon_type;
+    
     std::memcpy(&shooter_id, data.data() + 0, sizeof(uint32_t));
-    if (shooter_id == 0) {
-        LOG_ERROR_CAT("PacketManager", "assertWeaponFire: shooter_id == 0");
-        return false;
-    }
-
-    // Offset 4-7: projectile_id must not be 0
-    uint32_t projectile_id;
     std::memcpy(&projectile_id, data.data() + 4, sizeof(uint32_t));
-    if (projectile_id == 0) {
-        LOG_ERROR_CAT("PacketManager", "assertWeaponFire: projectile_id == 0");
-        return false;
-    }
-
-    // Offset 8-9, 10-11: origin_x, origin_y - valid coordinates
-    // Offset 12-13, 14-15: direction_x, direction_y - normalized vector
-    // TODO: Validate normalized direction vector
+    std::memcpy(&origin_x, data.data() + 8, sizeof(int16_t));
+    std::memcpy(&origin_y, data.data() + 10, sizeof(int16_t));
+    std::memcpy(&direction_x, data.data() + 12, sizeof(int16_t));
+    std::memcpy(&direction_y, data.data() + 14, sizeof(int16_t));
+    std::memcpy(&weapon_type, data.data() + 16, sizeof(uint8_t));
 
     // Offset 16: weapon_type must be valid (0x00 to 0x05)
-    uint8_t weapon_type;
-    std::memcpy(&weapon_type, data.data() + 16, sizeof(uint8_t));
     if (weapon_type > 5) {
-        LOG_ERROR_CAT("PacketManager", "assertWeaponFire: invalid weapon_type 0x%02hhx", weapon_type);
+        LOG_ERROR_CAT("PacketManager", "assertWeaponFire: invalid weapon_type 0x{:02x} (shooter={}, proj={}, origin=({},{}), dir=({},{}))", 
+            weapon_type, shooter_id, projectile_id, origin_x, origin_y, direction_x, direction_y);
         return false;
     }
 
@@ -2968,8 +3006,9 @@ std::optional<common::protocol::Packet> PacketManager::createWeaponFire(const st
         combined_flags |= args[offset++];
     }
 
-    if (args.size() < offset + HEADER_SIZE + WEAPON_FIRE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: not enough data for header + payload");
+    if (args.size() < offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + WEAPON_FIRE_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createWeaponFire: not enough data for sequence + timestamp + payload, expected {} got {}",
+                     offset + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + WEAPON_FIRE_PAYLOAD_SIZE, args.size());
         return std::nullopt;
     }
 

@@ -27,6 +27,20 @@ struct ParsedPlayerInput {
 };
 
 /**
+ * @struct ParsedWeaponFire
+ * @brief Parsed weapon fire event from a network packet
+ */
+struct ParsedWeaponFire {
+    uint32_t shooterId;
+    uint32_t projectileId;
+    int16_t originX;
+    int16_t originY;
+    int16_t directionX;
+    int16_t directionY;
+    uint8_t weaponType;
+};
+
+/**
  * @class PacketManager
  * @brief Manages network packet processing and creation for the ECS
  *
@@ -126,6 +140,13 @@ class PacketManager {
          * @return Parsed player input with all actions mapped, or std::nullopt if invalid
          */
         static std::optional<ParsedPlayerInput> parsePlayerInput(const common::protocol::Packet &packet);
+
+        /**
+         * @brief Parse a WEAPON_FIRE packet and extract fire event data
+         * @param packet The packet to parse
+         * @return Parsed weapon fire event, or std::nullopt if invalid
+         */
+        static std::optional<ParsedWeaponFire> parseWeaponFire(const common::protocol::Packet &packet);
 
         // ==============================================================
         //                  WORLD_STATE (0x20-0x3F)

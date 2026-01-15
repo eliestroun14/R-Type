@@ -37,7 +37,7 @@ class Coordinator {
             float velY;
         };
 
-        Coordinator() {
+        Coordinator() : _isServer(false) {
             std::cout << "Coordinator constructor START" << std::endl;
             std::cout << "Coordinator constructor END" << std::endl;
         }
@@ -49,6 +49,12 @@ class Coordinator {
 
         void initEngine();
         void initEngineRender();
+        
+        /** @brief Sets whether this coordinator is running on the server. */
+        void setIsServer(bool isServer) { _isServer = isServer; }
+        
+        /** @brief Returns whether this coordinator is running on the server. */
+        bool isServer() const { return _isServer; }
 
         // ==============================================================
         //                       Entity creation helpers
@@ -127,8 +133,20 @@ class Coordinator {
         // Helper to spawn a player entity and broadcast ENTITY_SPAWN packet
         std::optional<common::protocol::Packet> spawnPlayerOnServer(uint32_t playerId, float posX, float posY);
 
+        /** @brief Check if a PLAYER_INPUT packet should be sent to a specific player.
+         * Returns false if the packet is a PLAYER_INPUT from that player (they shouldn't receive their own relayed input).
+         * This prevents double-processing of input on the sender's client.
+         */
+        bool shouldSendPacketToPlayer(const common::protocol::Packet& packet, uint32_t targetPlayerId) const;
+
         // HANDLE PACKETS
         std::vector<uint32_t> getPlayablePlayerIds();
+        
+        /** @brief Get all connected player IDs (used by server to relay packets).
+         * Returns all entities with InputComponent, which represents all players (including remote ones).
+         */
+        std::vector<uint32_t> getAllConnectedPlayerIds() const;
+        
         bool createPacketInputClient(common::protocol::Packet *packet, uint32_t playerId);
 
         /** @brief Queue a weapon fire event to be processed into packets.
@@ -139,6 +157,12 @@ class Coordinator {
 
         // HANDLE PACKETS
         void handlePlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs);
+        
+        /** @brief Handle relayed PLAYER_INPUT packets from other clients.
+         * This directly updates InputComponent without calling setPlayerInputAction
+         * to avoid side effects and race conditions with animation logic.
+         */
+        void handleRelayedPlayerInputPacket(const common::protocol::Packet& packet, uint64_t elapsedMs);
 
         void handlePacketCreateEntity(const common::protocol::Packet& packet);
         void handlePacketDestroyEntity(const common::protocol::Packet& packet);
@@ -304,14 +328,25 @@ class Coordinator {
             uint8_t weaponType;
         };
 
+        struct RelayPacket {
+            common::protocol::Packet packet;
+            uint32_t sourcePlayerId;  // The player who sent this packet - should NOT receive it
+        };
+
     private:
         PlayerSpriteAllocator _playerSpriteAllocator;
 
         std::shared_ptr<gameEngine::GameEngine> _engine;
         
+        // Server/Client flag
+        bool _isServer;
+        
         // Queue of weapon fire events to process
         std::vector<WeaponFireEvent> _pendingWeaponFires;
         uint32_t _nextProjectileId = 10000; // Start projectile IDs at 10000
+        
+        // Queue of PLAYER_INPUT packets to relay to other clients (but NOT to the source player)
+        std::vector<RelayPacket> _packetsToRelay;
 };
 
 #endif /* !COORDINATOR_HPP_ */

@@ -33,9 +33,10 @@ public:
      * @brief Constructor.
      * @param engine Reference to the GameEngine.
      * @param coordinator Reference to the Coordinator for queuing weapon fire events.
+     * @param isServer Whether this system is running on the server (true) or client (false).
      */
-    ShootSystem(gameEngine::GameEngine& engine, Coordinator& coordinator) 
-        : _engine(engine), _coordinator(coordinator) {}
+    ShootSystem(gameEngine::GameEngine& engine, Coordinator& coordinator, bool isServer = true) 
+        : _engine(engine), _coordinator(coordinator), _isServer(isServer) {}
 
     /**
      * @brief Called when the system starts running.
@@ -51,6 +52,7 @@ public:
 private:
     gameEngine::GameEngine& _engine;
     Coordinator& _coordinator;
+    bool _isServer;
 
     /**
      * @brief Spawns a projectile entity.
