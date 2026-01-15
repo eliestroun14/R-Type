@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 50
+#define NUMBER_ASSETS 51
 #define NUMBER_FONT_ASSETS 2
 #define NUMBER_AUDIO_ASSETS 25
 
@@ -50,6 +50,7 @@ enum Assets {
     CHARCHING_BULLET,
     DEFAULT_BULLET,
     FULL_CHARGED_BULLET,
+    SPIRAL_BULLET,
 
     // POWERUPS
     PET_POWERUPS,
@@ -141,6 +142,7 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     "../assets/bullet/chargingBullet.png",
     "../assets/bullet/defaultBullet.png",
     "../assets/bullet/fullChargedBullet.png",
+    "../assets/bullet/spiralBullet.png",
 
     // POWERUPS
     "../assets/powerups/petPowerup.png",
