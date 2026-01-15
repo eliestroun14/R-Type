@@ -611,4 +611,19 @@ struct Force
           chargePercentage(charge), isFiring(firing) {}
 };
 
+
+// ############################################################################
+// ############################ ACCESSIBILITY #################################
+// ############################################################################
+
+struct GameConfig {
+    FontAssets activeFont;
+    bool musicEnabled;
+    bool soundEnabled;
+    // you can add accessibility settings, maybe the keybinds ?
+
+    GameConfig(FontAssets activeF, bool music, bool sound)
+        : activeFont(activeF), musicEnabled(music), soundEnabled(sound) {}
+};
+
 #endif /* !COMPONENTS_HPP_ */
