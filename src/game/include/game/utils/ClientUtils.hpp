@@ -114,4 +114,8 @@ Entity createMovingBackground(gameEngine::GameEngine& engine, Assets assetId,
     sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite,
     float speed, bool isHorizontal, bool shouldRepeat);
 
+
+std::vector<Entity> createRebindButton(gameEngine::GameEngine& engine, std::string label,
+    GameAction action, int textSize, sf::Vector2f pos, float scale);
+
 #endif /* !CLIENT_UTILS_HPP */

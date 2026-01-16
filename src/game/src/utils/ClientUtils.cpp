@@ -125,3 +125,28 @@ Entity createMovingBackground(gameEngine::GameEngine &engine, Assets assetId,
 
     return movingBg;
 }
+
+std::vector<Entity> createRebindButton(gameEngine::GameEngine& engine, std::string label,
+    GameAction action, int textSize, sf::Vector2f pos, float scale)
+{
+    std::vector<Entity> entities = createButton(engine, label, textSize, sf::Color::White, pos, scale,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON, nullptr);
+
+    Entity buttonEnt = entities[0];
+    Entity textEnt = entities[1];
+
+    // add Rebind component to the button entity
+    engine.addComponent<Rebind>(buttonEnt, Rebind(action, textEnt));
+
+    auto& btnComp = engine.getComponentEntity<ButtonComponent>(buttonEnt);
+    btnComp->onClick = [&engine, buttonEnt, textEnt]() {
+        auto& rb = engine.getComponentEntity<Rebind>(buttonEnt);
+        auto& txt = engine.getComponentEntity<Text>(textEnt);
+
+        rb->isWaiting = true;
+        std::strcpy(txt->str, "..."); // text display when user click on the button
+    };
+
+    return entities;
+}
