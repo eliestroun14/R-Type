@@ -29,6 +29,7 @@
 #include <game/systems/AnimationSystem.hpp>
 #include <game/systems/AccessibilitySystem.hpp>
 #include <game/systems/BackgroundSystem.hpp>
+#include <game/systems/RebindSystem.hpp>
 
 
 class Coordinator {

@@ -36,6 +36,7 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<AI>();
     this->_engine->registerComponent<ButtonComponent>();
     this->_engine->registerComponent<GameConfig>();
+    this->_engine->registerComponent<Rebind>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -58,6 +59,9 @@ void Coordinator::initEngine()
 
     auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine);
     this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
+
+    auto rebindSystem = this->_engine->registerSystem<RebindSystem>(*this->_engine);
+    this->_engine->setSystemSignature<RebindSystem, Rebind>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
