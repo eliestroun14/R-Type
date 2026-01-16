@@ -22,7 +22,7 @@ void CollisionSystem::onUpdate(float dt)
     auto& healths = this->_engine.getComponents<Health>();
     auto& hitboxes = this->_engine.getComponents<HitBox>();
     auto& projectiles = this->_engine.getComponents<Projectile>();
-    auto& inputs = this->_engine.getComponents<InputComponent>();
+    auto& teams = this->_engine.getComponents<Team>();
 
     std::vector<size_t> entities;
     entities.reserve(this->_entities.size());
@@ -51,11 +51,12 @@ void CollisionSystem::onUpdate(float dt)
             if (!checkAABBCollision(s1, s2))
                 continue;
 
-            // Projectile-friendly-fire rules:
-            // - Player bullets must not damage players (including self)
-            // - Enemy bullets should only damage players
             bool e1Projectile = e1 < projectiles.size() && projectiles[e1].has_value();
             bool e2Projectile = e2 < projectiles.size() && projectiles[e2].has_value();
+
+            // Get team components (default to NEUTRAL if not present)
+            Team e1Team = e1 < teams.size() && teams[e1] ? teams[e1].value() : Team(TeamType::NEUTRAL);
+            Team e2Team = e2 < teams.size() && teams[e2] ? teams[e2].value() : Team(TeamType::NEUTRAL);
 
             auto applyDamage = [&](size_t target, int damage) {
                 if (target >= healths.size() || !healths[target])
@@ -71,6 +72,9 @@ void CollisionSystem::onUpdate(float dt)
                     this->_engine.removeComponent<Sprite>(ent);
                     this->_engine.removeComponent<Health>(ent);
                     this->_engine.removeComponent<HitBox>(ent);
+                    if (target < teams.size() && teams[target]) {
+                        this->_engine.removeComponent<Team>(ent);
+                    }
                 }
             };
 
@@ -80,55 +84,61 @@ void CollisionSystem::onUpdate(float dt)
                 this->_engine.removeComponent<Sprite>(ent);
                 this->_engine.removeComponent<HitBox>(ent);
                 this->_engine.removeComponent<Projectile>(ent);
-            };
-
-            auto canHit = [&](const Projectile& proj, size_t targetId) {
-                // Prevent hitting shooter
-                if (targetId == static_cast<size_t>(proj.shooterId))
-                    return false;
-                bool targetIsPlayer = targetId < inputs.size() && inputs[targetId].has_value();
-                bool shooterIsPlayer = static_cast<size_t>(proj.shooterId) < inputs.size() && inputs[static_cast<size_t>(proj.shooterId)].has_value();
-
-                if (shooterIsPlayer) {
-                    // Player bullets do not hit any players (allies included)
-                    return !targetIsPlayer;
+                if (projId < teams.size() && teams[projId]) {
+                    this->_engine.removeComponent<Team>(ent);
                 }
-                // Enemy bullets only hit players
-                return targetIsPlayer;
             };
 
-            // Handle projectile collisions
+            // Handle projectile collisions with team rules
             if (e1Projectile && !e2Projectile) {
-                const auto& proj = projectiles[e1].value();
-                if (!canHit(proj, e2)) {
-                    // Ignore collision with shooter or allies; keep projectile alive
+                if (!Team::canCollide(e1Team, e2Team, true)) {
                     continue;
                 }
+
+                const auto& proj = projectiles[e1].value();
+                if (e2 == static_cast<size_t>(proj.shooterId)) {
+                    continue;
+                }
+
                 applyDamage(e2, proj.damage);
                 destroyProjectile(e1);
                 continue;
             }
+
             if (e2Projectile && !e1Projectile) {
-                const auto& proj = projectiles[e2].value();
-                if (!canHit(proj, e1)) {
-                    // Ignore collision with shooter or allies; keep projectile alive
+                // Check if projectile can hit target based on teams
+                if (!Team::canCollide(e2Team, e1Team, true)) {
                     continue;
                 }
+
+                const auto& proj = projectiles[e2].value();
+                if (e1 == static_cast<size_t>(proj.shooterId)) {
+                    continue;
+                }
+
                 applyDamage(e1, proj.damage);
                 destroyProjectile(e2);
                 continue;
             }
 
-            // Non-projectile collision fallback: apply symmetric damage
-            // Only apply damage if neither entity is a player (has InputComponent)
-            bool e1IsPlayer = e1 < inputs.size() && inputs[e1].has_value();
-            bool e2IsPlayer = e2 < inputs.size() && inputs[e2].has_value();
+            // If one entity is OBSTACLE, no damage is applied at all
+            bool e1IsObstacle = e1Team.hasTeam(TeamType::OBSTACLE);
+            bool e2IsObstacle = e2Team.hasTeam(TeamType::OBSTACLE);
 
-            if (!e1IsPlayer && e2 < healths.size() && healths[e2]) {
-                applyDamage(e2, 10);
-            }
-            if (!e2IsPlayer && e1 < healths.size() && healths[e1]) {
-                applyDamage(e1, 10);
+            if (!e1IsObstacle && !e2IsObstacle) {
+                bool e1IsPlayer = e1Team.hasTeam(TeamType::PLAYER);
+                bool e2IsPlayer = e2Team.hasTeam(TeamType::PLAYER);
+                bool e1IsEnemy = e1Team.hasTeam(TeamType::ENEMY) || e1Team.hasTeam(TeamType::BOSS);
+                bool e2IsEnemy = e2Team.hasTeam(TeamType::ENEMY) || e2Team.hasTeam(TeamType::BOSS);
+
+                if ((e1IsPlayer && e2IsEnemy) || (e1IsEnemy && e2IsPlayer)) {
+                    if (e1IsPlayer && e2 < healths.size() && healths[e2]) {
+                        applyDamage(e2, 10);
+                    }
+                    if (e2IsPlayer && e1 < healths.size() && healths[e1]) {
+                        applyDamage(e1, 10);
+                    }
+                }
             }
         }
     }

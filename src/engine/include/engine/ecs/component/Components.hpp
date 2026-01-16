@@ -805,4 +805,107 @@ struct Force
           chargePercentage(charge), isFiring(firing) {}
 };
 
+// ############################################################################
+// ################################# TEAMS  ###################################
+// ############################################################################
+
+/**
+ * @enum TeamType
+ * @brief Defines the teams/factions an entity can belong to.
+ *
+ * An entity can belong to multiple teams simultaneously.
+ * For example: a wall can be an OBSTACLE, so it doesn't take damage from enemies or other walls.
+ */
+enum class TeamType : uint8_t {
+    PLAYER      = 1 << 0,  // 0x01 - Playable character
+    ENEMY       = 1 << 1,  // 0x02 - AI enemy
+    OBSTACLE    = 1 << 2,  // 0x04 - Wall, static object (doesn't take damage)
+    POWERUP     = 1 << 3,  // 0x08 - Collectible item
+    NEUTRAL     = 1 << 4,  // 0x10 - Neutral object (doesn't interact much)
+    BOSS        = 1 << 5   // 0x20 - Boss enemy
+};
+
+/**
+ * @brief Stores team membership for collision and damage rules.
+ *
+ * Uses bitflags to support multiple teams per entity.
+ * 
+ * **Examples:**
+ * - Player: TeamType::PLAYER
+ * - Wall: TeamType::OBSTACLE
+ * - Boss: TeamType::BOSS | TeamType::ENEMY (both boss AND enemy)
+ * - Collectible: TeamType::POWERUP
+ * 
+ * **Collision Rules (in CollisionSystem):**
+ * - PLAYER projectiles don't hit PLAYER or POWERUP
+ * - ENEMY projectiles don't hit ENEMY or OBSTACLE
+ * - OBSTACLE never takes damage
+ * - POWERUP is collected by PLAYER
+ * 
+ * Used by: CollisionSystem.
+ */
+struct Team
+{
+    uint8_t teamMask;  ///< Bitmask of teams this entity belongs to
+
+    Team(uint8_t mask = static_cast<uint8_t>(TeamType::NEUTRAL))
+        : teamMask(mask) {}
+
+    Team(TeamType type)
+        : teamMask(static_cast<uint8_t>(type)) {}
+
+    /**
+     * @brief Check if entity belongs to a specific team
+     */
+    bool hasTeam(TeamType type) const {
+        return (teamMask & static_cast<uint8_t>(type)) != 0;
+    }
+
+    /**
+     * @brief Add entity to a team (doesn't remove from other teams)
+     */
+    void addTeam(TeamType type) {
+        teamMask |= static_cast<uint8_t>(type);
+    }
+
+    /**
+     * @brief Remove entity from a specific team
+     */
+    void removeTeam(TeamType type) {
+        teamMask &= ~static_cast<uint8_t>(type);
+    }
+
+    /**
+     * @brief Check if this entity should collide with another based on teams
+     * 
+     * @param thisTeam This entity's Team component
+     * @param otherTeam Other entity's Team component
+     * @param thisIsProjectile Whether this entity is a projectile
+     * @return true if collision should be processed
+     */
+    static bool canCollide(const Team& thisTeam, const Team& otherTeam, bool thisIsProjectile = false)
+    {
+        // Obstacles never take damage
+        if (otherTeam.hasTeam(TeamType::OBSTACLE))
+            return false;
+
+        if (!thisIsProjectile)
+            return true;  // Non-projectile collisions go through normal logic
+
+        // Projectile collision rules
+        bool shooterIsPlayer = thisTeam.hasTeam(TeamType::PLAYER);
+        bool targetIsPlayer = otherTeam.hasTeam(TeamType::PLAYER);
+        bool targetIsEnemy = otherTeam.hasTeam(TeamType::ENEMY);
+        bool targetIsBoss = otherTeam.hasTeam(TeamType::BOSS);
+
+        if (shooterIsPlayer) {
+            // Player projectiles only hit ENEMY or BOSS (not PLAYER)
+            return targetIsEnemy || targetIsBoss;
+        } else {
+            // Enemy projectiles only hit PLAYER (not other ENEMY)
+            return targetIsPlayer;
+        }
+    }
+};
+
 #endif /* !COMPONENTS_HPP_ */
