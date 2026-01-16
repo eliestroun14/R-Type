@@ -814,7 +814,7 @@ struct Force
  * @brief Defines the teams/factions an entity can belong to.
  *
  * An entity can belong to multiple teams simultaneously.
- * For example: a wall can be both OBSTACLE and WALL, so it doesn't take damage from enemies or walls.
+ * For example: a wall can be an OBSTACLE, so it doesn't take damage from enemies or other walls.
  */
 enum class TeamType : uint8_t {
     PLAYER      = 1 << 0,  // 0x01 - Playable character
