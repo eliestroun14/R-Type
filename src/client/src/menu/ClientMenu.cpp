@@ -229,18 +229,21 @@ void ClientMenu::createKeybindsMenu()
     // TEXT
     addMenuEntity(createText(*this->_engine, "KEYBINDS", 85, sf::Color::White, {485, 210}, 0, 1.5f));
 
-    // TEXTS DEPLACEMENT
+    // TEXTS MOVEMENT
     addMenuEntity(createText(*this->_engine, "MOVEMENT:", 35, sf::Color::White, {200, 350}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "UP   " , 25, sf::Color::White, {120, 450}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "DOWN ", 25, sf::Color::White, {120, 550}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "LEFT ", 25, sf::Color::White, {120, 650}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "RIGHT", 25, sf::Color::White, {120, 750}, 0, 1.5f));
 
-    // TEXTS DEPLACEMENT
-    // addMenuEntity(createText(*this->_engine, "SHOOT", 25, sf::Color::White, {200, 750}, 0, 1.5f));
-    // addMenuEntity(createText(*this->_engine, "SWITCH WEAPON", 25, sf::Color::White, {700, 750}, 0, 1.5f));
-    // addMenuEntity(createText(*this->_engine, "USE POWERUP", 25, sf::Color::White, {250, 950}, 0, 1.5f));
-    // addMenuEntity(createText(*this->_engine, "SPECIAL", 25, sf::Color::White, {700, 950}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "UP" , 25, sf::Color::White, {250, 420}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "DOWN", 25, sf::Color::White, {250, 570}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "LEFT", 25, sf::Color::White, {250, 720}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "RIGHT", 25, sf::Color::White, {250, 870}, 0, 1.5f));
+
+    // TEXTS ACTIONS
+    addMenuEntity(createText(*this->_engine, "ACTIONS:", 35, sf::Color::White, {650, 350}, 0, 1.5f));
+
+    addMenuEntity(createText(*this->_engine, "SHOOT", 25, sf::Color::White, {650, 420}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "SWITCH WEAPON", 25, sf::Color::White, {650, 570}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "USE POWERUP", 25, sf::Color::White, {650, 720}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "SPECIAL", 25, sf::Color::White, {650, 870}, 0, 1.5f));
 
 
     // ANIMATED IMAGES
@@ -264,8 +267,8 @@ void ClientMenu::createKeybindsMenu()
     ));
 
 
-    // DEPLACEMENT BUTTON KEYBINDS
-    addMenuEntity(createButton(*_engine, "UP", 20, sf::Color::White, {230, 400}, DEFAULT_BUTTON_MID_SCALE,
+    // MOVEMENT BUTTON KEYBINDS
+    addMenuEntity(createButton(*_engine, "SHOOT", 30, sf::Color::White, {510, 450}, DEFAULT_BUTTON_MID_SCALE,
         sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
         DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
         [this]() {
@@ -275,7 +278,7 @@ void ClientMenu::createKeybindsMenu()
         }
     ));
 
-    addMenuEntity(createButton(*_engine, "DOWN", 20, sf::Color::White, {230, 500}, DEFAULT_BUTTON_MID_SCALE,
+    addMenuEntity(createButton(*_engine, "SWITCH WEAPON", 30, sf::Color::White, {510, 600}, DEFAULT_BUTTON_MID_SCALE,
         sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
         DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
         [this]() {
@@ -285,7 +288,7 @@ void ClientMenu::createKeybindsMenu()
         }
     ));
 
-    addMenuEntity(createButton(*_engine, "LEFT", 20, sf::Color::White, {230, 600}, DEFAULT_BUTTON_MID_SCALE,
+    addMenuEntity(createButton(*_engine, "USE POWERUP", 30, sf::Color::White, {510, 750}, DEFAULT_BUTTON_MID_SCALE,
         sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
         DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
         [this]() {
@@ -295,7 +298,49 @@ void ClientMenu::createKeybindsMenu()
         }
     ));
 
-    addMenuEntity(createButton(*_engine, "RIGHT", 20, sf::Color::White, {230, 700}, DEFAULT_BUTTON_MID_SCALE,
+    addMenuEntity(createButton(*_engine, "SPECIAL", 30, sf::Color::White, {510, 900}, DEFAULT_BUTTON_MID_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                //TODO: do something
+            });
+        }
+    ));
+
+
+    // ACTIONS BUTTON KEYBINDS
+    addMenuEntity(createButton(*_engine, "UP", 30, sf::Color::White, {110, 450}, DEFAULT_BUTTON_MID_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                //TODO: do something
+            });
+        }
+    ));
+
+    addMenuEntity(createButton(*_engine, "DOWN", 30, sf::Color::White, {110, 600}, DEFAULT_BUTTON_MID_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                //TODO: do something
+            });
+        }
+    ));
+
+    addMenuEntity(createButton(*_engine, "LEFT", 30, sf::Color::White, {110, 750}, DEFAULT_BUTTON_MID_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                //TODO: do something
+            });
+        }
+    ));
+
+    addMenuEntity(createButton(*_engine, "RIGHT", 30, sf::Color::White, {110, 900}, DEFAULT_BUTTON_MID_SCALE,
         sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
         DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
         [this]() {
