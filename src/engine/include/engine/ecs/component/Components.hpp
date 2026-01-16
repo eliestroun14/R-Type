@@ -26,6 +26,9 @@
 #include <common/protocol/Protocol.hpp>
 #include <functional>
 #include <cstring>
+#include <engine/render/RenderManager.hpp>
+
+// #include <engine/render/RenderManager.hpp>
 
 // Forward declaration for GameAction enum
 enum class GameAction;
@@ -615,14 +618,47 @@ struct Force
 // ############################ ACCESSIBILITY #################################
 // ############################################################################
 
+/**
+ * @brief GameConfig component.
+ *
+ * Only ONE entity has this component assigned when Game is created.
+ * Let know the game from the entity if music/sound are enabled or for keybinds.
+ * Used by: AccessibilitySystem, RebindSystem.
+ */
 struct GameConfig {
     FontAssets activeFont;
     bool musicEnabled;
     bool soundEnabled;
     // you can add accessibility settings, maybe the keybinds ?
+    std::map<sf::Keyboard::Key, GameAction> _keybinds;
 
     GameConfig(FontAssets activeF, bool music, bool sound)
-        : activeFont(activeF), musicEnabled(music), soundEnabled(sound) {}
+        : activeFont(activeF), musicEnabled(music), soundEnabled(sound) {
+            // Movement
+            _keybinds[sf::Keyboard::Up] = GameAction::MOVE_UP;
+            _keybinds[sf::Keyboard::Down] = GameAction::MOVE_DOWN;
+            _keybinds[sf::Keyboard::Left] = GameAction::MOVE_LEFT;
+            _keybinds[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
+
+            // ACTIONS
+            _keybinds[sf::Keyboard::S] = GameAction::SHOOT;
+            _keybinds[sf::Keyboard::D] = GameAction::SWITCH_WEAPON;
+            _keybinds[sf::Keyboard::Space] = GameAction::USE_POWERUP;
+            _keybinds[sf::Keyboard::F] = GameAction::SPECIAL;
+
+            // OTHER
+            _keybinds[sf::Keyboard::P] = GameAction::OPTIONS;
+            _keybinds[sf::Keyboard::Escape] = GameAction::EXIT;
+        }
+};
+
+struct Rebind {
+    GameAction action;
+    bool isWaiting = false;
+    Entity associatedText;
+
+    Rebind(GameAction a, Entity textEnt)
+        : action(a), isWaiting(false), associatedText(textEnt) {}
 };
 
 #endif /* !COMPONENTS_HPP_ */
