@@ -55,8 +55,8 @@ void CollisionSystem::onUpdate(float dt)
             bool e2Projectile = e2 < projectiles.size() && projectiles[e2].has_value();
 
             // Get team components (default to NEUTRAL if not present)
-            const Team& e1Team = e1 < teams.size() && teams[e1] ? teams[e1].value() : Team(TeamType::NEUTRAL);
-            const Team& e2Team = e2 < teams.size() && teams[e2] ? teams[e2].value() : Team(TeamType::NEUTRAL);
+            Team e1Team = e1 < teams.size() && teams[e1] ? teams[e1].value() : Team(TeamType::NEUTRAL);
+            Team e2Team = e2 < teams.size() && teams[e2] ? teams[e2].value() : Team(TeamType::NEUTRAL);
 
             auto applyDamage = [&](size_t target, int damage) {
                 if (target >= healths.size() || !healths[target])
