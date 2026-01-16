@@ -8,6 +8,7 @@
 #include "game/coordinator/Coordinator.hpp"
 #include "game/systems/AnimationSystem.hpp"
 #include "game/systems/AudioSystem.hpp"
+#include "game/systems/CollisionSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -38,6 +39,7 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<AI>();
     this->_engine->registerComponent<AudioSource>();
     this->_engine->registerComponent<AudioEffect>();
+    this->_engine->registerComponent<Team>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -54,6 +56,10 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
 {
     this->_engine->initRender();
     this->_engine->initAudio();
+
+    // Register CollisionSystem to handle collision detection and team-based damage
+    auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
+    this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
 
     // Register AnimationSystem before RenderSystem (animation must update before rendering)
     auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
@@ -183,6 +189,7 @@ void Coordinator::setupPlayerEntity(
     this->_engine->addComponent<HitBox>(entity, HitBox());
     this->_engine->addComponent<Weapon>(entity, Weapon(200, 0, 10, ProjectileType::MISSILE));
     this->_engine->addComponent<InputComponent>(entity, InputComponent(playerId));
+    this->_engine->addComponent<Team>(entity, TeamType::PLAYER);
 
     // If this is the playable player, set it as local player
     if (isPlayable) {
@@ -215,6 +222,7 @@ void Coordinator::setupEnemyEntity(
     }
     this->_engine->addComponent<HitBox>(entity, HitBox());
     this->_engine->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+    this->_engine->addComponent<Team>(entity, TeamType::ENEMY);
 }
 
 void Coordinator::setupProjectileEntity(
@@ -243,6 +251,8 @@ void Coordinator::setupProjectileEntity(
     }
     this->_engine->addComponent<HitBox>(entity, HitBox());
     this->_engine->addComponent<Projectile>(entity, Projectile(Entity::fromId(projectileId), isPlayerProjectile, damage));
+    // Projectiles inherit team from their shooter
+    this->_engine->addComponent<Team>(entity, isPlayerProjectile ? TeamType::PLAYER : TeamType::ENEMY);
 }
 
 void Coordinator::processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
@@ -2572,6 +2582,8 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
                 DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());
+            LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Team component");
+            this->_engine->addComponent<Team>(projectile, isFromPlayable ? TeamType::PLAYER : TeamType::ENEMY);
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding AudioSource component for basic projectile");
             this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_BASIC, AUDIO_BASIC_PROJECTILE_LOOP, AUDIO_BASIC_PROJECTILE_MIN_DISTANCE, AUDIO_BASIC_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_BASIC_DURATION));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: All components added successfully");
@@ -2587,6 +2599,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
                 CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
                 CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
             this->_engine->addComponent<HitBox>(projectile, HitBox());
+            this->_engine->addComponent<Team>(projectile, isFromPlayable ? TeamType::PLAYER : TeamType::ENEMY);
             this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_CHARGED, AUDIO_CHARGED_PROJECTILE_LOOP, AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE, AUDIO_CHARGED_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_CHARGED_DURATION));
             break;
 
