@@ -18,33 +18,43 @@ void PlayerSystem::onUpdate(float dt)
         auto& animations = this->_engine.getComponents<Animation>();
         auto& inputs = this->_engine.getComponents<InputComponent>();
 
+        LOG_DEBUG_CAT("PlayerSystem", "onUpdate: processing {} entities", this->_entities.size());
+
         for (size_t e : this->_entities) {
-            if (!velocities[e].has_value() || !inputs[e].has_value()) {
+            if (!inputs[e].has_value()) {
                 continue;
             }
 
-            auto& vel = velocities[e].value();
             auto& input = inputs[e].value();
 
-            // Calculate velocity based on input state
-            float vx = 0.0f;
-            float vy = 0.0f;
+            LOG_DEBUG_CAT("PlayerSystem", "onUpdate: entity={} playerId={}", e, input.playerId);
 
-            // Check player's InputComponent actions for continuous movement
-            if (input.activeActions[GameAction::MOVE_LEFT])
-                vx = -PLAYER_BASE_SPEED;
-            if (input.activeActions[GameAction::MOVE_RIGHT])
-                vx = PLAYER_BASE_SPEED;
-            if (input.activeActions[GameAction::MOVE_UP])
-                vy = -PLAYER_BASE_SPEED;
-            if (input.activeActions[GameAction::MOVE_DOWN])
-                vy = PLAYER_BASE_SPEED;
+            // IMPORTANT: Velocity is ONLY updated on the SERVER!
+            // On the client, velocity/position come from TRANSFORM_SNAPSHOT packets
+            // The InputComponent on clients is used ONLY for animations
+            if (velocities[e].has_value()) {
+                auto& vel = velocities[e].value();
 
-            // Update velocity components
-            vel.vx = vx;
-            vel.vy = vy;
+                // Calculate velocity based on input state
+                float vx = 0.0f;
+                float vy = 0.0f;
 
-            // Update animation based on movement direction
+                // Check player's InputComponent actions for continuous movement
+                if (input.activeActions[GameAction::MOVE_LEFT])
+                    vx = -PLAYER_BASE_SPEED;
+                if (input.activeActions[GameAction::MOVE_RIGHT])
+                    vx = PLAYER_BASE_SPEED;
+                if (input.activeActions[GameAction::MOVE_UP])
+                    vy = -PLAYER_BASE_SPEED;
+                if (input.activeActions[GameAction::MOVE_DOWN])
+                    vy = PLAYER_BASE_SPEED;
+
+                // Update velocity components (only on server)
+                vel.vx = vx;
+                vel.vy = vy;
+            }
+
+            // Update animation based on movement direction (on both server and client)
             if (animations[e].has_value()) {
                 auto& anim = animations[e].value();
 
@@ -56,7 +66,7 @@ void PlayerSystem::onUpdate(float dt)
                     currentDirection = 1;
                 }
 
-                // Only update animation if direction changed
+                // Update animation if direction changed
                 if (currentDirection != this->_lastDirection) {
                     this->_lastDirection = currentDirection;
 
@@ -76,9 +86,9 @@ void PlayerSystem::onUpdate(float dt)
                     anim.endFrame = newEndFrame;
                     anim.currentFrame = newStartFrame;
                     anim.elapsedTime = 0;
+                    anim.loop = false;
+                    LOG_DEBUG_CAT("PlayerSystem", "onUpdate: entity={} animation updated - direction={} frames[{}-{}]", e, currentDirection, newStartFrame, newEndFrame);
                 }
-
-                anim.loop = false;
             }
         }
     } catch (const Error& e) {

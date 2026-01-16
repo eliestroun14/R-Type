@@ -57,6 +57,19 @@ void ShootSystem::onUpdate(float dt)
 
         // Verify fire rate and spawn projectile
         if (shouldShoot && canShoot(weapon, currentTime)) {
+            // IMPORTANT: Only queue weapon fires on the SERVER
+            // Clients send INPUT packets, server processes them and broadcasts WEAPON_FIRE
+            if (!_isServer) {
+                // Client: The input is already being sent via INPUT packets in buildClientPacketBasedOnStatus
+                // Just update the lastShotTime to prevent spamming the input
+                weapon.lastShotTime = currentTime;
+                if (isPlayer) {
+                    std::cout << "[ShootSystem] CLIENT: Shooting detected, waiting for server response..." << std::endl;
+                }
+                continue;
+            }
+            
+            // SERVER ONLY: Queue the weapon fire event
             auto [dirX, dirY] = calculateDirection(Entity::fromId(e));
             weapon.lastShotTime = currentTime;
             

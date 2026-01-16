@@ -501,16 +501,48 @@ struct Score {
 // ############################################################################
 
 /**
- * @brief Contain for the audio effects.
+ * @struct AudioEffect
+ * @brief Component for one-shot audio effects triggered at specific game events.
  *
- * Used by: AudioSystem
+ * Unlike AudioSource (which is attached to entities), AudioEffect represents
+ * temporary sound effects that play once and disappear. Typically used with
+ * Lifetime component for automatic cleanup.
+ *
+ * **Typical Use Cases:**
+ * - Explosion sounds
+ * - Impact/hit sounds
+ * - Menu button clicks
+ * - Power-up collection sounds
+ * - Damage feedback sounds
+ *
+ * **Workflow:**
+ * 1. Coordinator::playAudioEffect() creates a temporary entity
+ * 2. Adds Transform (position), AudioEffect, and AudioSource components
+ * 3. AudioSystem plays the sound via 3D audio or UI audio
+ * 4. Lifetime component destroys the entity after a timeout
+ *
+ * @see AudioSource for persistent entity-attached audio
+ * @see Coordinator::playAudioEffect() for implementation
  */
 struct AudioEffect {
+    /// @brief Audio effect type from protocol (determines which sound to play)
     protocol::AudioEffectType type;
-    float volume;        // Multiplicateur de volume (0.0 - 1.0)
-    float pitch;         // Modificateur de pitch (1.0 = normal)
+    
+    /// @brief Volume multiplier (0.0 = silent, 1.0 = full volume)
+    float volume;
+    
+    /// @brief Pitch modifier (1.0 = normal pitch, <1.0 = lower, >1.0 = higher)
+    float pitch;
+    
+    /// @brief Internal flag: tracks if this effect is currently playing
     bool isPlaying;
 
+    /**
+     * @brief Constructor for AudioEffect
+     * @param t Audio effect type to play
+     * @param v Volume level (0.0-1.0)
+     * @param p Pitch modifier (1.0 = normal)
+     */
     AudioEffect(protocol::AudioEffectType t, float v, float p)
         : type(t), volume(v), pitch(p), isPlaying(false) {}
 };
@@ -519,23 +551,193 @@ struct AudioEffect {
 
 
 /**
- * @brief Contain for the audio effects.
+ * @struct AudioSource
+ * @brief Component for managing audio playback attached to game entities.
  *
- * Used by: AudioSystem
+ * This component enables entities to play sounds with 3D positional audio support and
+ * automatic replay capabilities. Sounds can be one-shot or repeating based on the `loop` flag.
+ *
+ * The AudioSystem processes all entities with this component and handles playback logic.
+ *
+ * **Playback Behavior:**
+ * - When `loop = false` (default): Sound plays once and never repeats
+ * - When `loop = true`: Sound replays automatically after `soundDuration` seconds elapse
+ *
+ * **3D Audio:**
+ * - If `isUI = false`: Sound uses 3D positioning with attenuation based on distance
+ * - If `isUI = true`: Sound plays at full volume (UI sound, no spatial processing)
+ *
+ * @see AudioSystem for implementation details
+ * @see AudioEffect for one-shot effects
  */
 struct AudioSource {
+    /// @brief Audio asset to play (from AudioAssets enum)
     AudioAssets assetId;
+    
+    /// @brief Loop behavior: false = play once, true = replay after soundDuration
     bool loop;
-    float minDistance;      // Distance avant atténuation
-    float attenuation;      // Facteur d'atténuation (plus petit = moins d'atténuation)
-    bool isUI;              // Si true, pas de positionnement 3D
-    // sf::Sound* sound;       // Pointeur vers le sf::Sound actif
+    
+    /// @brief Distance threshold (in units) before attenuation begins for 3D audio
+    /// 
+    /// **What it does:**
+    /// If you're closer than this distance to the sound source, you hear it at FULL volume.
+    /// Once you're farther than this, the volume starts to decrease based on distance.
+    ///
+    /// **Visual Example:**
+    /// ```
+    /// minDistance = 100 units
+    ///
+    /// Distance from sound:
+    ///   0-100 units    → Full Volume (1.0)
+    ///   100-200 units  → Volume decreasing (attenuation kicks in)
+    ///   200+ units     → Quieter and quieter
+    /// ```
+    ///
+    /// **Practical Examples:**
+    /// - Close sound (explosion nearby): minDistance=50.0f (you hear full volume until 50 units away)
+    /// - Far sound (distant gunshot): minDistance=200.0f (stays loud for longer)
+    /// - UI sound (menu click): minDistance=0.0f (doesn't matter, set isUI=true instead)
+    ///
+    /// Default: 100.0f. Only applies when isUI=false
+    float minDistance;
+    
+    /// @brief Attenuation factor for 3D audio (0.0-1.0)
+    /// 
+    /// **What it does:**
+    /// Controls HOW FAST the volume decreases as you get farther from the sound.
+    /// Higher values = sound fades faster with distance
+    /// Lower values = sound stays loud for longer distance
+    ///
+    /// **Visual Examples:**
+    /// ```
+    /// Attenuation=0.1 (slow fade, stays loud longer)
+    ///   100m ▓▓▓▓▓▓▓▓▓▓ (full volume)
+    ///   200m ▓▓▓▓▓▓▓ (still pretty loud)
+    ///   300m ▓▓▓ (quieter)
+    ///   400m ▓ (very quiet)
+    ///
+    /// Attenuation=0.5 (moderate fade)
+    ///   100m ▓▓▓▓▓▓▓▓▓▓ (full volume)
+    ///   200m ▓▓▓▓ (noticeably quieter)
+    ///   300m ▓ (very quiet)
+    ///
+    /// Attenuation=1.0 (fast fade, disappears quickly)
+    ///   100m ▓▓▓▓▓▓▓▓▓▓ (full volume)
+    ///   150m ▓ (almost gone)
+    ///   200m ░ (barely audible)
+    /// ```
+    ///
+    /// **Practical Examples:**
+    /// - Close explosion (should fade quickly): attenuation=0.5f-1.0f
+    /// - Distant ambient sound (should stay loud): attenuation=0.1f-0.2f
+    /// - Gunshot (medium range): attenuation=0.3f-0.5f
+    ///
+    /// Default: 0.5f. Only applies when isUI=false
+    float attenuation;
+    
+    /// @brief If true, this is a UI sound (no 3D positioning)
+    /// 
+    /// **What it controls:**
+    /// - isUI=false (default): **3D Audio** - Volume depends on distance to player
+    ///   * Uses minDistance and attenuation
+    ///   * Plays from entity position using Transform component
+    ///   * Example: explosion at (x,y) → volume decreases as player moves away
+    ///
+    /// - isUI=true: **UI Audio** - Always plays at full volume, no distance calculation
+    ///   * Ignores minDistance and attenuation parameters
+    ///   * Perfect for menu sounds, button clicks, notifications
+    ///   * Always heard clearly regardless of camera position
+    ///
+    /// **When to use each:**
+    /// ```
+    /// // 3D sound (explosion blast)
+    /// AudioSource(AudioAssets::SFX_EXPLOSION, false, 150.0f, 0.5f, false, 1.0f)
+    ///                                                               ↑ false = 3D
+    ///
+    /// // UI sound (menu button click)
+    /// AudioSource(AudioAssets::SFX_MENU_SELECT, false, 0.0f, 0.0f, true, 0.1f)
+    ///                                                                   ↑ true = UI
+    /// ```
+    ///
+    /// Default: false (3D audio enabled)
+    bool isUI;
+    
+    /// @brief Internal flag: tracks if sound has played in current cycle
+    /// Reset by AudioSystem when elapsedTimeSincePlay >= soundDuration (for replay)
+    /// or when sound is first added (for one-shot)
+    bool hasBeenPlayed;
+    
+    /// @brief Internal timer: elapsed time since sound last played (in seconds)
+    /// Incremented by AudioSystem each frame. Used to determine replay timing.
+    float elapsedTimeSincePlay;
+    
+    /// @brief Duration of the audio file (in seconds)
+    /// Used to determine when a looping sound should replay
+    float soundDuration;
 
+    /**
+     * @brief Constructor for AudioSource component
+     *
+     * @param asset The audio asset to play
+     * @param looping If false (default), play once. If true, replay after soundDuration
+     * @param minDist Distance threshold for attenuation (default: 100.0f)
+     * @param atten Attenuation factor 0.0-1.0 (default: 0.5f)
+     * @param ui If true, no 3D positioning (default: false)
+     * @param duration Duration of audio file in seconds (default: 1.0f)
+     *
+     * **Parameter Guide:**
+     *
+     * **minDist** - "When does sound volume start decreasing?"
+     * - 50.0f = Volume is full until you're 50 units away, then fades
+     * - 100.0f = Volume is full until you're 100 units away, then fades
+     * - 200.0f = Sound stays loud for longer distance
+     *
+     * **atten** - "How fast does sound fade when you move away?"
+     * - 0.1f = Slow fade (distant ambient sound)
+     * - 0.5f = Medium fade (normal effects)
+     * - 1.0f = Fast fade (close, explosive sounds)
+     *
+     * **ui** - "Is this a UI sound or game world sound?"
+     * - false = Game world sound (uses 3D positioning, fades with distance)
+     * - true = UI sound (always full volume, no distance calculation)
+     *
+     * **looping** - "Should sound repeat?"
+     * - false = Play once and stop (typical for gunshots, impacts)
+     * - true = Replay after duration seconds (for ambient loops)
+     *
+     * @example
+     * @code
+     * // Projectile shot sound (loud nearby, fades with distance)
+     * AudioSource(AudioAssets::SFX_SHOOT_BASIC, 
+     *             false,      // loop: one-shot
+     *             100.0f,     // minDist: full volume within 100 units
+     *             0.5f,       // atten: moderate fade
+     *             false,      // isUI: 3D positioned sound
+     *             0.3f)       // duration: 0.3 seconds
+     *
+     * // Menu button click (always heard, no 3D positioning)
+     * AudioSource(AudioAssets::SFX_MENU_SELECT,
+     *             false,      // loop: one-shot
+     *             0.0f,       // minDist: doesn't matter (UI sound)
+     *             0.0f,       // atten: doesn't matter (UI sound)
+     *             true,       // isUI: UI sound (ignore distance)
+     *             0.5f)       // duration: 0.5 seconds
+     *
+     * // Ambient enemy hum (plays from enemy position, replays every 2 seconds)
+     * AudioSource(AudioAssets::SFX_AMBIENT_HUM,
+     *             true,       // loop: repeating
+     *             200.0f,     // minDist: full volume within 200 units
+     *             0.2f,       // atten: slow fade (ambient)
+     *             false,      // isUI: 3D positioned sound
+     *             2.0f)       // duration: 2 seconds between replays
+     * @endcode
+     */
     AudioSource(AudioAssets asset, bool looping = false,
-                float minDist = 100.0f, float atten = 0.5f, bool ui = false)
+                float minDist = 100.0f, float atten = 0.5f, bool ui = false, 
+                float duration = 1.0f)
         : assetId(asset), loop(looping), minDistance(minDist),
-          attenuation(atten), isUI(ui)
-        //   sound(nullptr)
+          attenuation(atten), isUI(ui), hasBeenPlayed(false),
+          elapsedTimeSincePlay(0.0f), soundDuration(duration)
           {}
 
     ~AudioSource() {
@@ -601,6 +803,109 @@ struct Force
     Force(uint32_t parent, ForceAttachmentPoint attach, uint8_t power, uint8_t charge, bool firing)
         : parentShipId(parent), attachmentPoint(attach), powerLevel(power),
           chargePercentage(charge), isFiring(firing) {}
+};
+
+// ############################################################################
+// ################################# TEAMS  ###################################
+// ############################################################################
+
+/**
+ * @enum TeamType
+ * @brief Defines the teams/factions an entity can belong to.
+ *
+ * An entity can belong to multiple teams simultaneously.
+ * For example: a wall can be an OBSTACLE, so it doesn't take damage from enemies or other walls.
+ */
+enum class TeamType : uint8_t {
+    PLAYER      = 1 << 0,  // 0x01 - Playable character
+    ENEMY       = 1 << 1,  // 0x02 - AI enemy
+    OBSTACLE    = 1 << 2,  // 0x04 - Wall, static object (doesn't take damage)
+    POWERUP     = 1 << 3,  // 0x08 - Collectible item
+    NEUTRAL     = 1 << 4,  // 0x10 - Neutral object (doesn't interact much)
+    BOSS        = 1 << 5   // 0x20 - Boss enemy
+};
+
+/**
+ * @brief Stores team membership for collision and damage rules.
+ *
+ * Uses bitflags to support multiple teams per entity.
+ * 
+ * **Examples:**
+ * - Player: TeamType::PLAYER
+ * - Wall: TeamType::OBSTACLE
+ * - Boss: TeamType::BOSS | TeamType::ENEMY (both boss AND enemy)
+ * - Collectible: TeamType::POWERUP
+ * 
+ * **Collision Rules (in CollisionSystem):**
+ * - PLAYER projectiles don't hit PLAYER or POWERUP
+ * - ENEMY projectiles don't hit ENEMY or OBSTACLE
+ * - OBSTACLE never takes damage
+ * - POWERUP is collected by PLAYER
+ * 
+ * Used by: CollisionSystem.
+ */
+struct Team
+{
+    uint8_t teamMask;  ///< Bitmask of teams this entity belongs to
+
+    Team(uint8_t mask = static_cast<uint8_t>(TeamType::NEUTRAL))
+        : teamMask(mask) {}
+
+    Team(TeamType type)
+        : teamMask(static_cast<uint8_t>(type)) {}
+
+    /**
+     * @brief Check if entity belongs to a specific team
+     */
+    bool hasTeam(TeamType type) const {
+        return (teamMask & static_cast<uint8_t>(type)) != 0;
+    }
+
+    /**
+     * @brief Add entity to a team (doesn't remove from other teams)
+     */
+    void addTeam(TeamType type) {
+        teamMask |= static_cast<uint8_t>(type);
+    }
+
+    /**
+     * @brief Remove entity from a specific team
+     */
+    void removeTeam(TeamType type) {
+        teamMask &= ~static_cast<uint8_t>(type);
+    }
+
+    /**
+     * @brief Check if this entity should collide with another based on teams
+     * 
+     * @param thisTeam This entity's Team component
+     * @param otherTeam Other entity's Team component
+     * @param thisIsProjectile Whether this entity is a projectile
+     * @return true if collision should be processed
+     */
+    static bool canCollide(const Team& thisTeam, const Team& otherTeam, bool thisIsProjectile = false)
+    {
+        // Obstacles never take damage
+        if (otherTeam.hasTeam(TeamType::OBSTACLE))
+            return false;
+
+        if (!thisIsProjectile)
+            return true;  // Non-projectile collisions go through normal logic
+
+        // Projectile collision rules
+        bool shooterIsPlayer = thisTeam.hasTeam(TeamType::PLAYER);
+        bool targetIsPlayer = otherTeam.hasTeam(TeamType::PLAYER);
+        bool targetIsEnemy = otherTeam.hasTeam(TeamType::ENEMY);
+        bool targetIsBoss = otherTeam.hasTeam(TeamType::BOSS);
+
+        if (shooterIsPlayer) {
+            // Player projectiles only hit ENEMY or BOSS (not PLAYER)
+            return targetIsEnemy || targetIsBoss;
+        } else {
+            // Enemy projectiles only hit PLAYER (not other ENEMY)
+            return targetIsPlayer;
+        }
+    }
 };
 
 #endif /* !COMPONENTS_HPP_ */

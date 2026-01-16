@@ -24,6 +24,9 @@ Game::Game(Type type)
             throw Error(ErrorType::GameplayError, "Failed to create Coordinator instance");
         }
 
+        // Set server/client mode
+        _coordinator->setIsServer(_type == Type::SERVER);
+
         _coordinator->initEngine();
 
         // Initialize render only for client and standalone
@@ -185,9 +188,24 @@ void Game::serverTick(uint64_t elapsedMs)
         _coordinator->buildServerPacketBasedOnStatus(outgoingPackets, elapsedMs);
 
         // STEP 4: Queue Outgoing Packets
+        // For PLAYER_INPUT packets, exclude the source player to avoid double-processing
+        // For all other packets, broadcast to all connected players
+        auto allPlayerIds = _coordinator->getAllConnectedPlayerIds();
+        
         for (const auto& packet : outgoingPackets) {
-            // Broadcast to all clients (target = nullopt)
-            addOutgoingPacket(packet, std::nullopt);
+            // Check if this is a PLAYER_INPUT packet
+            if (packet.header.packet_type == static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT)) {
+                // Relay to all players EXCEPT the source
+                for (uint32_t targetPlayer : allPlayerIds) {
+                    if (_coordinator->shouldSendPacketToPlayer(packet, targetPlayer)) {
+                        LOG_DEBUG_CAT("Game", "Queuing PLAYER_INPUT packet for player {}", targetPlayer);
+                        addOutgoingPacket(packet, targetPlayer);
+                    }
+                }
+            } else {
+                // Broadcast other packets to all players
+                addOutgoingPacket(packet, std::nullopt);
+            }
         }
 
     } catch (const Error& e) {
