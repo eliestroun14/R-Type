@@ -14,6 +14,7 @@
 #define GAMEENGINE_HPP_
 
 #include <memory>
+#include <vector>
 #include <engine/ecs/entity/EntityManager.hpp>
 #include <engine/ecs/system/SystemManager.hpp>
 #include <engine/render/RenderManager.hpp>
@@ -26,6 +27,10 @@
  */
 namespace gameEngine {
 
+        struct ScoreEvent {
+        Entity scorer;      // ou uint32_t scorerId selon ton design
+        uint32_t amount;
+    };
     /**
      * @class GameEngine
      * @brief The main facade of the engine. It coordinates the EntityManager, SystemManager, and RenderManager.

@@ -11,94 +11,88 @@
 #include <algorithm>
 #include <common/constants/defines.hpp>
 
-void RenderSystem::onUpdate(float dt)
+void RenderSystem::onUpdate(float)
 {
-    this->_sortedEntities.clear();
+    sf::RenderWindow& window = this->_engine.getWindow();
 
-    for (const auto& entity : this->_entities) {
-        this->_sortedEntities.push_back(entity);
+    auto& transforms  = this->_engine.getComponents<Transform>();
+    auto& sprites     = this->_engine.getComponents<Sprite>();
+    auto& texts       = this->_engine.getComponents<Text>();
+    auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();
+
+    // scale factor
+    sf::Vector2u windowSize = window.getSize();
+    float scaleX = windowSize.x / WINDOW_WIDTH;
+    float scaleY = windowSize.y / WINDOW_HEIGHT;
+    float scale = std::min(scaleX, scaleY);
+
+    // Build a render list from registries (NOT from _entities)
+    this->_sortedEntities.clear();
+    const size_t maxSize = std::max({transforms.size(), sprites.size(), texts.size()});
+    this->_sortedEntities.reserve(maxSize);
+
+    for (size_t e = 0; e < maxSize; ++e) {
+        const bool hasSprite = (e < sprites.size() && sprites[e].has_value());
+        const bool hasText   = (e < texts.size()   && texts[e].has_value());
+        const bool hasTrans  = (e < transforms.size() && transforms[e].has_value());
+
+        if (!hasTrans)
+            continue;
+        if (!hasSprite && !hasText)
+            continue;
+
+        this->_sortedEntities.push_back(e);
     }
 
-    auto& sprites = this->_engine.getComponents<Sprite>();
-    auto& texts = this->_engine.getComponents<Text>();
-
-    // we need to sort here cuz Z = 0 (background) and Z = 1 (player) and Z = 2 (HUD/UI), to display in the right order
+    // sort by z-index
     std::sort(this->_sortedEntities.begin(), this->_sortedEntities.end(),
         [&sprites, &texts](size_t a, size_t b) {
-            int za = sprites[a] ? sprites[a]->zIndex : (texts[a] ? texts[a]->zIndex : 0);
-            int zb = sprites[b] ? sprites[b]->zIndex : (texts[b] ? texts[b]->zIndex : 0);
+            int za = (a < sprites.size() && sprites[a]) ? (int)sprites[a]->zIndex
+                   : (a < texts.size()  && texts[a])   ? (int)texts[a]->zIndex
+                   : 0;
+
+            int zb = (b < sprites.size() && sprites[b]) ? (int)sprites[b]->zIndex
+                   : (b < texts.size()  && texts[b])   ? (int)texts[b]->zIndex
+                   : 0;
+
             return za < zb;
         }
     );
 
-    sf::RenderWindow& window = this->_engine.getWindow();
-    auto& transforms = this->_engine.getComponents<Transform>();
-
-    // this part is to render propely in function of the window size
-    sf::Vector2u windowSize = window.getSize();
-    float scaleX = windowSize.x / WINDOW_WIDTH;
-    float scaleY = windowSize.y / WINDOW_HEIGHT;
-
-    float scale = std::min(scaleX, scaleY);
-
-    auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();
-
-    for (const auto& entity : this->_sortedEntities) {
+    // draw
+    for (size_t entity : this->_sortedEntities) {
         auto& trans = transforms[entity].value();
 
-        // LOGIC SPRITES
-        if (sprites[entity]) {
-
+        // SPRITE
+        if (entity < sprites.size() && sprites[entity]) {
             auto& sprite = sprites[entity].value();
             std::shared_ptr<sf::Texture> texture = this->_engine.getTexture(sprite.assetId);
 
             if (texture) {
+                bool repeat = (entity < backgrounds.size() && backgrounds[entity].has_value() && backgrounds[entity]->repeat);
 
-                bool isScrollingBg = backgrounds[entity].has_value();
+                sf::Sprite sfSprite;
+                sfSprite.setTexture(*texture);
+                sfSprite.setPosition(trans.x, trans.y);
+                sfSprite.setScale(trans.scale * scale, trans.scale * scale);
+                sfSprite.setRotation(trans.rotation);
 
-                if (isScrollingBg && backgrounds[entity]->repeat) {
-
+                if (repeat) {
                     texture->setRepeated(true);
-
-                    sf::Sprite sfSprite;
-                    sfSprite.setTexture(*texture);
-
-                    sfSprite.setPosition(trans.x, trans.y);
-                    sfSprite.setScale(trans.scale * scale, trans.scale * scale);
-                    sfSprite.setRotation(trans.rotation);
-
-                    // get how many times we need to draw the background to cover all the screen
-                    int textureWidth = sprite.rect.width * trans.scale * scale;
-
-                    sf::IntRect extendedRect(0,0,
-                        sprite.rect.width * 3, // *3 is to be sure we cover all the screen
-                        sprite.rect.height);
-
+                    sf::IntRect extendedRect(0, 0, sprite.rect.width * 3, sprite.rect.height);
                     sfSprite.setTextureRect(extendedRect);
-
-                    sprite.globalBounds = sfSprite.getGlobalBounds();
-                    window.draw(sfSprite);
-
                 } else {
-                    sf::Sprite sfSprite;
-                    sfSprite.setTexture(*texture);
-
-                    sfSprite.setPosition(trans.x, trans.y);
-                    sfSprite.setScale(trans.scale * scale, trans.scale * scale);
-                    sfSprite.setRotation(trans.rotation);
-
                     if (sprite.rect.width > 0)
                         sfSprite.setTextureRect(sprite.rect);
-
-                    sprite.globalBounds = sfSprite.getGlobalBounds();
-
-                    window.draw(sfSprite);
                 }
+
+                sprite.globalBounds = sfSprite.getGlobalBounds();
+                window.draw(sfSprite);
             }
         }
 
-        // LOGIC TEXT
-        if (texts[entity]) {
+        // TEXT
+        if (entity < texts.size() && texts[entity]) {
             auto& text = texts[entity].value();
             std::shared_ptr<sf::Font> font = this->_engine.getFont(text.fontId);
 
@@ -118,8 +112,6 @@ void RenderSystem::onUpdate(float dt)
 
                 window.draw(sfText);
             }
-
         }
-
     }
 }

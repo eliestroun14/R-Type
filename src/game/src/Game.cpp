@@ -32,8 +32,14 @@ Game::Game(Type type)
         // Initialize render only for client and standalone
         if (_type == Type::CLIENT || _type == Type::STAND_ALONE) {
             _coordinator->initEngineRender();
+            _coordinator->createScoreEntity(
+                /*scoreId*/ 1,
+                /*posX*/ 50.f,
+                /*posY*/ 50.f,
+                /*initialScore*/ 0,
+                /*isLocalScore*/ true,
+                /*withRenderComponents*/ true);
         }
-
         // Initialize timing
         _lastTickTime = std::chrono::steady_clock::now();
         _accumulatedTime = 0;
