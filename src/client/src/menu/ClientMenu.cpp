@@ -267,11 +267,10 @@ void ClientMenu::createKeybindsMenu()
     ));
 
     // MOVEMENT BUTTON KEYBINDS
-
-    addMenuEntity(createRebindButton(*_engine, "UP", GameAction::MOVE_UP, 30, {110, 450}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "DOWN", GameAction::MOVE_DOWN, 30, {110, 600}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "LEFT", GameAction::MOVE_LEFT, 30, {110, 750}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "RIGHT", GameAction::MOVE_RIGHT, 30, {110, 900}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_UP), GameAction::MOVE_UP, 30, {110, 450}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_DOWN), GameAction::MOVE_DOWN, 30, {110, 600}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_LEFT), GameAction::MOVE_LEFT, 30, {110, 750}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_RIGHT), GameAction::MOVE_RIGHT, 30, {110, 900}, DEFAULT_BUTTON_MID_SCALE));
 
     // addMenuEntity(createButton(*_engine, "UP", 30, sf::Color::White, {110, 450}, DEFAULT_BUTTON_MID_SCALE,
     //     sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
@@ -355,10 +354,10 @@ void ClientMenu::createKeybindsMenu()
     //     }
     // ));
 
-    addMenuEntity(createRebindButton(*_engine, "S", GameAction::SHOOT, 30, {510, 450}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "D", GameAction::SWITCH_WEAPON, 30, {510, 600}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "SPACE", GameAction::USE_POWERUP, 30, {510, 750}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "F", GameAction::SPECIAL, 30, {510, 900}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SHOOT), GameAction::SHOOT, 30, {510, 450}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SWITCH_WEAPON), GameAction::SWITCH_WEAPON, 30, {510, 600}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::USE_POWERUP), GameAction::USE_POWERUP, 30, {510, 750}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SPECIAL), GameAction::SPECIAL, 30, {510, 900}, DEFAULT_BUTTON_MID_SCALE));
 
 
 }
