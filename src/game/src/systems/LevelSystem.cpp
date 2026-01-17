@@ -118,8 +118,8 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
         break;
     }
 
-    // Get next entity ID and use Coordinator to create enemy with proper network sync
-    uint32_t enemyId = this->_engine.getNextEntityId();
+    // Get next NETWORKED entity ID (enemies must be synchronized over network)
+    uint32_t enemyId = this->_engine.getNextNetworkedEntityId();
 
     // Determine enemy stats based on type
     uint16_t health = BASE_ENEMY_HEALTH_START;

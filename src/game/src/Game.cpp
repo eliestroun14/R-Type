@@ -548,10 +548,6 @@ void Game::checkAndStartLevel()
         return;  // Only server controls level start
     }
 
-    // TODO: Level launching disabled temporarily due to entity ID conflicts
-    LOG_DEBUG("Game: Level launching is disabled for now");
-    return;
-
     // Check if level already started
     if (_levelStarted) {
         return;
