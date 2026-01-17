@@ -379,13 +379,16 @@ void ClientMenu::createAccessibilityMenu()
     // TEXT
     addMenuEntity(createText(*this->_engine, "ACCESSIBILITY", 80, sf::Color::White, {485, 210}, 0, 1.5f));
 
+    addMenuEntity(createText(*this->_engine, "DYSLEXIC FONTS", 40, sf::Color::White, {485, 400}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "DEFAULT FONT", 40, sf::Color::White, {485, 800}, 0, 1.5f));
+
     // ANIMATED IMAGES
     Animation planetAnimation(OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT, OPTION_MENU_PLANET_ANIMATION_CURRENT,
         OPTION_MENU_PLANET_ANIMATION_ELAPSED_TIME, OPTION_MENU_PLANET_ANIMATION_DURATION, OPTION_MENU_PLANET_ANIMATION_START,
         OPTION_MENU_PLANET_ANIMATION_END, OPTION_MENU_PLANET_ANIMATION_LOOPING);
 
     addMenuEntity(createAnimatedImage(*this->_engine, Assets::KEYBINDS_MENU_PLANET, planetAnimation, {-200, -1300},
-        0, OPTION_MENU_PLANET_SPRITE_SCALE, sf::IntRect(0, 0, OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT), ZIndex::IS_BACKGROUND));
+        0, OPTION_MENU_PLANET_SPRITE_SCALE, sf::IntRect(0, 0, OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT), ZIndex::IS_GAME));
 
     // BUTTONSs
     addMenuEntity(createButton(*_engine, "back", 0, sf::Color::White, {30, 30}, BACK_BUTTON_SCALE,
@@ -400,7 +403,7 @@ void ClientMenu::createAccessibilityMenu()
     ));
 
 
-    addMenuEntity(createButton(*_engine, "CHANGE FONT", 35, sf::Color::White, {275, 550}, DEFAULT_BUTTON_SCALE,
+    addMenuEntity(createButton(*_engine, "DEFAULT FONT", 30, sf::Color::White, {275, 850}, DEFAULT_BUTTON_SCALE,
         sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
         DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
         [this]() {
@@ -409,10 +412,78 @@ void ClientMenu::createAccessibilityMenu()
 
                 for (auto& config : configs) {
                     if (config.has_value()) {
-                        if (config->activeFont == FontAssets::DEFAULT_FONT)
-                            config->activeFont = FontAssets::DYSLEXIC_FONT;
-                        else
-                            config->activeFont = FontAssets::DEFAULT_FONT;
+                        config->activeFont = FontAssets::DEFAULT_FONT;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+    addMenuEntity(createButton(*_engine, "WEIGHTED", 35, sf::Color::White, {50, 450}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+
+    addMenuEntity(createButton(*_engine, "ORGANIC", 35, sf::Color::White, {500, 450}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT_2;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+
+    addMenuEntity(createButton(*_engine, "CLEAR", 35, sf::Color::White, {50, 600}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT_3;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+
+    addMenuEntity(createButton(*_engine, "THIN", 35, sf::Color::White, {500, 600}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT_4;
                         break;
                     }
                 }
