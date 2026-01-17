@@ -524,7 +524,8 @@ void Coordinator::queueWeaponFire(uint32_t shooterId, float originX, float origi
 {
     // Create projectile immediately to reserve the entity ID
     // (prevents race condition where LevelSystem might take the ID before we use it)
-    uint32_t projectileId = _engine->getNextEntityId();
+    // Use getNextNetworkedEntityId() because projectiles are networked entities
+    uint32_t projectileId = _engine->getNextNetworkedEntityId();
     Entity shooterEntity = _engine->getEntityFromId(shooterId);
     Entity projectile = spawnProjectile(shooterEntity, projectileId, weaponType, originX, originY, directionX, directionY);
     
@@ -843,7 +844,17 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     // Note: The network manager should handle setting this to 1 for the owning client
     args.push_back(0);
 
+    // Mark this player as already broadcasted to prevent duplicate ENTITY_SPAWN from auto-broadcast system
+    // This must be done BEFORE returning so the next buildServerPacketBasedOnStatus() tick won't resend it
+    this->markEntityAsBroadcasted(playerId);
+
     return PacketManager::createEntitySpawn(args);
+}
+
+void Coordinator::markEntityAsBroadcasted(uint32_t entityId)
+{
+    _broadcastedEntityIds.insert(entityId);
+    LOG_DEBUG_CAT("Coordinator", "Marked entity {} as already broadcasted", entityId);
 }
 
 bool Coordinator::shouldSendPacketToPlayer(const common::protocol::Packet& packet, uint32_t targetPlayerId) const
@@ -1135,10 +1146,11 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     LOG_INFO_CAT("Coordinator", "Entity created: id={} type={} pos=({}, {}) health={} is_playable={}",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
 
-    // Check if entity already exists (to avoid duplicate spawning)
-    Entity existingEntity = this->_engine->getEntityFromId(payload.entity_id);
-    if (this->_engine->isAlive(existingEntity)) {
-        LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists, skipping spawn", payload.entity_id);
+    // Check if entity already exists in NETWORKED list (to avoid duplicate spawning)
+    // Only check NETWORKED entities, not LOCAL entities (which can have the same IDs)
+    const auto& networkedEntities = this->_engine->getNetworkedEntities();
+    if (networkedEntities.find(payload.entity_id) != networkedEntities.end()) {
+        LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists in NETWORKED list, skipping spawn", payload.entity_id);
         return;
     }
 
@@ -1753,73 +1765,53 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 {
-    // Parse the weapon fire packet
-    auto parsed = PacketManager::parseWeaponFire(packet);
-    if (!parsed.has_value()) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: failed to parse weapon fire packet");
-        return;
+    // Only clients process WEAPON_FIRE packets from server
+    // Servers generate their own projectiles through queueWeaponFire()
+    if (!_isServer) {
+        // Parse the weapon fire packet
+        auto parsed = PacketManager::parseWeaponFire(packet);
+        if (!parsed.has_value()) {
+            LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: failed to parse weapon fire packet");
+            return;
+        }
+
+        const auto& payload = parsed.value();
+
+        LOG_INFO_CAT("Coordinator", "shooter_id={} projectile_id={} weapon_type={} origin_pos=({}, {}), direction_pos=({}, {})",
+                    payload.shooterId, payload.projectileId, payload.weaponType, 
+                    payload.originX, payload.originY, payload.directionX, payload.directionY);
+
+        // Check if projectile already exists (duplicate packet or not yet cleaned up)
+        Entity existingProjectile = this->_engine->getEntityFromId(payload.projectileId);
+        if (this->_engine->isAlive(existingProjectile)) {
+            LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectileId);
+            return;
+        }
+
+        // get the shooter
+        Entity shooter = this->_engine->getEntityFromId(payload.shooterId);
+
+        // Convert from int16_t to float
+        float origin_x = static_cast<float>(payload.originX);
+        float origin_y = static_cast<float>(payload.originY);
+
+        // Convert direction from int16_t (normalized*1000) back to float
+        float direction_x = static_cast<float>(payload.directionX) / 1000.0f;
+        float direction_y = static_cast<float>(payload.directionY) / 1000.0f;
+
+        try {
+            LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: About to spawn projectile {}", payload.projectileId);
+            Entity projectile = spawnProjectile(shooter, payload.projectileId, payload.weaponType, 
+                                                origin_x, origin_y, direction_x, direction_y);
+            LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: Successfully spawned projectile {}", payload.projectileId);
+        } catch (const Error& e) {
+            LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {}: {}", payload.projectileId, e.what());
+            return;
+        } catch (const std::exception& e) {
+            LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {} with unexpected error: {}", payload.projectileId, e.what());
+            return;
+        }
     }
-
-    const auto& payload = parsed.value();
-
-    LOG_INFO_CAT("Coordinator", "shooter_id={} projectile_id={} weapon_type={} origin_pos=({}, {}), direction_pos=({}, {})",
-                payload.shooterId, payload.projectileId, payload.weaponType, 
-                payload.originX, payload.originY, payload.directionX, payload.directionY);
-
-    // Check if projectile already exists (duplicate packet or not yet cleaned up)
-    Entity existingProjectile = this->_engine->getEntityFromId(payload.projectileId);
-    if (this->_engine->isAlive(existingProjectile)) {
-        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectileId);
-        return;
-    }
-
-    // get the shooter
-    Entity shooter = this->_engine->getEntityFromId(payload.shooterId);
-
-    // Convert from int16_t to float
-    float origin_x = static_cast<float>(payload.originX);
-    float origin_y = static_cast<float>(payload.originY);
-
-    // Convert direction from int16_t (normalized*1000) back to float
-    float direction_x = static_cast<float>(payload.directionX) / 1000.0f;
-    float direction_y = static_cast<float>(payload.directionY) / 1000.0f;
-
-    try {
-        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: About to spawn projectile {}", payload.projectileId);
-        Entity projectile = spawnProjectile(shooter, payload.projectileId, payload.weaponType, 
-                                            origin_x, origin_y, direction_x, direction_y);
-        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: Successfully spawned projectile {}", payload.projectileId);
-    } catch (const Error& e) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {}: {}", payload.projectileId, e.what());
-        return;
-    } catch (const std::exception& e) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {} with unexpected error: {}", payload.projectileId, e.what());
-        return;
-    }
-
-    // Play shooting sound client-side at the projectile origin position
-    // Determine sound type based on weapon type
-    // TODO: a fix
-/*     protocol::AudioEffectType soundType;
-    switch (payload.weaponType) {
-        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC):
-            soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
-            break;
-        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_CHARGED):
-            soundType = protocol::AudioEffectType::SFX_SHOOT_CHARGED;
-            break;
-        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_LASER):
-            soundType = protocol::AudioEffectType::SFX_SHOOT_LASER;
-            break;
-        default:
-            soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
-            break;
-    }
-    
-    playAudioEffect(soundType, origin_x, origin_y, 0.7f, 1.0f);
- */
-    LOG_INFO_CAT("Coordinator", "Projectile {} spawned from shooter {}", 
-                 payload.projectileId, payload.shooterId);
 }
 
 void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)

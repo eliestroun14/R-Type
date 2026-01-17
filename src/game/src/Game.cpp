@@ -461,6 +461,8 @@ void Game::sendExistingPlayersToNewClient(uint32_t newPlayerId)
             auto existingPlayerPacket = PacketManager::createEntitySpawn(args);
             if (existingPlayerPacket.has_value()) {
                 addOutgoingPacket(existingPlayerPacket.value(), newPlayerId);
+                // Mark this entity as broadcasted to prevent duplicate ENTITY_SPAWN from Coordinator
+                _coordinator->markEntityAsBroadcasted(existingPlayerId);
                 LOG_INFO("Game: Sent existing player {} info to new client {}", 
                          existingPlayerId, newPlayerId);
             } else {
@@ -545,6 +547,10 @@ void Game::checkAndStartLevel()
     if (_type != Type::SERVER) {
         return;  // Only server controls level start
     }
+
+    // TODO: Level launching disabled temporarily due to entity ID conflicts
+    LOG_DEBUG("Game: Level launching is disabled for now");
+    return;
 
     // Check if level already started
     if (_levelStarted) {

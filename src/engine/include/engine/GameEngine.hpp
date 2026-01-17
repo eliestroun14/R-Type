@@ -83,12 +83,13 @@ namespace gameEngine {
             /**
              * @brief Spawns a new entity in the engine.
              * @param entityName A debug name for the entity.
+             * @param category The category of the entity (LOCAL or NETWORKED)
              * @return Entity The ID/Handle of the created entity.
              */
-            Entity createEntity(std::string entityName)
+            Entity createEntity(std::string entityName, EntityCategory category = EntityCategory::LOCAL)
             {
-                Entity entity = this->_entityManager->spawnEntity(entityName);
-                LOG_DEBUG_CAT("GameEngine", "Entity with ID {} created", (std::size_t)entity);
+                Entity entity = this->_entityManager->spawnEntity(entityName, category);
+                LOG_DEBUG_CAT("GameEngine", "Entity with ID {} created (category: {})", (std::size_t)entity, (int)category);
                 return entity;
             }
 
@@ -96,12 +97,13 @@ namespace gameEngine {
              * @brief Spawns a new entity with a specific ID (for network synchronization).
              * @param id The specific ID to assign to the entity (from server)
              * @param name The name to assign to the entity
+             * @param category The category of the entity (LOCAL or NETWORKED)
              * @return The created Entity
              */
-            Entity createEntityWithId(uint32_t id, std::string entityName)
+            Entity createEntityWithId(uint32_t id, std::string entityName, EntityCategory category = EntityCategory::NETWORKED)
             {
-                Entity entity = this->_entityManager->spawnEntityWithId(id, entityName);
-                LOG_DEBUG_CAT("GameEngine", "Entity with ID {} created with specific ID", id);
+                Entity entity = this->_entityManager->spawnEntityWithId(id, entityName, category);
+                LOG_DEBUG_CAT("GameEngine", "Entity with ID {} created with specific ID (category: {})", id, (int)category);
                 return entity;
             }
 
@@ -117,11 +119,29 @@ namespace gameEngine {
 
             /**
              * @brief Get the next entity ID that will be assigned.
-             * @return The next available entity ID.
+             * @return The next available local entity ID.
              */
             uint32_t getNextEntityId()
             {
                 return this->_entityManager->getNextEntityId();
+            }
+
+            /**
+             * @brief Get the next networked entity ID that will be assigned.
+             * @return The next available networked entity ID.
+             */
+            uint32_t getNextNetworkedEntityId()
+            {
+                return this->_entityManager->getNextNetworkedEntityId();
+            }
+
+            /**
+             * @brief Get all networked entities.
+             * @return Reference to the set of networked entity IDs.
+             */
+            const std::unordered_set<std::size_t>& getNetworkedEntities() const
+            {
+                return this->_entityManager->getNetworkedEntities();
             }
 
             /**

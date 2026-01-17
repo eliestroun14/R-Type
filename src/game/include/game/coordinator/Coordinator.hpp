@@ -139,6 +139,11 @@ class Coordinator {
         // Helper to spawn a player entity and broadcast ENTITY_SPAWN packet
         std::optional<common::protocol::Packet> spawnPlayerOnServer(uint32_t playerId, float posX, float posY);
 
+        /** @brief Mark an entity as already broadcasted to prevent duplicate ENTITY_SPAWN packets.
+         * Used when manually sending ENTITY_SPAWN packets instead of relying on the broadcast system.
+         */
+        void markEntityAsBroadcasted(uint32_t entityId);
+
         /** @brief Check if a PLAYER_INPUT packet should be sent to a specific player.
          * Returns false if the packet is a PLAYER_INPUT from that player (they shouldn't receive their own relayed input).
          * This prevents double-processing of input on the sender's client.
