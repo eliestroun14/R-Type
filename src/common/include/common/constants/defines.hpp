@@ -102,7 +102,7 @@ enum NetworkType {
 #define LEVEL_1_WAVE_4_START_TIME 35.0f
 
 // Level System Background
-#define LEVEL_BACKGROUND_SCROLL_SPEED -50.0f
+#define LEVEL_BACKGROUND_SCROLL_SPEED 50.0f
 
 // ==============================================================
 //              PACKET SIZE DEFINITIONS (Network Protocol)

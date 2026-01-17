@@ -7,9 +7,12 @@
 
 #include <game/systems/BackgroundSystem.hpp>
 #include <engine/ecs/component/Components.hpp>
+#include <common/logger/Logger.hpp>
+
 
 void BackgroundSystem::onUpdate(float dt)
 {
+    LOG_DEBUG_CAT("BackgroundSystem","BackgroundSystem::onUpdate - dt: {} ", dt);
     auto& transforms = this->_engine.getComponents<Transform>();
     auto& sprites = this->_engine.getComponents<Sprite>();
     auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();

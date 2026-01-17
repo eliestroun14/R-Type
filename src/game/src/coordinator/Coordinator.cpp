@@ -2060,7 +2060,8 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     this->_engine->addComponent<Transform>(backgroundEntity, Transform(0.f, 0.f, 0.f, 1.0f));
     // Use a background asset - for now using a placeholder, should be based on level
     // The actual asset would come from level data sent by server or configured per level
-    this->_engine->addComponent<Sprite>(backgroundEntity, Sprite(Assets::GAME_BG, ZIndex::IS_BACKGROUND));
+    this->_engine->addComponent<Sprite>(backgroundEntity, 
+    Sprite(Assets::GAME_BG, ZIndex::IS_BACKGROUND, sf::IntRect(0, 0, GAME_BG_SPRITE_WIDTH, GAME_BG_SPRITE_HEIGHT)));
     this->_engine->addComponent<ScrollingBackground>(backgroundEntity, ScrollingBackground(LEVEL_BACKGROUND_SCROLL_SPEED, true, true));
     this->_engine->addComponent<Drawable>(backgroundEntity, Drawable());
     LOG_INFO_CAT("Coordinator", "Created scrolling background for level {}", level_id);
