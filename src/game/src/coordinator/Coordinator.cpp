@@ -57,9 +57,6 @@ void Coordinator::initEngine()
     auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine);
     this->_engine->setSystemSignature<ButtonSystem, ButtonComponent, Transform>();
 
-    auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
-    this->_engine->setSystemSignature<AnimationSystem, Sprite, Animation>();
-
     auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
     this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
 
