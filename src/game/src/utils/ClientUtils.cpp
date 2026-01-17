@@ -28,59 +28,125 @@ uint32_t getCurrentTimeMs()
     return milliseconds;
 }
 
-void createButton(gameEngine::GameEngine& engine, std::string label,
+// void createButton(gameEngine::GameEngine& engine, std::string label,
+//     unsigned int textSize, sf::Color textColor, sf::Vector2f pos, float scale, sf::IntRect rectSprite,
+//     Assets noneAssetId, Assets hoverAssetId, Assets clickedAssetId,
+//     std::function<void ()> onClick)
+// {
+//     Entity button = engine.createEntity("Button_" + label);
+//     engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
+
+//     engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_UI_HUD, rectSprite));
+
+//     ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
+//     engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
+
+//     Entity textEntity = engine.createEntity("ButtonText_" + label);
+//     engine.addComponent<Transform>(textEntity, Transform(pos.x, pos.y, 0, scale));
+//     engine.addComponent<Text>(textEntity, Text(label, textColor, textSize, ZIndex::IS_UI_HUD));
+// }
+
+std::vector<Entity> createButton(gameEngine::GameEngine& engine, std::string label,
     unsigned int textSize, sf::Color textColor, sf::Vector2f pos, float scale, sf::IntRect rectSprite,
     Assets noneAssetId, Assets hoverAssetId, Assets clickedAssetId,
     std::function<void ()> onClick)
 {
+    std::vector<Entity> createdEntities;
+
+    // button
     Entity button = engine.createEntity("Button_" + label);
     engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
-
-    engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_UI_HUD, rectSprite));
-
+    engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_GAME, rectSprite));
     ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
     engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
 
+    createdEntities.push_back(button);
+
+    // text
+    float centerX = pos.x + (rectSprite.width * scale) / 2.0f;
+    float centerY = pos.y + (rectSprite.height * scale) / 2.0f;
+
     Entity textEntity = engine.createEntity("ButtonText_" + label);
-    engine.addComponent<Transform>(textEntity, Transform(pos.x, pos.y, 0, scale));
-    engine.addComponent<Text>(textEntity, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+    engine.addComponent<Transform>(textEntity, Transform(centerX, centerY, 0, scale));
+    engine.addComponent<Text>(textEntity, Text(label.c_str(), textColor, textSize, ZIndex::IS_UI_HUD));
+
+    createdEntities.push_back(textEntity);
+
+    return createdEntities;
 }
 
 
-void createText(gameEngine::GameEngine& engine, std::string label,
+Entity createText(gameEngine::GameEngine& engine, std::string label,
     unsigned int textSize, sf::Color textColor, sf::Vector2f pos,
     float rotation, float scale)
 {
     Entity text = engine.createEntity("Text_" + label);
     engine.addComponent<Transform>(text, Transform(pos.x, pos.y, rotation, scale));
 
-    engine.addComponent<Text>(text, Text(label, FontAssets::DEFAULT_FONT, textColor, textSize, ZIndex::IS_UI_HUD));
+    engine.addComponent<Text>(text, Text(label.c_str(), textColor, textSize, ZIndex::IS_UI_HUD));
+
+    return text;
 }
 
 
-void createImage(gameEngine::GameEngine& engine, Assets assetId,
+Entity createImage(gameEngine::GameEngine& engine, Assets assetId,
     sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex)
 {
     Entity image = engine.createEntity("Entity");
 
     engine.addComponent<Transform>(image, Transform(pos.x, pos.y, rotation, scale));
     engine.addComponent<Sprite>(image, Sprite(assetId, zIndex, rect));
+
+    return image;
 }
 
 
-void createCheckbox(gameEngine::GameEngine& engine, bool initialState,
-    Assets uncheckedAsset, Assets checkedAsset, sf::Vector2f pos,
-    sf::IntRect rectSprite, float rotation, float scale,
-    std::function<void(bool)> onToggle)
+Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Animation animation,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex)
 {
-    //FIXME: check if the method is correct
-    Entity uncheckEntity = engine.createEntity("UncheckEntity");
+    Entity image = engine.createEntity("Entity");
 
-    engine.addComponent(uncheckEntity, Transform(pos.x, pos.y, rotation, scale));
-    engine.addComponent(uncheckEntity, Sprite(uncheckedAsset, ZIndex::IS_UI_HUD, rectSprite));
+    engine.addComponent<Transform>(image, Transform(pos.x, pos.y, rotation, scale));
+    engine.addComponent<Sprite>(image, Sprite(assetId, zIndex, rect));
+    engine.addComponent<Animation>(image, Animation(animation));
 
-    Entity checkEntity = engine.createEntity("CheckEntity");
+    return image;
+}
 
-    engine.addComponent(checkEntity, Transform(pos.x, pos.y, rotation, scale));
-    engine.addComponent(checkEntity, Sprite(checkedAsset, ZIndex::IS_UI_HUD, rectSprite));
+Entity createMovingBackground(gameEngine::GameEngine &engine, Assets assetId,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite,
+    float speed, bool isHorizontal, bool shouldRepeat)
+{
+    Entity movingBg = engine.createEntity("MovingBackground");
+
+    engine.addComponent<Transform>(movingBg, Transform(pos.x, pos.y, rotation, scale));
+    engine.addComponent<Sprite>(movingBg, Sprite(assetId, ZIndex::IS_BACKGROUND, rectSprite));
+    engine.addComponent<ScrollingBackground>(movingBg, ScrollingBackground(speed, isHorizontal, shouldRepeat));
+
+    return movingBg;
+}
+
+std::vector<Entity> createRebindButton(gameEngine::GameEngine& engine, std::string label,
+    GameAction action, int textSize, sf::Vector2f pos, float scale)
+{
+    std::vector<Entity> entities = createButton(engine, label, textSize, sf::Color::White, pos, scale,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON, nullptr);
+
+    Entity buttonEnt = entities[0];
+    Entity textEnt = entities[1];
+
+    // add Rebind component to the button entity
+    engine.addComponent<Rebind>(buttonEnt, Rebind(action, textEnt));
+
+    auto& btnComp = engine.getComponentEntity<ButtonComponent>(buttonEnt);
+    btnComp->onClick = [&engine, buttonEnt, textEnt]() {
+        auto& rb = engine.getComponentEntity<Rebind>(buttonEnt);
+        auto& txt = engine.getComponentEntity<Text>(textEnt);
+
+        rb->isWaiting = true;
+        std::strcpy(txt->str, "..."); // text display when user click on the button
+    };
+
+    return entities;
 }

@@ -37,6 +37,9 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<Projectile>();
     this->_engine->registerComponent<MovementPattern>();
     this->_engine->registerComponent<AI>();
+    this->_engine->registerComponent<ButtonComponent>();
+    this->_engine->registerComponent<GameConfig>();
+    this->_engine->registerComponent<Rebind>();
     this->_engine->registerComponent<AudioSource>();
     this->_engine->registerComponent<AudioEffect>();
     this->_engine->registerComponent<Team>();
@@ -51,6 +54,18 @@ void Coordinator::initEngine()
 
     auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this, this->_isServer);
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
+
+    auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine);
+    this->_engine->setSystemSignature<ButtonSystem, ButtonComponent, Transform>();
+
+    auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
+    this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
+
+    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine);
+    this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
+
+    auto rebindSystem = this->_engine->registerSystem<RebindSystem>(*this->_engine);
+    this->_engine->setSystemSignature<RebindSystem, Rebind>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
@@ -74,7 +89,7 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
 
     // Set signature: RenderSystem needs Transform and Sprite components
-    this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
+    this->_engine->setSystemSignature<RenderSystem, Transform>();
 }
 
 // ==============================================================
@@ -1880,7 +1895,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     // Create a UI text entity to display the completion message
     Entity messageEntity = this->_engine->createEntity("LevelCompleteMessage");
     this->_engine->addComponent<Transform>(messageEntity, Transform(400.f, 300.f, 0.f, 1.5f));
-    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage));
+    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage.c_str()));
     this->_engine->addComponent<Sprite>(messageEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
 
     // Update game state based on completion
@@ -1893,7 +1908,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
         Entity timeEntity = this->_engine->createEntity("CompletionTime");
         this->_engine->addComponent<Transform>(timeEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage));
+        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage.c_str()));
         this->_engine->addComponent<Sprite>(timeEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     } else {
         // More levels to play - keep game running
@@ -1903,7 +1918,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
         Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
         this->_engine->addComponent<Transform>(nextEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage));
+        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage.c_str()));
         this->_engine->addComponent<Sprite>(nextEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     }
 }
@@ -1945,7 +1960,7 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
     Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
     this->_engine->addComponent<Transform>(levelStartEntity, Transform(400.f, 200.f, 0.f, 2.0f));
-    this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage));
+    this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage.c_str()));
     this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
 
     // Display estimated duration if provided
@@ -1953,7 +1968,7 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
         std::string durationMessage = "Estimated Time: " + std::to_string(estimated_duration) + "s";
         Entity durationEntity = this->_engine->createEntity("LevelDuration");
         this->_engine->addComponent<Transform>(durationEntity, Transform(400.f, 250.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(durationEntity, Text(durationMessage));
+        this->_engine->addComponent<Text>(durationEntity, Text(durationMessage.c_str()));
         this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     }
 
@@ -2609,23 +2624,27 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
     Entity projectile = this->_engine->createEntityWithId(projectile_id, projectileName);
     LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Entity created successfully");
     
-    float projectileSpeed = PROJECTILE_SPEED;  // tuned for visible travel with dt in ms
+    float projectileSpeed = BULLET_SPEED;  // tuned for visible travel with dt in ms
 
     switch (weapon_type) {
         case 0x00: // WEAPON_TYPE_BASIC
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Transform component");
-            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_PROJ_ROTATION, DEFAULT_PROJ_SCALE));
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, DEFAULT_BULLET_ROTATION, DEFAULT_BULLET_SCALE));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Velocity component");
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Projectile component");
             this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, projectileDamage));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Sprite component");
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
-                sf::IntRect(0, 0, DEFAULT_PROJ_SPRITE_WIDTH, DEFAULT_PROJ_SPRITE_HEIGHT)));
+                sf::IntRect(0, 0, DEFAULT_BULLET_SPRITE_WIDTH, DEFAULT_BULLET_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_BULLET_ANIMATION_WIDTH,
+                DEFAULT_BULLET_ANIMATION_HEIGHT, DEFAULT_BULLET_ANIMATION_CURRENT, DEFAULT_BULLET_ANIMATION_ELAPSED_TIME, DEFAULT_BULLET_ANIMATION_DURATION,
+                DEFAULT_BULLET_ANIMATION_START, DEFAULT_BULLET_ANIMATION_END, DEFAULT_BULLET_ANIMATION_LOOPING));
+                sf::IntRect(0, 0, DEFAULT_BULLET_SPRITE_WIDTH, DEFAULT_BULLET_SPRITE_HEIGHT);
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Animation component");
-            this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_PROJ_ANIMATION_WIDTH,
-                DEFAULT_PROJ_ANIMATION_HEIGHT, DEFAULT_PROJ_ANIMATION_CURRENT, DEFAULT_PROJ_ANIMATION_ELAPSED_TIME, DEFAULT_PROJ_ANIMATION_DURATION,
-                DEFAULT_PROJ_ANIMATION_START, DEFAULT_PROJ_ANIMATION_END, DEFAULT_PROJ_ANIMATION_LOOPING));
+            this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_BULLET_ANIMATION_WIDTH,
+                DEFAULT_BULLET_ANIMATION_HEIGHT, DEFAULT_BULLET_ANIMATION_CURRENT, DEFAULT_BULLET_ANIMATION_ELAPSED_TIME, DEFAULT_BULLET_ANIMATION_DURATION,
+                DEFAULT_BULLET_ANIMATION_START, DEFAULT_BULLET_ANIMATION_END, DEFAULT_BULLET_ANIMATION_LOOPING));
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding HitBox component");
             this->_engine->addComponent<HitBox>(projectile, HitBox());
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Team component");
@@ -2636,14 +2655,14 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
             break;
 
         case 0x01: // WEAPON_TYPE_CHARGED
-            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_PROJ_ROTATION, CHARGED_PROJ_SCALE));
+            this->_engine->addComponent<Transform>(projectile, Transform(origin_x, origin_y, CHARGED_BULLET_ROTATION, CHARGED_BULLET_SCALE));
             this->_engine->addComponent<Velocity>(projectile, Velocity(dir_x * projectileSpeed, dir_y * projectileSpeed));
             this->_engine->addComponent<Projectile>(projectile, Projectile(shooter, isFromPlayable, projectileDamage));
             this->_engine->addComponent<Sprite>(projectile, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_GAME,
-                sf::IntRect(0, 0, CHARGED_PROJ_SPRITE_WIDTH, CHARGED_PROJ_SPRITE_HEIGHT)));
-            this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_PROJ_ANIMATION_WIDTH,
-                CHARGED_PROJ_ANIMATION_HEIGHT, CHARGED_PROJ_ANIMATION_CURRENT, CHARGED_PROJ_ANIMATION_ELAPSED_TIME, CHARGED_PROJ_ANIMATION_DURATION,
-                CHARGED_PROJ_ANIMATION_START, CHARGED_PROJ_ANIMATION_END, CHARGED_PROJ_ANIMATION_LOOPING));
+                sf::IntRect(0, 0, CHARGED_BULLET_SPRITE_WIDTH, CHARGED_BULLET_SPRITE_HEIGHT)));
+            this->_engine->addComponent<Animation>(projectile, Animation(CHARGED_BULLET_ANIMATION_WIDTH,
+                CHARGED_BULLET_ANIMATION_HEIGHT, CHARGED_BULLET_ANIMATION_CURRENT, CHARGED_BULLET_ANIMATION_ELAPSED_TIME, CHARGED_BULLET_ANIMATION_DURATION,
+                CHARGED_BULLET_ANIMATION_START, CHARGED_BULLET_ANIMATION_END, CHARGED_BULLET_ANIMATION_LOOPING));
             this->_engine->addComponent<HitBox>(projectile, HitBox());
             this->_engine->addComponent<Team>(projectile, isFromPlayable ? TeamType::PLAYER : TeamType::ENEMY);
             this->_engine->addComponent<AudioSource>(projectile, AudioSource(AudioAssets::SFX_SHOOT_CHARGED, AUDIO_CHARGED_PROJECTILE_LOOP, AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE, AUDIO_CHARGED_PROJECTILE_ATTENUATION, false, AUDIO_SHOOT_CHARGED_DURATION));

@@ -40,6 +40,10 @@ Game::Game(Type type)
                 /*isLocalScore*/ true,
                 /*withRenderComponents*/ true);
         }
+
+        Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
+        this->getCoordinator()->getEngine()->addComponent<GameConfig>(configurationEntity, GameConfig(FontAssets::DEFAULT_FONT, true, true));
+
         // Initialize timing
         _lastTickTime = std::chrono::steady_clock::now();
         _accumulatedTime = 0;
@@ -112,6 +116,10 @@ bool Game::runGameLoop()
             if (!engine) {
                 LOG_WARN("Engine instance is null, skipping render");
                 return _isRunning;
+            }
+
+            if (_menu) {
+                _menu->update();
             }
 
             // Process window events (CRITICAL: prevents window from freezing)

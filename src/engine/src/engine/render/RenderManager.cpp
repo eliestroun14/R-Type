@@ -183,6 +183,8 @@ void RenderManager::handleEvent(const sf::Event& event)
             //     }
             // }
         }
+
+        //TODO: keybinds
     }
 
     if (event.type == sf::Event::MouseButtonPressed || event.type == sf::Event::MouseButtonReleased) {
@@ -222,4 +224,9 @@ float RenderManager::getScaleFactor() const
     float scaleX = windowSize.x / WINDOW_WIDTH;
     float scaleY = windowSize.y / WINDOW_HEIGHT;
     return std::min(scaleX, scaleY);
+}
+
+void RenderManager::closeWindow()
+{
+    this->_window.close();
 }

@@ -45,6 +45,13 @@ void RenderSystem::onUpdate(float)
     }
 
     // sort by z-index
+    auto& configs = this->_engine.getComponents<GameConfig>();
+    for (auto& config : configs) {
+        if (config.has_value())
+            this->_targetFont = config->activeFont;
+    }
+
+    // we need to sort here cuz Z = 0 (background) and Z = 1 (player) and Z = 2 (HUD/UI), to display in the right order
     std::sort(this->_sortedEntities.begin(), this->_sortedEntities.end(),
         [&sprites, &texts](size_t a, size_t b) {
             int za = (a < sprites.size() && sprites[a]) ? (int)sprites[a]->zIndex
@@ -94,7 +101,7 @@ void RenderSystem::onUpdate(float)
         // TEXT
         if (entity < texts.size() && texts[entity]) {
             auto& text = texts[entity].value();
-            std::shared_ptr<sf::Font> font = this->_engine.getFont(text.fontId);
+            std::shared_ptr<sf::Font> font = this->_engine.getFont(this->_targetFont);
 
             if (font) {
                 sf::Text sfText;
