@@ -88,6 +88,7 @@ namespace gameEngine {
             Entity createEntity(std::string entityName)
             {
                 Entity entity = this->_entityManager->spawnEntity(entityName);
+                LOG_DEBUG_CAT("GameEngine", "Entity with ID {} created", (std::size_t)entity);
                 return entity;
             }
 
@@ -100,6 +101,7 @@ namespace gameEngine {
             Entity createEntityWithId(uint32_t id, std::string entityName)
             {
                 Entity entity = this->_entityManager->spawnEntityWithId(id, entityName);
+                LOG_DEBUG_CAT("GameEngine", "Entity with ID {} created with specific ID", id);
                 return entity;
             }
 

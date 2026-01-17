@@ -69,7 +69,7 @@ bool Game::runGameLoop()
     // ============================================================================
 
     try {
-        LOG_INFO("runGameLoop: CALLED for type={}", static_cast<int>(_type));
+        //LOG_INFO("runGameLoop: CALLED for type={}", static_cast<int>(_type));
 
         // Calculate elapsed time since last tick
         auto currentTime = std::chrono::steady_clock::now();
@@ -79,20 +79,20 @@ bool Game::runGameLoop()
         _lastTickTime = currentTime;
         _accumulatedTime += elapsed;
 
-        LOG_INFO("runGameLoop: elapsed={} accumulated={} tickRate={}", elapsed, _accumulatedTime, TICK_RATE_MS);
+        //LOG_INFO("runGameLoop: elapsed={} accumulated={} tickRate={}", elapsed, _accumulatedTime, TICK_RATE_MS);
 
         // Fixed timestep loop - may execute multiple ticks if frame took too long
         // or skip if not enough time has passed
         while (_accumulatedTime >= TICK_RATE_MS) {
             _accumulatedTime -= TICK_RATE_MS;
 
-            LOG_INFO("runGameLoop: executing tick for type={}", static_cast<int>(_type));
+            //LOG_INFO("runGameLoop: executing tick for type={}", static_cast<int>(_type));
 
             // ====================================================================
             // ROLE-BASED GAME TICK
             // ====================================================================
             if (_type == Type::SERVER) {
-                LOG_INFO("runGameLoop: calling serverTick");
+                //LOG_INFO("runGameLoop: calling serverTick");
                 serverTick(TICK_RATE_MS);
             } else if (_type == Type::CLIENT) {
                 clientTick(TICK_RATE_MS);

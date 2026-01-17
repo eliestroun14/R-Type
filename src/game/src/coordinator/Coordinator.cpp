@@ -68,9 +68,6 @@ void Coordinator::initEngine()
     auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
     this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
 
-    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine, this->_isServer);
-    this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
-
     auto rebindSystem = this->_engine->registerSystem<RebindSystem>(*this->_engine);
     this->_engine->setSystemSignature<RebindSystem, Rebind>();
 }
@@ -81,7 +78,7 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     this->_engine->initAudio();
 
     // Register BackgroundSystem to handle scrolling backgrounds
-    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine);
+    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine,  this->_isServer);
     this->_engine->setSystemSignature<BackgroundSystem, Transform, Sprite, ScrollingBackground>();
 
     // Register CollisionSystem to handle collision detection and team-based damage
@@ -230,7 +227,7 @@ void Coordinator::setupPlayerEntity(
 
         //FIXME: fix here the method in game engine
         // this->_engine->setLocalPlayerEntity(entity, playerId);
-        LOG_INFO_CAT("Coordinator", "Local player created with ID %u", playerId);
+        LOG_INFO_CAT("Coordinator", "Local player created with ID {}", playerId);
     }
 }
 
@@ -1135,13 +1132,13 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     protocol::EntitySpawnPayload payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u is_playable=%u",
+    LOG_INFO_CAT("Coordinator", "Entity created: id={} type={} pos=({}, {}) health={} is_playable={}",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
 
     // Check if entity already exists (to avoid duplicate spawning)
     Entity existingEntity = this->_engine->getEntityFromId(payload.entity_id);
     if (this->_engine->isAlive(existingEntity)) {
-        LOG_WARN_CAT("Coordinator", "Entity with ID %u already exists, skipping spawn", payload.entity_id);
+        LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists, skipping spawn", payload.entity_id);
         return;
     }
 
@@ -1179,7 +1176,7 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
                 payload.initial_health,
                 /*withRenderComponents=*/true
             );
-            LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f) with velocity (%.3f, %.3f)", 
+            LOG_INFO_CAT("Coordinator", "Enemy created with ID {} at ({}, {}) with velocity ({}, {})", 
                         payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), velX, velY);
             break;
         }
@@ -1235,7 +1232,7 @@ void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &pack
     protocol::EntityDestroyPayload payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "Entity destroyed: id=%u reason=%u final_pos=(%.1f, %.1f)",
+    LOG_INFO_CAT("Coordinator", "Entity destroyed: id={} reason={} final_pos=({}, {})",
         payload.entity_id, payload.destroy_reason, static_cast<float>(payload.final_position_x), static_cast<float>(payload.final_position_y));
 
     // Destroy the entity

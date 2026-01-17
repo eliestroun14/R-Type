@@ -9,6 +9,7 @@
 #include <engine/ecs/component/Components.hpp>
 #include <sstream>
 #include <iomanip>
+#include <cstring>
 
 void LevelTimerSystem::onUpdate(float dt)
 {
@@ -43,7 +44,7 @@ void LevelTimerSystem::onUpdate(float dt)
             continue;
         }
     
-        auto& text = texts[entity].value();
+        auto text = texts[entity].value();
     
         // Format time as MM:SS
         int minutes = static_cast<int>(remainingTime) / 60;
@@ -53,7 +54,9 @@ void LevelTimerSystem::onUpdate(float dt)
         oss << "Time: " << std::setfill('0') << std::setw(2) << minutes 
             << ":" << std::setfill('0') << std::setw(2) << seconds;
     
-            text.str = oss.str();
+        std::string timeStr = oss.str();
+        std::strncpy(text.str, timeStr.c_str(), sizeof(text.str) - 1);
+        text.str[sizeof(text.str) - 1] = '\0';
     
         // Change color to red when less than 10 seconds remaining
         if (remainingTime < 10.0f) {
