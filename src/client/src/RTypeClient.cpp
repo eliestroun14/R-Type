@@ -7,7 +7,6 @@
 
 #include <client/RTypeClient.hpp>
 #include <string.h>
-#include <arpa/inet.h>
 #include <game/utils/ClientUtils.hpp>
 #include <thread>
 #include <chrono>
