@@ -2087,7 +2087,7 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     //std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
     //Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
     //this->_engine->addComponent<Transform>(levelStartEntity, Transform(640.f, 100.f, 0.f, 1.0f));
-    //this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage, FontAssets::DEFAULT_FONT, sf::Color::White, 48, ZIndex::IS_UI_HUD));
+    //this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage.c_str(), sf::Color::White, 48, ZIndex::IS_UI_HUD));
     //this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
     //this->_engine->addComponent<Drawable>(levelStartEntity, Drawable());
 
@@ -2096,17 +2096,18 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     //    std::string timerMessage = "Time: " + std::to_string(static_cast<int>(estimated_duration)) + "s";
     //    Entity timerEntity = this->_engine->createEntity("LevelTimer");
     //    this->_engine->addComponent<Transform>(timerEntity, Transform(640.f, 50.f, 0.f, 1.0f));
-    //    this->_engine->addComponent<Text>(timerEntity, Text(timerMessage, FontAssets::DEFAULT_FONT, sf::Color::Yellow, 36, ZIndex::IS_UI_HUD));
+    //    this->_engine->addComponent<Text>(timerEntity, Text(timerMessage.c_str(), sf::Color::Yellow, 36, ZIndex::IS_UI_HUD));
     //    this->_engine->addComponent<Sprite>(timerEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
     //    this->_engine->addComponent<TimerUI>(timerEntity, TimerUI());
     //    this->_engine->addComponent<Drawable>(timerEntity, Drawable());
     //}
-    // Create UI entity to display level start information
+
+/*     // Create UI entity to display level start information
     std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
     Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
     this->_engine->addComponent<Transform>(levelStartEntity, Transform(400.f, 200.f, 0.f, 2.0f));
     this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage.c_str()));
-    this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    //this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
 
     // Display estimated duration if provided
     if (estimated_duration > 0) {
@@ -2114,8 +2115,8 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
         Entity durationEntity = this->_engine->createEntity("LevelDuration");
         this->_engine->addComponent<Transform>(durationEntity, Transform(400.f, 250.f, 0.f, 1.0f));
         this->_engine->addComponent<Text>(durationEntity, Text(durationMessage.c_str()));
-        this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
-    }
+        //this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    } */
 
     // Initialize level component if needed
     // Note: The server will spawn level entities and waves through TYPE_ENTITY_SPAWN packets
