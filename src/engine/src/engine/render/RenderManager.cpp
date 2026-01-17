@@ -40,9 +40,8 @@ RenderManager::RenderManager() : _coordinator(nullptr), _localPlayerEntity(Entit
     this->_activeActions[GameAction::SWITCH_WEAPON] = false;
     this->_activeActions[GameAction::USE_POWERUP] = false;
     this->_activeActions[GameAction::SPECIAL] = false;
-    // this->_activeActions[GameAction::OPTIONS] = false;
+    this->_activeActions[GameAction::OPTIONS] = false;
     this->_activeActions[GameAction::EXIT] = false;
-
 
     this->_activeActions[GameAction::RIGHT_CLICK] = false;
     this->_activeActions[GameAction::LEFT_CLICK] = false;
@@ -161,30 +160,13 @@ void RenderManager::handleEvent(const sf::Event& event)
     if (event.type == sf::Event::Closed)
         this->_window.close();
 
-    if (event.type == sf::Event::KeyPressed
-        || event.type == sf::Event::KeyReleased) {
+    if (event.type == sf::Event::KeyPressed || event.type == sf::Event::KeyReleased) {
         bool isPressed = (event.type == sf::Event::KeyPressed);
 
-        if (this->_keyBindings.count(event.key.code)) {
-            GameAction action = this->_keyBindings[event.key.code];
-            
-            // Update local _activeActions (for legacy code compatibility)
-            this->_activeActions[action] = isPressed;
-            
-            // Also update the local player's InputComponent if it exists and is Playable
-
-            //FIXME: game engine has been refactor so need to be changed
-            // if (this->_coordinator && static_cast<std::size_t>(this->_localPlayerEntity) != 0) {
-            //     auto& playables = this->_coordinator->getComponents<Playable>();
-            //     size_t entityId = static_cast<std::size_t>(this->_localPlayerEntity);
-            //     // Only apply input to the local playable player
-            //     if (entityId < playables.size() && playables[entityId].has_value()) {
-            //         this->_coordinator->setPlayerInputAction(this->_localPlayerEntity, 0, action, isPressed);
-            //     }
-            // }
-        }
-
-        //TODO: keybinds
+        // find in the updated map
+        auto it = _keyBindings.find(event.key.code);
+        if (it != _keyBindings.end())
+            this->_activeActions[it->second] = isPressed;
     }
 
     if (event.type == sf::Event::MouseButtonPressed || event.type == sf::Event::MouseButtonReleased) {

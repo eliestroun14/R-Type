@@ -9,7 +9,7 @@
 #define ASSETS_HPP_
 
 #define NUMBER_ASSETS 51
-#define NUMBER_FONT_ASSETS 2
+#define NUMBER_FONT_ASSETS 5
 #define NUMBER_AUDIO_ASSETS 25
 
 
@@ -210,12 +210,18 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
 enum FontAssets {
     DEFAULT_FONT,
     DYSLEXIC_FONT,
+    DYSLEXIC_FONT_2,
+    DYSLEXIC_FONT_3,
+    DYSLEXIC_FONT_4,
 };
 
 static const std::array<std::string, NUMBER_FONT_ASSETS> pathFontAssets = {
     // FONT
     "../assets/font/defaultFont.otf",
     "../assets/font/dyslexicFont.otf",
+    "../assets/font/dyslexicFont2.ttf",
+    "../assets/font/dyslexicFont3.ttf",
+    "../assets/font/dyslexicFont4.ttf",
 };
 
 

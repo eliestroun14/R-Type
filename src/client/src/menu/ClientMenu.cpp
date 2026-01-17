@@ -23,12 +23,18 @@ void ClientMenu::update() {
     // std::cout << "#################### DEBUG ##################" << std::endl;
     // std::cout << "###################" << this->_menuEntities.size() << " ###################" << std::endl;
     // std::cout << "#################### DEBUG ##################" << std::endl;
-
-
     while (!_pendingActions.empty()) {
         _pendingActions.front()();
         _pendingActions.pop();
     }
+
+    auto& configs = _engine->getComponents<GameConfig>();
+    for (auto& config : configs)
+        if (config.has_value()) {
+            // we set the GameConfig here, if we change something in settings about keybinds, changement will be set
+            _engine->getRenderManager()->updateKeyBindings(config->_keybinds);
+            break;
+        }
 }
 
 void ClientMenu::createMainMenu()
@@ -138,7 +144,13 @@ void ClientMenu::createOptionMenu()
             MUSIC_ON_NONE_BUTTON, MUSIC_ON_HOVER_BUTTON, MUSIC_ON_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set music
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->musicEnabled = false;
+                            break;
+                        }
+                    }
                     this->_musicOn = false;
                     this->clearMenuEntities(true);
                     this->createOptionMenu();
@@ -151,7 +163,13 @@ void ClientMenu::createOptionMenu()
             MUSIC_OFF_NONE_BUTTON, MUSIC_OFF_HOVER_BUTTON, MUSIC_OFF_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set music
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->musicEnabled = true;
+                            break;
+                        }
+                    }
                     this->_musicOn = true;
                     this->clearMenuEntities(true);
                     this->createOptionMenu();
@@ -166,8 +184,13 @@ void ClientMenu::createOptionMenu()
             SOUND_ON_NONE_BUTTON, SOUND_ON_HOVER_BUTTON, SOUND_ON_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set sound
-
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->soundEnabled = false;
+                            break;
+                        }
+                    }
                     this->_soundOn = false;
                     this->clearMenuEntities(true);
                     this->createOptionMenu();
@@ -180,7 +203,13 @@ void ClientMenu::createOptionMenu()
             SOUND_OFF_NONE_BUTTON, SOUND_OFF_HOVER_BUTTON, SOUND_OFF_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set sound
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->soundEnabled = true;
+                            break;
+                        }
+                    }
 
                     this->_soundOn = true;
                     this->clearMenuEntities(true);
@@ -267,11 +296,10 @@ void ClientMenu::createKeybindsMenu()
     ));
 
     // MOVEMENT BUTTON KEYBINDS
-
-    addMenuEntity(createRebindButton(*_engine, "UP", GameAction::MOVE_UP, 30, {110, 450}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "DOWN", GameAction::MOVE_DOWN, 30, {110, 600}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "LEFT", GameAction::MOVE_LEFT, 30, {110, 750}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "RIGHT", GameAction::MOVE_RIGHT, 30, {110, 900}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_UP), GameAction::MOVE_UP, 30, {110, 450}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_DOWN), GameAction::MOVE_DOWN, 30, {110, 600}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_LEFT), GameAction::MOVE_LEFT, 30, {110, 750}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::MOVE_RIGHT), GameAction::MOVE_RIGHT, 30, {110, 900}, DEFAULT_BUTTON_MID_SCALE));
 
     // addMenuEntity(createButton(*_engine, "UP", 30, sf::Color::White, {110, 450}, DEFAULT_BUTTON_MID_SCALE,
     //     sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
@@ -355,10 +383,10 @@ void ClientMenu::createKeybindsMenu()
     //     }
     // ));
 
-    addMenuEntity(createRebindButton(*_engine, "S", GameAction::SHOOT, 30, {510, 450}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "D", GameAction::SWITCH_WEAPON, 30, {510, 600}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "SPACE", GameAction::USE_POWERUP, 30, {510, 750}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, "F", GameAction::SPECIAL, 30, {510, 900}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SHOOT), GameAction::SHOOT, 30, {510, 450}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SWITCH_WEAPON), GameAction::SWITCH_WEAPON, 30, {510, 600}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::USE_POWERUP), GameAction::USE_POWERUP, 30, {510, 750}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SPECIAL), GameAction::SPECIAL, 30, {510, 900}, DEFAULT_BUTTON_MID_SCALE));
 
 
 }
@@ -380,13 +408,16 @@ void ClientMenu::createAccessibilityMenu()
     // TEXT
     addMenuEntity(createText(*this->_engine, "ACCESSIBILITY", 80, sf::Color::White, {485, 210}, 0, 1.5f));
 
+    addMenuEntity(createText(*this->_engine, "DYSLEXIC FONTS", 40, sf::Color::White, {485, 400}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "DEFAULT FONT", 40, sf::Color::White, {485, 800}, 0, 1.5f));
+
     // ANIMATED IMAGES
     Animation planetAnimation(OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT, OPTION_MENU_PLANET_ANIMATION_CURRENT,
         OPTION_MENU_PLANET_ANIMATION_ELAPSED_TIME, OPTION_MENU_PLANET_ANIMATION_DURATION, OPTION_MENU_PLANET_ANIMATION_START,
         OPTION_MENU_PLANET_ANIMATION_END, OPTION_MENU_PLANET_ANIMATION_LOOPING);
 
     addMenuEntity(createAnimatedImage(*this->_engine, Assets::KEYBINDS_MENU_PLANET, planetAnimation, {-200, -1300},
-        0, OPTION_MENU_PLANET_SPRITE_SCALE, sf::IntRect(0, 0, OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT), ZIndex::IS_BACKGROUND));
+        0, OPTION_MENU_PLANET_SPRITE_SCALE, sf::IntRect(0, 0, OPTION_MENU_PLANET_SPRITE_WIDTH, OPTION_MENU_PLANET_SPRITE_HEIGHT), ZIndex::IS_GAME));
 
     // BUTTONSs
     addMenuEntity(createButton(*_engine, "back", 0, sf::Color::White, {30, 30}, BACK_BUTTON_SCALE,
@@ -401,7 +432,7 @@ void ClientMenu::createAccessibilityMenu()
     ));
 
 
-    addMenuEntity(createButton(*_engine, "CHANGE FONT", 35, sf::Color::White, {275, 550}, DEFAULT_BUTTON_SCALE,
+    addMenuEntity(createButton(*_engine, "DEFAULT FONT", 30, sf::Color::White, {275, 850}, DEFAULT_BUTTON_SCALE,
         sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
         DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
         [this]() {
@@ -410,10 +441,78 @@ void ClientMenu::createAccessibilityMenu()
 
                 for (auto& config : configs) {
                     if (config.has_value()) {
-                        if (config->activeFont == FontAssets::DEFAULT_FONT)
-                            config->activeFont = FontAssets::DYSLEXIC_FONT;
-                        else
-                            config->activeFont = FontAssets::DEFAULT_FONT;
+                        config->activeFont = FontAssets::DEFAULT_FONT;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+    addMenuEntity(createButton(*_engine, "WEIGHTED", 35, sf::Color::White, {50, 450}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+
+    addMenuEntity(createButton(*_engine, "ORGANIC", 35, sf::Color::White, {500, 450}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT_2;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+
+    addMenuEntity(createButton(*_engine, "CLEAR", 35, sf::Color::White, {50, 600}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT_3;
+                        break;
+                    }
+                }
+            });
+        }
+    ));
+
+
+    addMenuEntity(createButton(*_engine, "THIN", 35, sf::Color::White, {500, 600}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                auto& configs = _engine->getComponents<GameConfig>();
+
+                for (auto& config : configs) {
+                    if (config.has_value()) {
+                        config->activeFont = FontAssets::DYSLEXIC_FONT_4;
                         break;
                     }
                 }

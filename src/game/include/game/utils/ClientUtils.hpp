@@ -114,8 +114,34 @@ Entity createMovingBackground(gameEngine::GameEngine& engine, Assets assetId,
     sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite,
     float speed, bool isHorizontal, bool shouldRepeat);
 
-
+/**
+ * @brief Create a rebind button for the keybinds menu
+ * @param engine The GameEngine instance
+ * @param label The text inside the button and the label for debugging
+ * @param action The game action you want to rebind
+ * @param textSize The size of the text inside the button
+ * @param pos The pos of the button (sf::Vector2f)
+ * @param scale The scale of the button
+ * @return A vector of entity created, the sprite button and the text
+ */
 std::vector<Entity> createRebindButton(gameEngine::GameEngine& engine, std::string label,
     GameAction action, int textSize, sf::Vector2f pos, float scale);
+
+
+/**
+ * @brief Translate sf::Keyboard::Key to string
+ * @param key The key
+ * @return String of the key
+ */
+std::string keyToString(sf::Keyboard::Key key);
+
+/**
+ * @brief Get from the GameConfig the key related to the action
+ * @param engine The GameEngine instance
+ * @param action The game action you want to rebind
+ * @return String of the key
+ */
+std::string getKeybordKeyFromGameConfig(gameEngine::GameEngine& engine, GameAction action);
+
 
 #endif /* !CLIENT_UTILS_HPP */
