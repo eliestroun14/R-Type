@@ -10,6 +10,7 @@
 
 #include <engine/GameEngine.hpp>
 #include <engine/ecs/system/System.hpp>
+#include <common/constants/render/Assets.hpp>
 
 class RenderSystem : public System {
     public:
@@ -22,6 +23,8 @@ class RenderSystem : public System {
     private:
         gameEngine::GameEngine& _engine;
         std::vector<size_t> _sortedEntities;
+
+        FontAssets _targetFont;
 };
 
 #endif /* !RENDERSYSTEM_HPP_ */

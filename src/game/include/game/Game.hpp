@@ -16,6 +16,7 @@
 #include <common/network/NetworkManager.hpp>
 #include <common/protocol/Packet.hpp>
 #include <game/coordinator/Coordinator.hpp>
+#include <game/menu/IMenu.hpp>
 
 class Game {
     public:
@@ -46,6 +47,9 @@ class Game {
         
         // Server-side: Set max players for level start condition
         void setMaxPlayers(uint32_t maxPlayers) { _maxPlayers = maxPlayers; }
+
+
+        void setMenu(std::shared_ptr<IMenu> menu) { _menu = menu; }
 
     protected:
         void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);
@@ -91,6 +95,9 @@ class Game {
         
         /** @brief Check if level should start and start it if conditions are met (server-side only). */
         void checkAndStartLevel();
+
+
+        std::shared_ptr<IMenu> _menu;
 };
 
 #endif /* !GAME_HPP_ */

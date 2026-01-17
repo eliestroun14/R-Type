@@ -8,6 +8,11 @@
 #include <game/systems/ButtonSystem.hpp>
 
 void ButtonSystem::onUpdate(float deltaTime) {
+    // ButtonSystem should only run on client side
+    if (_isServer) {
+        return;
+    }
+
     auto& buttons = this->_engine.getComponents<ButtonComponent>();
     auto& sprites = this->_engine.getComponents<Sprite>();
     sf::Vector2i mousePos = this->_engine.getMousePosition();

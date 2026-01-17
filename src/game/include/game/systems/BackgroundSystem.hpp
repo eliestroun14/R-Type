@@ -13,7 +13,8 @@
 
 class BackgroundSystem : public System {
     public:
-        BackgroundSystem(gameEngine::GameEngine& engine) : _engine(engine) {}
+        BackgroundSystem(gameEngine::GameEngine& engine, bool isServer = false) 
+            : _engine(engine), _isServer(isServer) {}
 
         void onCreate() override {}
 
@@ -21,6 +22,7 @@ class BackgroundSystem : public System {
 
     private:
         gameEngine::GameEngine& _engine;
+        bool _isServer;
 };
 
 #endif /* !BACKGROUNDSYSTEM_HPP_ */

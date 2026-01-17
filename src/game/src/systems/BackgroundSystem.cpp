@@ -13,6 +13,11 @@
 void BackgroundSystem::onUpdate(float dt)
 {
     LOG_DEBUG_CAT("BackgroundSystem","BackgroundSystem::onUpdate - dt: {} ", dt);
+    // BackgroundSystem should only run on client side
+    if (_isServer) {
+        return;
+    }
+    
     auto& transforms = this->_engine.getComponents<Transform>();
     auto& sprites = this->_engine.getComponents<Sprite>();
     auto& backgrounds = this->_engine.getComponents<ScrollingBackground>();

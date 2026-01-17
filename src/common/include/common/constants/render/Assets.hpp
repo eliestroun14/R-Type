@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 44
+#define NUMBER_ASSETS 51
 #define NUMBER_FONT_ASSETS 2
 #define NUMBER_AUDIO_ASSETS 25
 
@@ -50,6 +50,7 @@ enum Assets {
     CHARCHING_BULLET,
     DEFAULT_BULLET,
     FULL_CHARGED_BULLET,
+    SPIRAL_BULLET,
 
     // POWERUPS
     PET_POWERUPS,
@@ -69,6 +70,20 @@ enum Assets {
     MAIN_MENU_BG,
     MAIN_MENU_BG_LIGHT,
 
+
+    // OPTIONS ELEMENTS
+    OPTION_MENU_PLANET,
+    OPTION_MENU_BG,
+
+
+    // KEYBINDS ELEMENTS
+    KEYBINDS_MENU_PLANET,
+    KEYBINDS_MENU_BG,
+
+
+    // ACCESIBILITY ELEMENTS
+    ACCESSIBILITY_MENU_PLANET,
+    ACCESSIBILITY_MENU_BG,
 
     // BUTTONS
     DEFAULT_NONE_BUTTON,
@@ -127,6 +142,7 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     "../assets/bullet/chargingBullet.png",
     "../assets/bullet/defaultBullet.png",
     "../assets/bullet/fullChargedBullet.png",
+    "../assets/bullet/spiralBullet.png",
 
     // POWERUPS
     "../assets/powerups/petPowerup.png",
@@ -145,6 +161,21 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     "../assets/menu/mainMenu/planet/mainMenuPlanet.png",
     "../assets/menu/mainMenu/background/mainMenuBg.png",
     "../assets/menu/mainMenu/background/mainMenuBgLight.png",
+
+
+    // OPTION MENU ELEMENTS
+    "../assets/menu/options/planet/optionMenuPlanet.png",
+    "../assets/menu/options/background/optionMenuBg.png",
+
+
+    // KEYBINDS ELEMENTS
+    "../assets/menu/keybinds/planet/keybindsMenuPlanet.png",
+    "../assets/menu/keybinds/background/keybindsMenuBg.png",
+
+
+    // ACCESSIBILITY ELEMENTS
+    "../assets/menu/accessibility/planet/accessibilityMenuPlanet.png",
+    "../assets/menu/accessibility/background/accessibilityMenuBg.png",
 
 
     // BUTTONS

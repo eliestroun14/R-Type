@@ -15,8 +15,8 @@
 
 class ButtonSystem : public System {
     public:
-        ButtonSystem(gameEngine::GameEngine& engine)
-            : _engine(engine)
+        ButtonSystem(gameEngine::GameEngine& engine, bool isServer = false)
+            : _engine(engine), _isServer(isServer)
         {}
 
         void onCreate() override {}
@@ -25,6 +25,7 @@ class ButtonSystem : public System {
 
     private:
         gameEngine::GameEngine& _engine;
+        bool _isServer;
 
 };
 

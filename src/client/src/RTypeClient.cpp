@@ -17,6 +17,7 @@
 #include <client/network/ClientNetworkManager.hpp>
 #include <common/logger/Logger.hpp>
 #include <common/error/Error.hpp>
+#include <client/menu/ClientMenu.hpp>
 
 RTypeClient::RTypeClient() : _isRunning(false)
 {
@@ -30,7 +31,18 @@ void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerNa
 {
     _networkManager = std::make_unique<client::network::ClientNetworkManager>(serverIp, port, this);
 
+    // will init the engine && coordinator
     _game = std::make_unique<Game>(Game::Type::CLIENT);
+
+    // create menu using engine inside the game
+    auto engine = _game->getCoordinator()->getEngine();
+    auto menu = std::make_shared<ClientMenu>(engine);
+
+    // set menu in the game
+    _game->setMenu(menu);
+
+    // 4. init main menu content
+    menu->createMainMenu();
 
     _playerName = playerName;
     _isRunning = false;
