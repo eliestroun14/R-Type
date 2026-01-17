@@ -120,12 +120,12 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
 
     // Get next entity ID and use Coordinator to create enemy with proper network sync
     uint32_t enemyId = this->_engine.getNextEntityId();
-    
+
     // Determine enemy stats based on type
     uint16_t health = BASE_ENEMY_HEALTH_START;
     float velX = BASE_ENEMY_VELOCITY_X;
     float velY = BASE_ENEMY_VELOCITY_Y;
-    
+
     switch (type)
     {
     case EnemyType::BASIC:
@@ -133,27 +133,42 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
         velX = BASE_ENEMY_VELOCITY_X;
         velY = BASE_ENEMY_VELOCITY_Y;
         break;
-    
-    case EnemyType::FAST:
+
+        case EnemyType::FAST:
         health = FAST_ENEMY_HEALTH;
         velX = FAST_ENEMY_VELOCITY_X;
         velY = FAST_ENEMY_VELOCITY_Y;
         break;
-    
-    case EnemyType::TANK:
+
+        case EnemyType::TANK:
         health = TANK_ENEMY_HEALTH;
         velX = TANK_ENEMY_VELOCITY_X;
         velY = TANK_ENEMY_VELOCITY_Y;
         break;
-    
-    case EnemyType::BOSS:
+
+        case EnemyType::BOSS:
         // TODO: Implement boss stats
         break;
-    
-    default:
+
+        default:
         break;
     }
-    
+
+    // Determine scale based on enemy type
+    float enemyScale = 10.0f;  // Default scale
+    switch (type)
+    {
+    case EnemyType::FAST:
+        enemyScale = FAST_ENEMY_SCALE;
+        break;
+    case EnemyType::TANK:
+        enemyScale = TANK_ENEMY_SCALE;
+        break;
+    default:
+        enemyScale = 10.0f;
+        break;
+    }
+
     // Use Coordinator to create enemy with proper network ID
     Entity enemy = this->_coordinator->createEnemyEntity(
         enemyId,
@@ -162,7 +177,13 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
         health,
         true  // withRenderComponents - assume server has render for now
     );
-    
+
+    // Update enemy scale after creation
+    auto& transforms = _engine.getComponents<Transform>();
+    if (transforms[enemy]) {
+        transforms[enemy]->scale = enemyScale;
+    }
+
     // Add enemy-specific components based on type
     switch (type)
     {
@@ -170,13 +191,13 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
         _engine.addComponent<Weapon>(enemy, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
         _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
         break;
-    
-    case EnemyType::FAST:
+
+        case EnemyType::FAST:
         _engine.addComponent<Weapon>(enemy, Weapon(FAST_ENEMY_WEAPON_FIRE_RATE, 0, FAST_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
         _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
         break;
-    
-    case EnemyType::TANK:
+
+        case EnemyType::TANK:
         _engine.addComponent<Weapon>(enemy, Weapon(TANK_ENEMY_WEAPON_FIRE_RATE, 0, TANK_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
         _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
         break;

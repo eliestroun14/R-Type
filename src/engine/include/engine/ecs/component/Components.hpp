@@ -331,6 +331,13 @@ struct OptionMenuScene {};
  */
 struct GameScene {};
 
+/**
+ * @brief Tag component for timer UI elements that need dynamic updates.
+ * 
+ * TimerUI entities display countdown timers that update each frame.
+ */
+struct TimerUI {};
+
 
 
 /**

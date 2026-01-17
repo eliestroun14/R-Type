@@ -57,7 +57,7 @@ enum NetworkType {
 #define BASE_ENEMY_HEALTH_START 50
 #define BASE_ENEMY_HEALTH_MAX 50
 
-#define BASE_ENEMY_VELOCITY_X 0.0f
+#define BASE_ENEMY_VELOCITY_X -20.0f
 #define BASE_ENEMY_VELOCITY_Y 0.0f
 
 
@@ -71,19 +71,19 @@ enum NetworkType {
 
 // FAST ENEMY
 #define FAST_ENEMY_HEALTH 30
-#define FAST_ENEMY_VELOCITY_X -0.3f
+#define FAST_ENEMY_VELOCITY_X -30.0f
 #define FAST_ENEMY_VELOCITY_Y 0.0f
 #define FAST_ENEMY_WEAPON_FIRE_RATE 800
 #define FAST_ENEMY_WEAPON_DAMAGE 5
-#define FAST_ENEMY_SCALE 2.0f
+#define FAST_ENEMY_SCALE 10.0f
 
 // TANK ENEMY
 #define TANK_ENEMY_HEALTH 150
-#define TANK_ENEMY_VELOCITY_X -0.05f
-#define TANK_ENEMY_VELOCITY_Y 0.0f
+#define TANK_ENEMY_VELOCITY_X -5.0f
+#define TANK_ENEMY_VELOCITY_Y -5.0f
 #define TANK_ENEMY_WEAPON_FIRE_RATE 500
 #define TANK_ENEMY_WEAPON_DAMAGE 15
-#define TANK_ENEMY_SCALE 3.0f
+#define TANK_ENEMY_SCALE 10.0f
 
 // ==============================================================
 //              LEVEL SYSTEM DEFINITIONS

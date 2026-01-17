@@ -11,6 +11,7 @@
 #include "game/systems/BackgroundSystem.hpp"
 #include "game/systems/CollisionSystem.hpp"
 #include "game/systems/LevelSystem.hpp"
+#include "game/systems/LevelTimerSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -43,6 +44,7 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<AudioEffect>();
     this->_engine->registerComponent<Team>();
     this->_engine->registerComponent<Level>();
+    this->_engine->registerComponent<TimerUI>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -85,6 +87,10 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
 
     // Set signature: RenderSystem needs Transform and Sprite components
     this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
+    
+    // Register LevelTimerSystem to update countdown timers
+    auto levelTimerSystem = this->_engine->registerSystem<LevelTimerSystem>(*this->_engine);
+    this->_engine->setSystemSignature<LevelTimerSystem, TimerUI, Text>();
 }
 
 // ==============================================================
@@ -225,7 +231,7 @@ void Coordinator::setupEnemyEntity(
     bool withRenderComponents
 )
 {
-    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.0f));
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 4.0f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
     
@@ -303,25 +309,25 @@ Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std
         wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
 
         // Wave 3: Tank wave
-        Wave wave3;
-        wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
-        wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
-        wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
-        wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
+        //Wave wave3;
+        //wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
+        //wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
+        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
+        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
 
         // Wave 4: Final assault
-        Wave wave4;
-        wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
-        wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
-        wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
-        wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
-        wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
-        wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
+        //Wave wave4;
+        //wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
+        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
+        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
 
         level.waves.push_back(wave1);
         level.waves.push_back(wave2);
-        level.waves.push_back(wave3);
-        level.waves.push_back(wave4);
+        //level.waves.push_back(wave3);
+        //level.waves.push_back(wave4);
     }
     // Can add more levels later
     else {
@@ -1118,6 +1124,13 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u is_playable=%u",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
 
+    // Check if entity already exists (to avoid duplicate spawning)
+    Entity existingEntity = this->_engine->getEntityFromId(payload.entity_id);
+    if (this->_engine->isAlive(existingEntity)) {
+        LOG_WARN_CAT("Coordinator", "Entity with ID %u already exists, skipping spawn", payload.entity_id);
+        return;
+    }
+
     // Create the entity with the specific ID from the server
     Entity newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
 
@@ -1138,17 +1151,22 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY): {
+            // Convert velocity from network format (int16_t representing velocity * 1000)
+            float velX = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_x)) / 1000.0f;
+            float velY = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_y)) / 1000.0f;
+            
             this->setupEnemyEntity(
                 newEntity,
                 payload.entity_id,
                 static_cast<float>(payload.position_x),
                 static_cast<float>(payload.position_y),
-                static_cast<float>(payload.initial_velocity_x),
-                static_cast<float>(payload.initial_velocity_y),
+                velX,
+                velY,
                 payload.initial_health,
                 /*withRenderComponents=*/true
             );
-            LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
+            LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f) with velocity (%.3f, %.3f)", 
+                        payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), velX, velY);
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
@@ -2044,6 +2062,7 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     // The actual asset would come from level data sent by server or configured per level
     this->_engine->addComponent<Sprite>(backgroundEntity, Sprite(Assets::GAME_BG, ZIndex::IS_BACKGROUND));
     this->_engine->addComponent<ScrollingBackground>(backgroundEntity, ScrollingBackground(LEVEL_BACKGROUND_SCROLL_SPEED, true, true));
+    this->_engine->addComponent<Drawable>(backgroundEntity, Drawable());
     LOG_INFO_CAT("Coordinator", "Created scrolling background for level {}", level_id);
 
     // Start level music (client-side only)
@@ -2052,21 +2071,24 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     playMusic(protocol::AudioEffectType::FIRST_LEVEL_MUSIC);
     LOG_INFO_CAT("Coordinator", "Started level music");
 
-    // Create UI entity to display level start information
-    std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
-    Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
-    this->_engine->addComponent<Transform>(levelStartEntity, Transform(400.f, 200.f, 0.f, 2.0f));
-    this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage));
-    this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    //// Create UI entity to display level start information
+    //std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
+    //Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
+    //this->_engine->addComponent<Transform>(levelStartEntity, Transform(640.f, 100.f, 0.f, 1.0f));
+    //this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage, FontAssets::DEFAULT_FONT, sf::Color::White, 48, ZIndex::IS_UI_HUD));
+    //this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
+    //this->_engine->addComponent<Drawable>(levelStartEntity, Drawable());
 
-    // Display estimated duration if provided
-    if (estimated_duration > 0) {
-        std::string durationMessage = "Estimated Time: " + std::to_string(estimated_duration) + "s";
-        Entity durationEntity = this->_engine->createEntity("LevelDuration");
-        this->_engine->addComponent<Transform>(durationEntity, Transform(400.f, 250.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(durationEntity, Text(durationMessage));
-        this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
-    }
+    // Display timer countdown if provided
+    //if (estimated_duration > 0) {
+    //    std::string timerMessage = "Time: " + std::to_string(static_cast<int>(estimated_duration)) + "s";
+    //    Entity timerEntity = this->_engine->createEntity("LevelTimer");
+    //    this->_engine->addComponent<Transform>(timerEntity, Transform(640.f, 50.f, 0.f, 1.0f));
+    //    this->_engine->addComponent<Text>(timerEntity, Text(timerMessage, FontAssets::DEFAULT_FONT, sf::Color::Yellow, 36, ZIndex::IS_UI_HUD));
+    //    this->_engine->addComponent<Sprite>(timerEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
+    //    this->_engine->addComponent<TimerUI>(timerEntity, TimerUI());
+    //    this->_engine->addComponent<Drawable>(timerEntity, Drawable());
+    //}
 
     // Initialize level component if needed
     // Note: The server will spawn level entities and waves through TYPE_ENTITY_SPAWN packets
@@ -2337,9 +2359,9 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     uint8_t initial_health = healthOpt.has_value() ? static_cast<uint8_t>(healthOpt.value().currentHealth) : 100;
     args.push_back(initial_health);
 
-    // initial_velocity_x, initial_velocity_y
-    int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx) : 0;
-    int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy) : 0;
+    // initial_velocity_x, initial_velocity_y (multiply by 1000 for network encoding)
+    int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx * 1000.0f) : 0;
+    int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy * 1000.0f) : 0;
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_x), 
                 reinterpret_cast<uint8_t*>(&velocity_x) + sizeof(velocity_x));
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_y), 
