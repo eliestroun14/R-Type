@@ -8,31 +8,67 @@
 #ifndef CLIENTMENU_HPP_
 #define CLIENTMENU_HPP_
 
-#include <game/Game.hpp>
+#include <engine/GameEngine.hpp>
 #include <game/utils/ClientUtils.hpp>
+#include <game/menu/IMenu.hpp>
+#include <queue>
 
-class ClientMenu {
+class ClientMenu : public IMenu {
 
     public:
-        ClientMenu();
+        ClientMenu(std::shared_ptr<gameEngine::GameEngine> engine);
         ~ClientMenu();
 
+        template<typename T>
+        void addMenuEntity(T entityOrList) {
+            if constexpr (std::is_same_v<T, Entity>)
+                _menuEntities.push_back(entityOrList);
+            else
+                _menuEntities.insert(_menuEntities.end(), entityOrList.begin(), entityOrList.end());
+        }
+
+        void update() override;
 
         /**
          * @brief Method that create every entity for the main menu.
          */
-        void createMainMenu();
+        void createMainMenu() override;
 
         /**
          * @brief Method that create every entity for the option menu.
          */
-        void createOptionMenu();
+        void createOptionMenu() override;
+
+        /**
+         * @brief Method that create every entity for the keybinds menu.
+         */
+        void createKeybindsMenu();
+
+        /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void createAccessibilityMenu();
+
+        /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void createPlayMenu();
+
+        /**
+         * @brief Method that remove every entities'components to diseable and hide them.
+         */
+        void clearMenuEntities(bool keepBackground = false);
 
     private:
         bool _isConnected;
-        std::unique_ptr<Game> _game;
+        std::shared_ptr<gameEngine::GameEngine> _engine;
+        std::vector<Entity> _menuEntities;
+        std::queue<std::function<void()>> _pendingActions;
 
+        Assets _currentBackgroundAsset = Assets::MAIN_MENU_BG;
 
+        bool _musicOn;
+        bool _soundOn;
 };
 
 #endif /* !CLIENTMENU_HPP_ */

@@ -25,6 +25,10 @@
 #include <vector>
 #include <common/protocol/Protocol.hpp>
 #include <functional>
+#include <cstring>
+#include <engine/render/RenderManager.hpp>
+
+// #include <engine/render/RenderManager.hpp>
 
 // Forward declaration for GameAction enum
 enum class GameAction;
@@ -155,14 +159,20 @@ struct Animation
  */
 struct Text
 {
-    std::string str;
-    FontAssets fontId;
+    char str[128];
     unsigned int size;
     sf::Color color;
     ZIndex zIndex;
 
-    Text(std::string s, FontAssets f = DEFAULT_FONT, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
-        : str(s), color(c), fontId(f), size(sz), zIndex(z) {}
+    Text(const char *s, sf::Color c = sf::Color::White, unsigned int sz = 30, ZIndex z = ZIndex::IS_UI_HUD)
+        : color(c), size(sz), zIndex(z)
+    {
+        // init tab to 0
+        std::memset(this->str, 0, sizeof(this->str));
+        // copy the text and be sure that we do not go over 127 char
+        if (s)
+            std::strncpy(this->str, s, sizeof(this->str) - 1);
+    }
 };
 
 /**
@@ -805,6 +815,53 @@ struct Force
           chargePercentage(charge), isFiring(firing) {}
 };
 
+
+// ############################################################################
+// ############################ ACCESSIBILITY #################################
+// ############################################################################
+
+/**
+ * @brief GameConfig component.
+ *
+ * Only ONE entity has this component assigned when Game is created.
+ * Let know the game from the entity if music/sound are enabled or for keybinds.
+ * Used by: AccessibilitySystem, RebindSystem.
+ */
+struct GameConfig {
+    FontAssets activeFont;
+    bool musicEnabled;
+    bool soundEnabled;
+    // you can add accessibility settings, maybe the keybinds ?
+    std::map<sf::Keyboard::Key, GameAction> _keybinds;
+
+    GameConfig(FontAssets activeF, bool music, bool sound)
+        : activeFont(activeF), musicEnabled(music), soundEnabled(sound) {
+            // Movement
+            _keybinds[sf::Keyboard::Up] = GameAction::MOVE_UP;
+            _keybinds[sf::Keyboard::Down] = GameAction::MOVE_DOWN;
+            _keybinds[sf::Keyboard::Left] = GameAction::MOVE_LEFT;
+            _keybinds[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
+
+            // ACTIONS
+            _keybinds[sf::Keyboard::S] = GameAction::SHOOT;
+            _keybinds[sf::Keyboard::D] = GameAction::SWITCH_WEAPON;
+            _keybinds[sf::Keyboard::Space] = GameAction::USE_POWERUP;
+            _keybinds[sf::Keyboard::F] = GameAction::SPECIAL;
+
+            // OTHER
+            _keybinds[sf::Keyboard::P] = GameAction::OPTIONS;
+            _keybinds[sf::Keyboard::Escape] = GameAction::EXIT;
+        }
+};
+
+struct Rebind {
+    GameAction action;
+    bool isWaiting = false;
+    Entity associatedText;
+
+    Rebind(GameAction a, Entity textEnt)
+        : action(a), isWaiting(false), associatedText(textEnt) {}
+ 
 // ############################################################################
 // ################################# TEAMS  ###################################
 // ############################################################################

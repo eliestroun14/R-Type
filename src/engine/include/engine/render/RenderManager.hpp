@@ -171,6 +171,11 @@ class RenderManager {
          */
         float getScaleFactor() const;
 
+        /**
+         * @brief Close the window.
+         */
+        void closeWindow();
+
     private:
         Coordinator* _coordinator;
         Entity _localPlayerEntity;
