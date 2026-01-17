@@ -138,7 +138,13 @@ void ClientMenu::createOptionMenu()
             MUSIC_ON_NONE_BUTTON, MUSIC_ON_HOVER_BUTTON, MUSIC_ON_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set music
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->musicEnabled = false;
+                            break;
+                        }
+                    }
                     this->_musicOn = false;
                     this->clearMenuEntities(true);
                     this->createOptionMenu();
@@ -151,7 +157,13 @@ void ClientMenu::createOptionMenu()
             MUSIC_OFF_NONE_BUTTON, MUSIC_OFF_HOVER_BUTTON, MUSIC_OFF_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set music
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->musicEnabled = true;
+                            break;
+                        }
+                    }
                     this->_musicOn = true;
                     this->clearMenuEntities(true);
                     this->createOptionMenu();
@@ -166,8 +178,13 @@ void ClientMenu::createOptionMenu()
             SOUND_ON_NONE_BUTTON, SOUND_ON_HOVER_BUTTON, SOUND_ON_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set sound
-
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->soundEnabled = false;
+                            break;
+                        }
+                    }
                     this->_soundOn = false;
                     this->clearMenuEntities(true);
                     this->createOptionMenu();
@@ -180,7 +197,13 @@ void ClientMenu::createOptionMenu()
             SOUND_OFF_NONE_BUTTON, SOUND_OFF_HOVER_BUTTON, SOUND_OFF_CLICKED_BUTTON,
             [this]() {
                 this->_pendingActions.push([this]() {
-                    //TODO: set sound
+                    auto& configs = _engine->getComponents<GameConfig>();
+                    for (auto& config : configs) {
+                        if (config.has_value()) {
+                            config->soundEnabled = true;
+                            break;
+                        }
+                    }
 
                     this->_soundOn = true;
                     this->clearMenuEntities(true);
