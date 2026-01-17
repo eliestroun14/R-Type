@@ -176,6 +176,14 @@ class RenderManager {
          */
         void closeWindow();
 
+        /**
+         * @brief Update the map of keybinds from the ClientMenu.
+         * @param newBinds The map of keybinds
+         */
+        void updateKeyBindings(const std::map<sf::Keyboard::Key, GameAction>& newBinds) {
+            this->_keyBindings = newBinds;
+        }
+
     private:
         Coordinator* _coordinator;
         Entity _localPlayerEntity;

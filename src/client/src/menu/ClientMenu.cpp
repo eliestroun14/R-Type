@@ -23,12 +23,18 @@ void ClientMenu::update() {
     // std::cout << "#################### DEBUG ##################" << std::endl;
     // std::cout << "###################" << this->_menuEntities.size() << " ###################" << std::endl;
     // std::cout << "#################### DEBUG ##################" << std::endl;
-
-
     while (!_pendingActions.empty()) {
         _pendingActions.front()();
         _pendingActions.pop();
     }
+
+    auto& configs = _engine->getComponents<GameConfig>();
+    for (auto& config : configs)
+        if (config.has_value()) {
+            // we set the GameConfig here, if we change something in settings about keybinds, changement will be set
+            _engine->getRenderManager()->updateKeyBindings(config->_keybinds);
+            break;
+        }
 }
 
 void ClientMenu::createMainMenu()
