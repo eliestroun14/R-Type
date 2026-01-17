@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 {
     // Initialize logger first
     logger::Logger::setup(
-        logger::LogLevel::Info,
+        logger::LogLevel::Debug,
         "client.log",
         {},
         false,

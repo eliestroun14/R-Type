@@ -489,6 +489,11 @@ namespace gameEngine {
                 }
                 
                 if (hasInput && syncedCount > 0) {
+                    // Check if SHOOT is in the active actions for debugging
+                    auto shootIt = activeActions.find(GameAction::SHOOT);
+                    if (shootIt != activeActions.end() && shootIt->second) {
+                        std::cout << "[GameEngine] SHOOT action synced to " << syncedCount << " playable entities" << std::endl;
+                    }
                     LOG_DEBUG_CAT("GameEngine", "Synced inputs to {} playable entities", syncedCount);
                 }
             }

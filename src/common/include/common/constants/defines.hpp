@@ -269,7 +269,13 @@ enum NetworkType {
 #define WEAPON_FIRE_DIRECTION_Y_SIZE            2   // int16_t
 #define WEAPON_FIRE_WEAPON_TYPE_SIZE            1   // uint8_t
 #define WEAPON_FIRE_PAYLOAD_SIZE                (WEAPON_FIRE_SHOOTER_ID_SIZE + WEAPON_FIRE_PROJECTILE_ID_SIZE + WEAPON_FIRE_ORIGIN_X_SIZE + WEAPON_FIRE_ORIGIN_Y_SIZE + WEAPON_FIRE_DIRECTION_X_SIZE + WEAPON_FIRE_DIRECTION_Y_SIZE + WEAPON_FIRE_WEAPON_TYPE_SIZE)  // 17 bytes
-#define WEAPON_FIRE_MIN_ARGS_SIZE               (HEADER_SIZE + WEAPON_FIRE_PAYLOAD_SIZE)  // 37 bytes
+// Args format for createWeaponFire: flags_count(1) + flags(1+) + sequence(4) + timestamp(4) + payload(17)
+#define WEAPON_FIRE_ARGS_FLAGS_COUNT_SIZE       1   // uint8_t
+#define WEAPON_FIRE_ARGS_MIN_FLAGS_SIZE         1   // At least one flag byte
+#define WEAPON_FIRE_ARGS_SEQUENCE_SIZE          4   // uint32_t
+#define WEAPON_FIRE_ARGS_TIMESTAMP_SIZE         4   // uint32_t
+#define WEAPON_FIRE_ARGS_METADATA_SIZE          (WEAPON_FIRE_ARGS_FLAGS_COUNT_SIZE + WEAPON_FIRE_ARGS_MIN_FLAGS_SIZE + WEAPON_FIRE_ARGS_SEQUENCE_SIZE + WEAPON_FIRE_ARGS_TIMESTAMP_SIZE)  // 10 bytes
+#define WEAPON_FIRE_MIN_ARGS_SIZE               (WEAPON_FIRE_ARGS_METADATA_SIZE + WEAPON_FIRE_PAYLOAD_SIZE)  // 27 bytes minimum
 
 // VISUAL_EFFECT packet (0x50)
 #define VISUAL_EFFECT_EFFECT_TYPE_SIZE          1   // uint8_t
@@ -517,6 +523,10 @@ enum NetworkType {
 #define SPIRAL_BULLET_ANIMATION_START 0
 #define SPIRAL_BULLET_ANIMATION_END 2
 #define SPIRAL_BULLET_ANIMATION_LOOPING true // verify if its better to set to true ou false for this bullets
+// =============================== PROJECTILES ================================
+
+// BULLET SPEED (units per millisecond)
+#define BULLET_SPEED 1000.0f
 
 
 // =============================== ENEMIES ====================================
@@ -731,5 +741,38 @@ enum NetworkType {
 #define OPTION_MENU_PLANET_ANIMATION_END 49
 #define OPTION_MENU_PLANET_ANIMATION_LOOPING true
 
+// ==============================================================
+//                        AUDIO SYSTEM
+// ==============================================================
+
+// Audio source default parameters
+#define AUDIO_SOURCE_DEFAULT_LOOP false
+#define AUDIO_SOURCE_DEFAULT_MIN_DISTANCE 100.0f
+#define AUDIO_SOURCE_DEFAULT_ATTENUATION 0.5f
+#define AUDIO_SOURCE_DEFAULT_IS_UI false
+#define AUDIO_SOURCE_DEFAULT_PLAY_ONCE true
+#define AUDIO_SOURCE_DEFAULT_DURATION 1.0f
+
+// Weapon sound durations (in seconds)
+#define AUDIO_SHOOT_BASIC_DURATION 0.3f
+#define AUDIO_SHOOT_CHARGED_DURATION 0.4f
+#define AUDIO_SHOOT_LASER_DURATION 0.35f
+
+// Explosion sound durations
+#define AUDIO_EXPLOSION_SMALL_DURATION 0.5f
+#define AUDIO_EXPLOSION_LARGE_DURATION 0.7f
+
+// Projectile audio parameters (weapon-specific)
+#define AUDIO_BASIC_PROJECTILE_LOOP false
+#define AUDIO_BASIC_PROJECTILE_MIN_DISTANCE 100.0f
+#define AUDIO_BASIC_PROJECTILE_ATTENUATION 0.5f
+
+#define AUDIO_CHARGED_PROJECTILE_LOOP false
+#define AUDIO_CHARGED_PROJECTILE_MIN_DISTANCE 150.0f
+#define AUDIO_CHARGED_PROJECTILE_ATTENUATION 0.3f
+
+#define AUDIO_LASER_PROJECTILE_LOOP false
+#define AUDIO_LASER_PROJECTILE_MIN_DISTANCE 120.0f
+#define AUDIO_LASER_PROJECTILE_ATTENUATION 0.4f
 
 #endif /* !DEFINES_HPP_ */
