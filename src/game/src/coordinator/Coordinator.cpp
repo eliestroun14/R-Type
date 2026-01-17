@@ -9,6 +9,7 @@
 #include "game/systems/AnimationSystem.hpp"
 #include "game/systems/AudioSystem.hpp"
 #include "game/systems/CollisionSystem.hpp"
+#include "game/systems/ScoreSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -43,6 +44,7 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<AudioSource>();
     this->_engine->registerComponent<AudioEffect>();
     this->_engine->registerComponent<Team>();
+    this->_engine->registerComponent<Score>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -59,6 +61,9 @@ void Coordinator::initEngine()
 
     auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
     this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
+
+    auto scoreSystem = this->_engine->registerSystem<ScoreSystem>(*this->_engine);
+    this->_engine->setSystemSignature<ScoreSystem, Score, Text>();
 
     auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine, this->_isServer);
     this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
@@ -117,6 +122,28 @@ Entity Coordinator::createPlayerEntity(
         velY,
         initialHealth,
         isPlayable,
+        withRenderComponents
+    );
+    return entity;
+}
+
+Entity Coordinator::createScoreEntity(
+    uint32_t scoreId,
+    float posX,
+    float posY,
+    uint32_t initialScore,
+    bool isLocalScore,
+    bool withRenderComponents
+)
+{
+    Entity entity = this->_engine->createEntity("Score_" + std::to_string(scoreId));
+    this->setupScoreEntity(
+        entity,
+        scoreId,
+        posX,
+        posY,
+        initialScore,
+        isLocalScore,
         withRenderComponents
     );
     return entity;
@@ -215,6 +242,33 @@ void Coordinator::setupPlayerEntity(
         LOG_INFO_CAT("Coordinator", "Local player created with ID %u", playerId);
     }
 }
+
+void Coordinator::setupScoreEntity(
+    Entity entity,
+    uint32_t scoreId,
+    float posX,
+    float posY,
+    uint32_t initialScore,
+    bool isLocalScore,
+    bool withRenderComponents
+)
+{
+    _engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
+    _engine->addComponent<Text>(
+    entity,
+    Text(std::to_string(initialScore).c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
+);
+
+    _engine->addComponent<Drawable>(entity, Drawable{});
+
+    LOG_INFO_CAT("Coordinator",
+    "Score entity e={} comps: Transform={} Text={} Drawable={}",
+    static_cast<size_t>(entity),
+    _engine->hasComponent<Transform>(entity),
+    _engine->hasComponent<Text>(entity),
+    _engine->hasComponent<Drawable>(entity));
+}
+
 
 void Coordinator::setupEnemyEntity(
     Entity entity,
