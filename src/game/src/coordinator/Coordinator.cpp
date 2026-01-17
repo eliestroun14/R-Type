@@ -55,13 +55,13 @@ void Coordinator::initEngine()
     auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this, this->_isServer);
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
 
-    auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine);
+    auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine, this->_isServer);
     this->_engine->setSystemSignature<ButtonSystem, ButtonComponent, Transform>();
 
     auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
     this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
 
-    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine);
+    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine, this->_isServer);
     this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
 
     auto rebindSystem = this->_engine->registerSystem<RebindSystem>(*this->_engine);
