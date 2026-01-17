@@ -7,26 +7,7 @@
 
 #include <game/systems/RebindSystem.hpp>
 #include <map>
-
-std::string keyToString(sf::Keyboard::Key key) {
-    if (key >= sf::Keyboard::A && key <= sf::Keyboard::Z)
-        return std::string(1, 'A' + (key - sf::Keyboard::A));
-
-    if (key >= sf::Keyboard::Num0 && key <= sf::Keyboard::Num9)
-        return std::string(1, '0' + (key - sf::Keyboard::Num0));
-
-    static const std::map<sf::Keyboard::Key, std::string> specialKeys = {
-        {sf::Keyboard::Up, "UP"}, {sf::Keyboard::Down, "DOWN"},
-        {sf::Keyboard::Left, "LEFT"}, {sf::Keyboard::Right, "RIGHT"},
-        {sf::Keyboard::Space, "SPACE"}, {sf::Keyboard::Enter, "ENTER"},
-        {sf::Keyboard::Escape, "ESC"}, {sf::Keyboard::LShift, "SHIFT"}
-    };
-
-    if (specialKeys.count(key))
-        return specialKeys.at(key);
-
-    return "UNKNOWN";
-}
+#include <game/utils/ClientUtils.hpp>
 
 void RebindSystem::applyNewKeybind(GameConfig& config, sf::Keyboard::Key key, GameAction action)
 {

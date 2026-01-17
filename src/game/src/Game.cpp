@@ -34,8 +34,8 @@ Game::Game(Type type)
             _coordinator->initEngineRender();
         }
 
-        Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
-        this->getCoordinator()->getEngine()->addComponent<GameConfig>(configurationEntity, GameConfig(FontAssets::DEFAULT_FONT, true, true));
+        //Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
+        //this->getCoordinator()->getEngine()->addComponent<GameConfig>(configurationEntity, GameConfig(FontAssets::DEFAULT_FONT, true, true));
 
         // Initialize timing
         _lastTickTime = std::chrono::steady_clock::now();
@@ -111,9 +111,9 @@ bool Game::runGameLoop()
                 return _isRunning;
             }
 
-            if (_menu) {
-                _menu->update();
-            }
+            //if (_menu) {
+            //    _menu->update();
+            //}
 
             // Process window events (CRITICAL: prevents window from freezing)
             engine->processInput();

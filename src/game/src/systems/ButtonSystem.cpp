@@ -33,6 +33,14 @@ void ButtonSystem::onUpdate(float deltaTime) {
 
         if (isHover) {
             if (clickReleased && button.state == ButtonState::CLICKED) {
+
+                Entity buttonEntity = this->_engine.getEntityFromId(e);
+
+                if (this->_engine.hasComponent<AudioSource>(buttonEntity))
+                    this->_engine.removeComponent<AudioSource>(buttonEntity);
+
+                if (!this->_engine.hasComponent<AudioSource>(buttonEntity))
+                    this->_engine.addComponent<AudioSource>(buttonEntity, AudioSource(AudioAssets::SFX_MENU_SELECT, false, 100.f, 0.5f, true, 2.5f));
                 button.onClick();
                 newState = ButtonState::HOVER;
             } else if (clickHeld)

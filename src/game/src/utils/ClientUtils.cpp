@@ -150,3 +150,41 @@ std::vector<Entity> createRebindButton(gameEngine::GameEngine& engine, std::stri
 
     return entities;
 }
+
+std::string keyToString(sf::Keyboard::Key key)
+{
+    if (key >= sf::Keyboard::A && key <= sf::Keyboard::Z)
+        return std::string(1, 'A' + (key - sf::Keyboard::A));
+
+    if (key >= sf::Keyboard::Num0 && key <= sf::Keyboard::Num9)
+        return std::string(1, '0' + (key - sf::Keyboard::Num0));
+
+    static const std::map<sf::Keyboard::Key, std::string> specialKeys = {
+        {sf::Keyboard::Up, "UP"}, {sf::Keyboard::Down, "DOWN"},
+        {sf::Keyboard::Left, "LEFT"}, {sf::Keyboard::Right, "RIGHT"},
+        {sf::Keyboard::Space, "SPACE"}, {sf::Keyboard::Enter, "ENTER"},
+        {sf::Keyboard::Escape, "ESC"}, {sf::Keyboard::LShift, "SHIFT"}
+    };
+
+    if (specialKeys.count(key))
+        return specialKeys.at(key);
+
+    return "UNKNOWN";
+}
+
+std::string getKeybordKeyFromGameConfig(gameEngine::GameEngine& engine, GameAction action)
+{
+    sf::Keyboard::Key key = sf::Keyboard::Unknown;
+
+    auto& configs = engine.getComponents<GameConfig>();
+    for (auto& config : configs) {
+        if (config.has_value())
+            for (auto& k : config->_keybinds)
+                if (k.second == action) {
+                    key = k.first;
+                    break;
+                }
+    }
+
+    return keyToString(key);
+}
