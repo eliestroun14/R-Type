@@ -43,21 +43,21 @@ void LevelTimerSystem::onUpdate(float dt)
         if (!texts[entity]) {
             continue;
         }
-    
+
         auto text = texts[entity].value();
-    
+
         // Format time as MM:SS
         int minutes = static_cast<int>(remainingTime) / 60;
         int seconds = static_cast<int>(remainingTime) % 60;
-    
+
         std::ostringstream oss;
-        oss << "Time: " << std::setfill('0') << std::setw(2) << minutes 
+        oss << "Time: " << std::setfill('0') << std::setw(2) << minutes
             << ":" << std::setfill('0') << std::setw(2) << seconds;
-    
+
         std::string timeStr = oss.str();
         std::strncpy(text.str, timeStr.c_str(), sizeof(text.str) - 1);
         text.str[sizeof(text.str) - 1] = '\0';
-    
+
         // Change color to red when less than 10 seconds remaining
         if (remainingTime < 10.0f) {
             text.color = sf::Color::Red;
