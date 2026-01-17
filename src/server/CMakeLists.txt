@@ -34,6 +34,11 @@ target_link_libraries(server_lib PUBLIC
     ${COMMON_LIBS}
 )
 
+# Link platform-specific network libraries
+if(WIN32)
+    target_link_libraries(server_lib PUBLIC ws2_32 wsock32)
+endif()
+
 # Create server executable
 add_executable(r-type-server ${SERVER_SOURCES} ${SERVER_HEADERS})
 

@@ -25,3 +25,8 @@ target_include_directories(common PUBLIC
 
 # Link common dependencies
 target_link_libraries(common PUBLIC ${COMMON_LIBS} sfml-graphics sfml-window sfml-system)
+
+# Link platform-specific network libraries
+if(WIN32)
+    target_link_libraries(common PUBLIC ws2_32 wsock32)
+endif()
