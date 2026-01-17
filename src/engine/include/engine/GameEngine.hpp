@@ -519,6 +519,11 @@ namespace gameEngine {
                 this->_renderManager->closeWindow();
             }
 
+            std::shared_ptr<RenderManager> getRenderManager() const
+            {
+                return this->_renderManager;
+            }
+
             // ################################################################
             // ########################### AUDIO #############################
             // ################################################################
