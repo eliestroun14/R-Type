@@ -1,12 +1,6 @@
-/*
-** EPITECH PROJECT, 2025
-** mirror_rtype
-** File description:
-** ScoreSystem
-*/
-
 #include <game/systems/ScoreSystem.hpp>
 #include <engine/ecs/component/Components.hpp>
+#include <cstdio>
 
 void ScoreSystem::onStartRunning()
 {
@@ -29,7 +23,8 @@ void ScoreSystem::onUpdate(float)
         scores[idx].value().score += ev.amount;
 
         if (idx < texts.size() && texts[idx]) {
-            texts[idx].value().str = std::to_string(scores[idx].value().score);
+            std::snprintf(texts[idx].value().str, sizeof(texts[idx].value().str),
+                          "%u", scores[idx].value().score);
         }
     }
 

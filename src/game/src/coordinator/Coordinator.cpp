@@ -9,6 +9,7 @@
 #include "game/systems/AnimationSystem.hpp"
 #include "game/systems/AudioSystem.hpp"
 #include "game/systems/CollisionSystem.hpp"
+#include "game/systems/ScoreSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -60,6 +61,9 @@ void Coordinator::initEngine()
 
     auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
     this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
+
+    auto scoreSystem = this->_engine->registerSystem<ScoreSystem>(*this->_engine);
+    this->_engine->setSystemSignature<ScoreSystem, Score, Text>();
 
     auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine, this->_isServer);
     this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
@@ -250,7 +254,11 @@ void Coordinator::setupScoreEntity(
 )
 {
     _engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
-    _engine->addComponent<Text>(entity, Text(std::to_string(initialScore), DEFAULT_FONT, sf::Color::White, 30, ZIndex::IS_UI_HUD));
+    _engine->addComponent<Text>(
+    entity,
+    Text(std::to_string(initialScore).c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
+);
+
     _engine->addComponent<Drawable>(entity, Drawable{});
 
     LOG_INFO_CAT("Coordinator",
