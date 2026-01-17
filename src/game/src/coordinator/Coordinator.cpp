@@ -2581,7 +2581,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
     Entity projectile = this->_engine->createEntityWithId(projectile_id, projectileName);
     LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Entity created successfully");
     
-    float projectileSpeed = PROJECTILE_SPEED;  // tuned for visible travel with dt in ms
+    float projectileSpeed = BULLET_SPEED;  // tuned for visible travel with dt in ms
 
     switch (weapon_type) {
         case 0x00: // WEAPON_TYPE_BASIC
@@ -2597,7 +2597,7 @@ Entity Coordinator::spawnProjectile(Entity shooter, uint32_t projectile_id, uint
             this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_BULLET_ANIMATION_WIDTH,
                 DEFAULT_BULLET_ANIMATION_HEIGHT, DEFAULT_BULLET_ANIMATION_CURRENT, DEFAULT_BULLET_ANIMATION_ELAPSED_TIME, DEFAULT_BULLET_ANIMATION_DURATION,
                 DEFAULT_BULLET_ANIMATION_START, DEFAULT_BULLET_ANIMATION_END, DEFAULT_BULLET_ANIMATION_LOOPING));
-                sf::IntRect(0, 0, DEFAULT_BULLET_SPRITE_WIDTH, DEFAULT_BULLET_SPRITE_HEIGHT)));
+                sf::IntRect(0, 0, DEFAULT_BULLET_SPRITE_WIDTH, DEFAULT_BULLET_SPRITE_HEIGHT);
             LOG_DEBUG_CAT("Coordinator", "spawnProjectile: Adding Animation component");
             this->_engine->addComponent<Animation>(projectile, Animation(DEFAULT_BULLET_ANIMATION_WIDTH,
                 DEFAULT_BULLET_ANIMATION_HEIGHT, DEFAULT_BULLET_ANIMATION_CURRENT, DEFAULT_BULLET_ANIMATION_ELAPSED_TIME, DEFAULT_BULLET_ANIMATION_DURATION,
