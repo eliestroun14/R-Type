@@ -461,12 +461,15 @@ struct Wave
 struct Level
 {
     std::vector<Wave> waves;
-    // float levelDuration;
+    float levelDuration;          // Total duration in seconds (0 = infinite/until all waves complete)
+    std::string backgroundAsset;  // Path/name of background image asset
+    std::string soundTheme;       // Path/name of background music asset
     int currentWaveIndex;
     float elapsedTime;
     bool completed;
+    bool started;                 // Whether the level has started
 
-    Level() : currentWaveIndex(0), elapsedTime(0.f), completed(false) {}
+    Level() : levelDuration(0.f), currentWaveIndex(0), elapsedTime(0.f), completed(false), started(false) {}
 };
 
 // ############################################################################

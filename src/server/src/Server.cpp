@@ -27,6 +27,12 @@ Server::~Server() {
 }
 
 bool Server::init() {
+    // Set max players for level start condition
+    if (_game) {
+        _game->setMaxPlayers(_config.maxPlayers);
+        LOG_INFO("Server: Set max players to {} for level start", _config.maxPlayers);
+    }
+
     // Set up callback for when players connect
     _networkManager->setOnPlayerConnectedCallback([this](uint32_t playerId) {
         if (_game) {

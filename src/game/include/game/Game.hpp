@@ -43,6 +43,9 @@ class Game {
 
         // Server-side: Handle a new player connection
         void onPlayerConnected(uint32_t playerId);
+        
+        // Server-side: Set max players for level start condition
+        void setMaxPlayers(uint32_t maxPlayers) { _maxPlayers = maxPlayers; }
 
     protected:
         void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);
@@ -80,6 +83,14 @@ class Game {
         
         // Track connected player IDs for spawning existing players to new clients
         std::vector<uint32_t> _connectedPlayers;
+        
+        // Level management (server-side)
+        Entity _currentLevelEntity = Entity::fromId(0);  // Current level entity ID
+        bool _levelStarted = false;
+        uint32_t _maxPlayers = 2;  // Set by server
+        
+        /** @brief Check if level should start and start it if conditions are met (server-side only). */
+        void checkAndStartLevel();
 };
 
 #endif /* !GAME_HPP_ */

@@ -114,6 +114,15 @@ namespace gameEngine {
             }
 
             /**
+             * @brief Get the next entity ID that will be assigned.
+             * @return The next available entity ID.
+             */
+            uint32_t getNextEntityId()
+            {
+                return this->_entityManager->getNextEntityId();
+            }
+
+            /**
              * @brief Removes an entity and all its associated components.
              * @param entityId Reference to the entity id to destroy.
              */

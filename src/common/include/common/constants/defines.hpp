@@ -66,6 +66,45 @@ enum NetworkType {
 #define BASE_ENEMY_WEAPON_FIRE_RATE 300
 
 // ==============================================================
+//              ENEMY TYPE DEFINITIONS
+// ==============================================================
+
+// FAST ENEMY
+#define FAST_ENEMY_HEALTH 30
+#define FAST_ENEMY_VELOCITY_X -0.3f
+#define FAST_ENEMY_VELOCITY_Y 0.0f
+#define FAST_ENEMY_WEAPON_FIRE_RATE 800
+#define FAST_ENEMY_WEAPON_DAMAGE 5
+#define FAST_ENEMY_SCALE 2.0f
+
+// TANK ENEMY
+#define TANK_ENEMY_HEALTH 150
+#define TANK_ENEMY_VELOCITY_X -0.05f
+#define TANK_ENEMY_VELOCITY_Y 0.0f
+#define TANK_ENEMY_WEAPON_FIRE_RATE 500
+#define TANK_ENEMY_WEAPON_DAMAGE 15
+#define TANK_ENEMY_SCALE 3.0f
+
+// ==============================================================
+//              LEVEL SYSTEM DEFINITIONS
+// ==============================================================
+
+// Level 1 Configuration
+#define LEVEL_1_NUMBER 1
+#define LEVEL_1_DURATION 60.0f  // seconds (0 = infinite/until all waves complete)
+#define LEVEL_1_BACKGROUND_ASSET "background_level1"
+#define LEVEL_1_MUSIC_ASSET "music_level1"
+
+// Level 1 Wave Timings
+#define LEVEL_1_WAVE_1_START_TIME 2.0f
+#define LEVEL_1_WAVE_2_START_TIME 10.0f
+#define LEVEL_1_WAVE_3_START_TIME 20.0f
+#define LEVEL_1_WAVE_4_START_TIME 35.0f
+
+// Level System Background
+#define LEVEL_BACKGROUND_SCROLL_SPEED -50.0f
+
+// ==============================================================
 //              PACKET SIZE DEFINITIONS (Network Protocol)
 // ==============================================================
 
