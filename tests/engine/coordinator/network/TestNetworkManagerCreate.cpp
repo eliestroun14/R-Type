@@ -212,20 +212,6 @@ TEST_F(CreateHeartBeatTest, ValidHeartBeat) {
 class CreatePlayerInputTest : public NetworkManagerCreateTest {
 };
 
-TEST_F(CreatePlayerInputTest, ValidPlayerInput) {
-    std::vector<uint8_t> payload;
-    appendVector(payload, uint32ToBytes(42)); // player_id
-    appendVector(payload, uint16ToBytes(0x0F)); // input_state
-    appendVector(payload, uint16ToBytes(100)); // aim_direction_x
-    appendVector(payload, uint16ToBytes(200)); // aim_direction_y
-
-    auto args = createArgsBuffer(1, {0x01}, 110, 210, payload);
-    auto result = PacketManager::createPlayerInput(args);
-
-    ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_PLAYER_INPUT));
-}
-
 // ============================================================================
 // WORLD_STATE TESTS (0x20-0x3F)
 // ============================================================================

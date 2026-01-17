@@ -65,6 +65,38 @@ TEST_F(PacketConstructorTest, MultiplePacketCreation) {
     EXPECT_EQ(packet2.header.magic, packet3.header.magic);
 }
 
+TEST_F(PacketConstructorTest, HeaderAndDataConstructor) {
+    PacketHeader header;
+    header.magic = 0x5254;
+    header.packet_type = 0x42;
+    header.flags = 0xAA;
+    header.sequence_number = 1234;
+    header.timestamp = 5678;
+
+    std::vector<uint8_t> payload = {0x10, 0x20, 0x30};
+    Packet packet(header, payload);
+
+    EXPECT_EQ(packet.header.magic, 0x5254);
+    EXPECT_EQ(packet.header.packet_type, 0x42);
+    EXPECT_EQ(packet.header.flags, 0xAA);
+    EXPECT_EQ(packet.header.sequence_number, 1234u);
+    EXPECT_EQ(packet.header.timestamp, 5678u);
+    ASSERT_EQ(packet.data.size(), payload.size());
+    EXPECT_EQ(packet.data[0], 0x10);
+    EXPECT_EQ(packet.data[2], 0x30);
+}
+
+TEST_F(PacketConstructorTest, FullHeaderConstructorValues) {
+    Packet packet(0x0A, 0xF0, 0x12345678, 0x9ABCDEF0);
+
+    EXPECT_EQ(packet.header.magic, 0x5254);
+    EXPECT_EQ(packet.header.packet_type, 0x0A);
+    EXPECT_EQ(packet.header.flags, 0xF0);
+    EXPECT_EQ(packet.header.sequence_number, 0x12345678u);
+    EXPECT_EQ(packet.header.timestamp, 0x9ABCDEF0u);
+    EXPECT_TRUE(packet.data.empty());
+}
+
 // Test Packet Serialization
 class PacketSerializeTest : public PacketTest {
 };
@@ -125,6 +157,35 @@ TEST_F(PacketSerializeTest, SerializeAfterModifyingHeaders) {
     packet.serialize(buffer);
     
     // Function shouldn't crash
+}
+
+TEST_F(PacketSerializeTest, SerializeProducesExpectedLayout) {
+    Packet packet(0x7F, 0x0C, 0x01020304, 0x0A0B0C0D);
+    packet.data = {0xDE, 0xAD, 0xBE};
+
+    std::vector<uint8_t> buffer;
+    packet.serialize(buffer);
+
+    ASSERT_EQ(buffer.size(), sizeof(PacketHeader) + packet.data.size());
+
+    // Validate magic in little-endian layout
+    uint16_t magic;
+    std::memcpy(&magic, buffer.data(), sizeof(uint16_t));
+    EXPECT_EQ(magic, 0x5254);
+
+    EXPECT_EQ(buffer[2], 0x7F);
+    EXPECT_EQ(buffer[3], 0x0C);
+
+    uint32_t seq;
+    std::memcpy(&seq, buffer.data() + 4, sizeof(uint32_t));
+    EXPECT_EQ(seq, 0x01020304u);
+
+    uint32_t ts;
+    std::memcpy(&ts, buffer.data() + 8, sizeof(uint32_t));
+    EXPECT_EQ(ts, 0x0A0B0C0Du);
+
+    std::vector<uint8_t> payload(buffer.begin() + 12, buffer.end());
+    EXPECT_EQ(payload, packet.data);
 }
 
 // Test Packet Deserialization
@@ -203,6 +264,25 @@ TEST_F(PacketDeserializeTest, DeserializeAfterConstruction) {
     EXPECT_EQ(packet.header.packet_type, 0x05);
 }
 
+TEST_F(PacketDeserializeTest, DeserializeValidBufferSuccess) {
+    Packet original(0x22, 0x0F, 0x11223344, 0x55667788);
+    original.data = {0x01, 0x02, 0x03, 0x04};
+
+    std::vector<uint8_t> buffer;
+    original.serialize(buffer);
+
+    Packet parsed(0x00);
+    bool result = parsed.deserialize(buffer);
+
+    ASSERT_TRUE(result);
+    EXPECT_EQ(parsed.header.magic, 0x5254);
+    EXPECT_EQ(parsed.header.packet_type, 0x22);
+    EXPECT_EQ(parsed.header.flags, 0x0F);
+    EXPECT_EQ(parsed.header.sequence_number, 0x11223344u);
+    EXPECT_EQ(parsed.header.timestamp, 0x55667788u);
+    EXPECT_EQ(parsed.data, original.data);
+}
+
 // Test Packet Data Management
 class PacketDataTest : public PacketTest {
 };
@@ -241,6 +321,18 @@ TEST_F(PacketDataTest, CanModifyDataInPacket) {
     packet.data[1] = 0xFF;
     
     EXPECT_EQ(packet.data[1], 0xFF);
+}
+
+TEST_F(PacketDataTest, SetDataOverwritesExisting) {
+    Packet packet(0x02);
+    packet.setData({0x01, 0x02});
+    packet.setData({0x0A, 0x0B, 0x0C});
+
+    const auto &data = packet.getData();
+    ASSERT_EQ(data.size(), 3u);
+    EXPECT_EQ(data[0], 0x0A);
+    EXPECT_EQ(data[1], 0x0B);
+    EXPECT_EQ(data[2], 0x0C);
 }
 
 TEST_F(PacketDataTest, LargeDataPayload) {

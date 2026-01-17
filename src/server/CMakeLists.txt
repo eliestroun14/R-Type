@@ -67,21 +67,23 @@ elseif(EXISTS "${CMAKE_BINARY_DIR}/_deps/sfml-build/extlibs/bin/x86/OpenAL32.dll
     set(OPENAL_DLL_PATH "${CMAKE_BINARY_DIR}/_deps/sfml-build/extlibs/bin/x86/OpenAL32.dll")
 endif()
 
-# Copy dependent DLLs (SFML, etc.) next to the server executable after each build
-add_custom_command(TARGET r-type-server POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_RUNTIME_DLLS:r-type-server>
-        $<TARGET_FILE_DIR:r-type-server>
-    COMMAND_EXPAND_LISTS
-    COMMENT "Copying runtime DLLs for r-type-server..."
-)
-
-# Copy OpenAL32.dll if found so the executable can run immediately
-if(OPENAL_DLL_PATH)
+# Copy dependent DLLs (SFML, etc.) next to the server executable after each build (Windows only)
+if(WIN32)
     add_custom_command(TARGET r-type-server POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${OPENAL_DLL_PATH}"
+            $<TARGET_RUNTIME_DLLS:r-type-server>
             $<TARGET_FILE_DIR:r-type-server>
-        COMMENT "Copying OpenAL32.dll for r-type-server..."
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying runtime DLLs for r-type-server..."
     )
+
+    # Copy OpenAL32.dll if found so the executable can run immediately
+    if(OPENAL_DLL_PATH)
+        add_custom_command(TARGET r-type-server POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${OPENAL_DLL_PATH}"
+                $<TARGET_FILE_DIR:r-type-server>
+            COMMENT "Copying OpenAL32.dll for r-type-server..."
+        )
+    endif()
 endif()

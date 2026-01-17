@@ -33,10 +33,10 @@ public:
     void queueOutgoing(const common::protocol::Packet& packet, std::optional<uint32_t> targetClient = std::nullopt) override;
     std::vector<common::network::ReceivedPacket> fetchIncoming() override;
 
-    void run();
+    virtual void run();
 
     // Network packet sending methods
-    void sendConnectionRequest();
+    virtual void sendConnectionRequest();
 
     // handling methods
     void handleConnectionAccepted(const common::protocol::Packet& packet);

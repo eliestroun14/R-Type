@@ -304,7 +304,6 @@ TEST_F(CoordinatorFixture, CreatePlayerEntity_AddsPlayableAndRenderComponents)
     EXPECT_EQ(input->playerId, playerId);
     EXPECT_EQ(weapon->damage, 10);
 }
-
 TEST_F(CoordinatorFixture, CreatePlayerEntity_SkipsRenderWhenRequested)
 {
     auto eng = engine();
@@ -592,8 +591,7 @@ TEST_F(CoordinatorFixture, HandlePacketAudioEffect_PlaysSound) {
     ASSERT_TRUE(packetOpt.has_value());
 
     coord.handlePacketAudioEffect(packetOpt.value());
-}
-*/
+}*/
 
 TEST_F(CoordinatorFixture, SpawnVisualEffect_CreatesEntity) {
     auto eng = engine();

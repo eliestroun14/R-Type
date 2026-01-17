@@ -50,6 +50,15 @@ class RTypeClient {
 
         void stop();
 
+        // Test and monitoring helpers
+        bool isRunningFlag() const { return _isRunning.load(); }
+        bool isConnectedFlag() const { return _isConnected.load(); }
+        client::network::ClientNetworkManager* getNetworkManager() const { return _networkManager.get(); }
+        Game* getGame() const { return _game.get(); }
+        void setNetworkManager(std::unique_ptr<client::network::ClientNetworkManager> manager) { _networkManager = std::move(manager); }
+        void resetGame() { _game.reset(); }
+        void setRunning(bool running) { _isRunning = running; }
+
         // getters and setters
         void setPlayerName(const std::string& name) { _playerName = name; }
         std::string getPlayerName() const { return _playerName; }

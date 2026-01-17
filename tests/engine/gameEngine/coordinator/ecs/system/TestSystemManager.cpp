@@ -9,11 +9,7 @@
 #include <engine/ecs/system/SystemManager.hpp>
 #include <engine/ecs/system/System.hpp>
 #include <engine/ecs/entity/EntityManager.hpp>
-
-struct Position {
-    float x, y;
-    Position(float xx, float yy) : x(xx), y(yy) {}
-};
+#include <engine/ecs/component/Components.hpp>
 
 class DummySystem : public System {
 public:
@@ -48,14 +44,14 @@ TEST(SystemManagerTest, AddSystemAndHasSystem)
     EXPECT_TRUE(manager.hasSystem<DummySystem>());
     EXPECT_EQ(&sys, &manager.getSystem<DummySystem>());
 
-    em.registerComponent<Position>();
+    em.registerComponent<Transform>();
 
     Signature sig;
     sig.set(0);
     manager.setSignature<DummySystem>(sig);
 
     Entity e = em.spawnEntity("dummy");
-    em.emplaceComponent<Position>(e, 1.f, 2.f);
+    em.emplaceComponent<Transform>(e, 1.f, 2.f, 0.f, 1.f);
 
     EXPECT_EQ(sys.entityCount(), 1);
     EXPECT_TRUE(sys.hasEntity(static_cast<size_t>(e)));
