@@ -225,11 +225,13 @@ void Coordinator::setupEnemyEntity(
     bool withRenderComponents
 )
 {
-    (void)enemyId;
-
     this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.0f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+    
+    // Add NetworkId so enemy is synchronized to clients
+    this->_engine->addComponent<NetworkId>(entity, NetworkId{enemyId, false});
+    
     if (withRenderComponents) {
         this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
     }
@@ -542,6 +544,34 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     _packetsToRelay.clear();
 
     // ============================================================================
+    // NEW ENTITY BROADCAST
+    // ============================================================================
+    // Detect newly created entities with NetworkId and broadcast ENTITY_SPAWN packets
+    // This ensures clients know about new enemies, powerups, etc. created server-side
+    // ============================================================================
+    auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
+    static uint32_t entitySpawnSequence = 0;
+    
+    for (size_t i = 0; i < networkIdComponents.size(); ++i) {
+        if (networkIdComponents[i].has_value()) {
+            uint32_t networkId = networkIdComponents[i].value().id;
+            Entity entity = Entity::fromId(static_cast<uint32_t>(i));
+            
+            // Check if this entity has been broadcast yet
+            if (this->_engine->isAlive(entity) && _broadcastedEntityIds.find(networkId) == _broadcastedEntityIds.end()) {
+                // New entity! Create and send ENTITY_SPAWN packet
+                common::protocol::Packet spawnPacket;
+                entitySpawnSequence++;
+                if (createPacketEntitySpawn(&spawnPacket, networkId, entitySpawnSequence)) {
+                    outgoingPackets.push_back(spawnPacket);
+                    _broadcastedEntityIds.insert(networkId);
+                    LOG_INFO_CAT("Coordinator", "Broadcasting ENTITY_SPAWN for new entity {}", networkId);
+                }
+            }
+        }
+    }
+
+    // ============================================================================
     // SERVER SNAPSHOT GENERATION
     // ============================================================================
     // Only entities with NetworkId component are synchronized via snapshots.
@@ -551,7 +581,6 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     // ============================================================================
     
     // Get all networked entities (entities with NetworkId component)
-    auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
 
     if (networkIdComponents.size() == 0) {
         // No entities to sync
@@ -1226,6 +1255,12 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         offset += sizeof(net);
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating (it might not have been spawned yet via ENTITY_SPAWN)
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received transform for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         const Transform tf(
             static_cast<float>(net.pos_x),
@@ -1237,9 +1272,14 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         try {
             this->_engine->updateComponent<Transform>(entity, tf);
             LOG_DEBUG_CAT("Coordinator", "[CLIENT] Updated entity {} position to ({}, {})", entity_id, tf.x, tf.y);
-        } catch (const std::exception&) {
-            this->_engine->emplaceComponent<Transform>(entity, tf);
-            LOG_DEBUG_CAT("Coordinator", "[CLIENT] Emplaced entity {} position to ({}, {})", entity_id, tf.x, tf.y);
+        } catch (const std::exception& e) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Failed to update transform for entity {}: {}", entity_id, e.what());
+            try {
+                this->_engine->emplaceComponent<Transform>(entity, tf);
+                LOG_DEBUG_CAT("Coordinator", "[CLIENT] Emplaced entity {} position to ({}, {})", entity_id, tf.x, tf.y);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace transform for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1293,12 +1333,22 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
         // Note: shields are not currently in the Health component, so we only update health values
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received health for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         try {
             this->_engine->updateComponent<Health>(entity, health);
         } catch (const std::exception& e) {
             // if the entity does not have the component, set the component
-            this->_engine->emplaceComponent<Health>(entity, health);
+            try {
+                this->_engine->emplaceComponent<Health>(entity, health);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace health for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1359,12 +1409,22 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
         // Note: ammo is not currently in the Weapon component
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received weapon for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         try {
             this->_engine->updateComponent<Weapon>(entity, weapon);
         } catch (const std::exception& e) {
             // if the entity does not have the component, set the component
-            this->_engine->emplaceComponent<Weapon>(entity, weapon);
+            try {
+                this->_engine->emplaceComponent<Weapon>(entity, weapon);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace weapon for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -2236,9 +2296,13 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     // Build args vector for PacketManager
     std::vector<uint8_t> args;
 
-    // flags_count (0 for now)
-    uint8_t flags_count = 0;
+    // flags_count (1 for FLAG_RELIABLE)
+    uint8_t flags_count = 1;
     args.push_back(flags_count);
+    
+    // flags (FLAG_RELIABLE = 0x01)
+    uint8_t flags = static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE);
+    args.push_back(flags);
 
     // sequence_number
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 

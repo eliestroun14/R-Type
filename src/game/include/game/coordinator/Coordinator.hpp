@@ -25,6 +25,7 @@
 #include <game/systems/PlayerSystem.hpp>
 #include <game/systems/MovementSystem.hpp>
 #include <game/systems/ShootSystem.hpp>
+#include <set>
 
 
 class Coordinator {
@@ -355,6 +356,10 @@ class Coordinator {
         
         // Queue of PLAYER_INPUT packets to relay to other clients (but NOT to the source player)
         std::vector<RelayPacket> _packetsToRelay;
+        
+        // Track entities that have been broadcast to clients (server-side only)
+        // Used to send initial ENTITY_SPAWN packets for newly created networked entities
+        std::set<uint32_t> _broadcastedEntityIds;
 };
 
 #endif /* !COORDINATOR_HPP_ */

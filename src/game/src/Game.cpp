@@ -275,7 +275,12 @@ void Game::clientTick(uint64_t elapsedMs)
 
         // Let coordinator handle server state updates
         // This includes reconciliation: direct replacement of local state with server state
-        _coordinator->processClientPackets(packetsToProcess, elapsedMs);
+        try {
+            _coordinator->processClientPackets(packetsToProcess, elapsedMs);
+        } catch (const std::exception& e) {
+            LOG_ERROR("Error processing client packets: {}, continuing...", e.what());
+            // Don't crash, just skip this tick's packet processing
+        }
 
         // STEP 2: Client-Side Prediction
         // Apply local player inputs immediately for responsive feel
@@ -283,7 +288,12 @@ void Game::clientTick(uint64_t elapsedMs)
 
         // STEP 3: Generate Input Packets to Server
         std::vector<common::protocol::Packet> outgoingPackets;
-        _coordinator->buildClientPacketBasedOnStatus(outgoingPackets, elapsedMs);
+        try {
+            _coordinator->buildClientPacketBasedOnStatus(outgoingPackets, elapsedMs);
+        } catch (const std::exception& e) {
+            LOG_ERROR("Error building client packets: {}, continuing...", e.what());
+            // Don't crash, just skip packet generation this tick
+        }
 
         // STEP 4: Queue Outgoing Packets
         for (const auto& packet : outgoingPackets) {
@@ -292,11 +302,11 @@ void Game::clientTick(uint64_t elapsedMs)
         }
 
     } catch (const Error& e) {
-        LOG_ERROR("Client tick error: {}", e.what());
-        throw;
+        LOG_ERROR("Client tick error: {}, continuing...", e.what());
+        // Don't throw - let the game continue running
     } catch (const std::exception& e) {
-        LOG_ERROR("Unexpected error in client tick: {}", e.what());
-        throw Error(ErrorType::ClientError, "Client tick failed: " + std::string(e.what()));
+        LOG_ERROR("Unexpected error in client tick: {}, continuing...", e.what());
+        // Don't throw - let the game continue running
     }
 }
 
@@ -559,23 +569,31 @@ void Game::checkAndStartLevel()
         _levelStarted = true;
 
         // Send LEVEL_START packet to all clients
-        std::vector<uint8_t> levelStartData;
-        // TODO: Encode level data (level number, background, music, duration)
-        // For now, we'll create a simple packet
+        // Payload: level_id(1) + level_name(32) + estimated_duration(2) = 35 bytes
         common::protocol::Packet levelStartPacket;
         levelStartPacket.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START);
-        levelStartPacket.header.sequence_number = 0;  // Not used for this packet type
-        levelStartPacket.header.timestamp = 0;
+        levelStartPacket.header.sequence_number = 0;
+        levelStartPacket.header.timestamp = static_cast<uint32_t>(TIMESTAMP);
+        levelStartPacket.header.flags = static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE);
         
-        // Add level data to packet (level_id, duration, etc.)
-        protocol::LevelStart levelStartPayload;
-        levelStartPayload.level_id = LEVEL_1_NUMBER;
-        std::strncpy(levelStartPayload.level_name, LEVEL_1_BACKGROUND_ASSET, sizeof(levelStartPayload.level_name) - 1);
-        levelStartPayload.level_name[sizeof(levelStartPayload.level_name) - 1] = '\0';
-        levelStartPayload.estimated_duration = static_cast<uint16_t>(LEVEL_1_DURATION);
+        // Build payload (35 bytes total)
+        levelStartPacket.data.resize(LEVEL_START_PAYLOAD_SIZE);
+        uint8_t* ptr = levelStartPacket.data.data();
         
-        levelStartPacket.data.resize(sizeof(protocol::LevelStart));
-        std::memcpy(levelStartPacket.data.data(), &levelStartPayload, sizeof(protocol::LevelStart));
+        // level_id (1 byte)
+        uint8_t level_id = LEVEL_1_NUMBER;
+        std::memcpy(ptr, &level_id, sizeof(level_id));
+        ptr += sizeof(level_id);
+        
+        // level_name (32 bytes)
+        char level_name[32] = {0};
+        std::strncpy(level_name, LEVEL_1_BACKGROUND_ASSET, 31);
+        std::memcpy(ptr, level_name, 32);
+        ptr += 32;
+        
+        // estimated_duration (2 bytes)
+        uint16_t estimated_duration = static_cast<uint16_t>(LEVEL_1_DURATION);
+        std::memcpy(ptr, &estimated_duration, sizeof(estimated_duration));
 
         // Send to all connected clients
         for (uint32_t playerId : _connectedPlayers) {
