@@ -9,7 +9,7 @@
 #define RTYPECLIENT_HPP_
 
 #define NOMINMAX
-#include <winsock2.h>
+//#include <winsock2.h>
 #include <cstdint>
 #include <SFML/Graphics.hpp>
 #include <memory>

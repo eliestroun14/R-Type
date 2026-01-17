@@ -74,16 +74,20 @@ add_custom_command(TARGET r-type-client POST_BUILD
 )
 
 # Copy dependent DLLs (SFML, etc.) next to the client executable after each build
-add_custom_command(TARGET r-type-client POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_RUNTIME_DLLS:r-type-client>
-        $<TARGET_FILE_DIR:r-type-client>
-    COMMAND_EXPAND_LISTS
-    COMMENT "Copying runtime DLLs for r-type-client..."
-)
+# This is only needed on Windows
+if(WIN32)
+    add_custom_command(TARGET r-type-client POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:r-type-client>
+            $<TARGET_FILE_DIR:r-type-client>
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying runtime DLLs for r-type-client..."
+    )
+endif()
 
 # Copy OpenAL32.dll if found so the executable can run immediately
-if(OPENAL_DLL_PATH)
+# This is only needed on Windows
+if(WIN32 AND OPENAL_DLL_PATH)
     add_custom_command(TARGET r-type-client POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${OPENAL_DLL_PATH}"
