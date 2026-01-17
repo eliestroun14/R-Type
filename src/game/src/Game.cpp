@@ -70,7 +70,7 @@ bool Game::runGameLoop()
 
     try {
         LOG_INFO("runGameLoop: CALLED for type={}", static_cast<int>(_type));
-        
+
         // Calculate elapsed time since last tick
         auto currentTime = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -190,6 +190,39 @@ void Game::serverTick(uint64_t elapsedMs)
         float deltaSeconds = elapsedMs / 1000.0f;
         engine->updateSystems(deltaSeconds);
 
+        // STEP 2.5: Check for level completion (server-side only)
+        if (_levelStarted && static_cast<std::size_t>(_currentLevelEntity) != 0) {
+            auto& levels = engine->getComponents<Level>();
+            if (levels[_currentLevelEntity] && levels[_currentLevelEntity]->completed) {
+                LOG_INFO("Game: Level completed! Sending LEVEL_COMPLETE packets to all clients");
+
+                // Send LEVEL_COMPLETE packet to all clients
+                common::protocol::Packet levelCompletePacket;
+                levelCompletePacket.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE);
+                levelCompletePacket.header.sequence_number = 0;
+                levelCompletePacket.header.timestamp = 0;
+
+                protocol::LevelComplete levelCompletePayload;
+                levelCompletePayload.completed_level = LEVEL_1_NUMBER;
+                levelCompletePayload.next_level = 0xFF;  // 0xFF = game end
+                levelCompletePayload.bonus_score = 0;
+                levelCompletePayload.completion_time = 0;
+
+                levelCompletePacket.data.resize(sizeof(protocol::LevelComplete));
+                std::memcpy(levelCompletePacket.data.data(), &levelCompletePayload, sizeof(protocol::LevelComplete));
+
+                // Send to all connected clients
+                for (uint32_t playerId : _connectedPlayers) {
+                    addOutgoingPacket(levelCompletePacket, playerId);
+                }
+
+                // Stop the game after a short delay (let clients process the completion)
+                LOG_INFO("Game: Level complete, preparing to end game...");
+                // We'll end the game loop after this tick
+                _isRunning = false;
+            }
+        }
+
         // STEP 3: Generate Authoritative State Packets
         std::vector<common::protocol::Packet> outgoingPackets;
         _coordinator->buildServerPacketBasedOnStatus(outgoingPackets, elapsedMs);
@@ -198,7 +231,7 @@ void Game::serverTick(uint64_t elapsedMs)
         // For PLAYER_INPUT packets, exclude the source player to avoid double-processing
         // For all other packets, broadcast to all connected players
         auto allPlayerIds = _coordinator->getAllConnectedPlayerIds();
-        
+
         for (const auto& packet : outgoingPackets) {
             // Check if this is a PLAYER_INPUT packet
             if (packet.header.packet_type == static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT)) {
@@ -249,7 +282,12 @@ void Game::clientTick(uint64_t elapsedMs)
 
         // Let coordinator handle server state updates
         // This includes reconciliation: direct replacement of local state with server state
-        _coordinator->processClientPackets(packetsToProcess, elapsedMs);
+        try {
+            _coordinator->processClientPackets(packetsToProcess, elapsedMs);
+        } catch (const std::exception& e) {
+            LOG_ERROR("Error processing client packets: {}, continuing...", e.what());
+            // Don't crash, just skip this tick's packet processing
+        }
 
         // STEP 2: Client-Side Prediction
         // Apply local player inputs immediately for responsive feel
@@ -257,7 +295,12 @@ void Game::clientTick(uint64_t elapsedMs)
 
         // STEP 3: Generate Input Packets to Server
         std::vector<common::protocol::Packet> outgoingPackets;
-        _coordinator->buildClientPacketBasedOnStatus(outgoingPackets, elapsedMs);
+        try {
+            _coordinator->buildClientPacketBasedOnStatus(outgoingPackets, elapsedMs);
+        } catch (const std::exception& e) {
+            LOG_ERROR("Error building client packets: {}, continuing...", e.what());
+            // Don't crash, just skip packet generation this tick
+        }
 
         // STEP 4: Queue Outgoing Packets
         for (const auto& packet : outgoingPackets) {
@@ -266,11 +309,11 @@ void Game::clientTick(uint64_t elapsedMs)
         }
 
     } catch (const Error& e) {
-        LOG_ERROR("Client tick error: {}", e.what());
-        throw;
+        LOG_ERROR("Client tick error: {}, continuing...", e.what());
+        // Don't throw - let the game continue running
     } catch (const std::exception& e) {
-        LOG_ERROR("Unexpected error in client tick: {}", e.what());
-        throw Error(ErrorType::ClientError, "Client tick failed: " + std::string(e.what()));
+        LOG_ERROR("Unexpected error in client tick: {}, continuing...", e.what());
+        // Don't throw - let the game continue running
     }
 }
 
@@ -485,11 +528,87 @@ void Game::onPlayerConnected(uint32_t playerId)
         _connectedPlayers.push_back(playerId);
         LOG_INFO("Game: Player {} successfully spawned. Total players: {}", playerId, _connectedPlayers.size());
 
+        // Check if we should start the level now
+        checkAndStartLevel();
+
     } catch (const Error& e) {
         LOG_ERROR("Failed to handle player {} connection: {}", playerId, e.what());
         throw;
     } catch (const std::exception& e) {
         LOG_ERROR("Unexpected error handling player {} connection: {}", playerId, e.what());
         throw Error(ErrorType::ServerError, "Failed to connect player: " + std::string(e.what()));
+    }
+}
+
+void Game::checkAndStartLevel()
+{
+    if (_type != Type::SERVER) {
+        return;  // Only server controls level start
+    }
+
+    // Check if level already started
+    if (_levelStarted) {
+        return;
+    }
+
+    // Check if we have enough players
+    if (_connectedPlayers.size() < _maxPlayers) {
+        LOG_INFO("Game: Waiting for more players ({}/{}) before starting level", 
+                 _connectedPlayers.size(), _maxPlayers);
+        return;
+    }
+
+    LOG_INFO("Game: Max players reached ({}/{}), starting level!", 
+             _connectedPlayers.size(), _maxPlayers);
+
+    // Create the level entity
+    _currentLevelEntity = _coordinator->createLevelEntity(
+        LEVEL_1_NUMBER,
+        LEVEL_1_DURATION,
+        LEVEL_1_BACKGROUND_ASSET,
+        LEVEL_1_MUSIC_ASSET
+    );
+
+    // Mark level as started in the component
+    auto& levels = _coordinator->getEngine()->getComponents<Level>();
+    if (levels[_currentLevelEntity]) {
+        levels[_currentLevelEntity]->started = true;
+        _levelStarted = true;
+
+        // Send LEVEL_START packet to all clients
+        // Payload: level_id(1) + level_name(32) + estimated_duration(2) = 35 bytes
+        common::protocol::Packet levelStartPacket;
+        levelStartPacket.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START);
+        levelStartPacket.header.sequence_number = 0;
+        levelStartPacket.header.timestamp = static_cast<uint32_t>(TIMESTAMP);
+        levelStartPacket.header.flags = static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE);
+
+        // Build payload (35 bytes total)
+        levelStartPacket.data.resize(LEVEL_START_PAYLOAD_SIZE);
+        uint8_t* ptr = levelStartPacket.data.data();
+
+        // level_id (1 byte)
+        uint8_t level_id = LEVEL_1_NUMBER;
+        std::memcpy(ptr, &level_id, sizeof(level_id));
+        ptr += sizeof(level_id);
+
+        // level_name (32 bytes)
+        char level_name[32] = {0};
+        std::strncpy(level_name, LEVEL_1_BACKGROUND_ASSET, 31);
+        std::memcpy(ptr, level_name, 32);
+        ptr += 32;
+
+        // estimated_duration (2 bytes)
+        uint16_t estimated_duration = static_cast<uint16_t>(LEVEL_1_DURATION);
+        std::memcpy(ptr, &estimated_duration, sizeof(estimated_duration));
+
+        // Send to all connected clients
+        for (uint32_t playerId : _connectedPlayers) {
+            addOutgoingPacket(levelStartPacket, playerId);
+        }
+
+        LOG_INFO("Game: Level started and LEVEL_START packets sent to all {} players", _connectedPlayers.size());
+    } else {
+        LOG_ERROR("Game: Failed to start level - level component not found on entity");
     }
 }

@@ -25,6 +25,7 @@
 #include <game/systems/PlayerSystem.hpp>
 #include <game/systems/MovementSystem.hpp>
 #include <game/systems/ShootSystem.hpp>
+#include <set>
 #include <game/systems/ButtonSystem.hpp>
 #include <game/systems/AnimationSystem.hpp>
 #include <game/systems/AccessibilitySystem.hpp>
@@ -190,6 +191,15 @@ class Coordinator {
         /** @brief Get the GameEngine instance for direct access. */
         std::shared_ptr<gameEngine::GameEngine> getEngine() { return _engine; }
 
+        /** @brief Create and initialize a level entity (server-side only).
+         * @param levelNumber The level number (used for naming).
+         * @param duration Level duration in seconds (0 = infinite/until all waves complete).
+         * @param backgroundAsset Asset path for the scrolling background.
+         * @param soundTheme Asset path for the background music.
+         * @return The created level entity.
+         */
+        Entity createLevelEntity(int levelNumber, float duration, const std::string& backgroundAsset, const std::string& soundTheme);
+
         void handleGameStart(const common::protocol::Packet& packet);
         void handleGameEnd(const common::protocol::Packet& packet);
         void handlePacketLevelComplete(const common::protocol::Packet& packet);
@@ -348,10 +358,13 @@ class Coordinator {
         
         // Queue of weapon fire events to process
         std::vector<WeaponFireEvent> _pendingWeaponFires;
-        uint32_t _nextProjectileId = 10000; // Start projectile IDs at 10000
         
         // Queue of PLAYER_INPUT packets to relay to other clients (but NOT to the source player)
         std::vector<RelayPacket> _packetsToRelay;
+        
+        // Track entities that have been broadcast to clients (server-side only)
+        // Used to send initial ENTITY_SPAWN packets for newly created networked entities
+        std::set<uint32_t> _broadcastedEntityIds;
 };
 
 #endif /* !COORDINATOR_HPP_ */

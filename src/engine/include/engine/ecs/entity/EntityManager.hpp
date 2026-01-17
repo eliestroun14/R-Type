@@ -185,6 +185,14 @@ public:
     }
 
     /**
+     * @brief Get the next entity ID that will be assigned.
+     * @return The next available entity ID.
+     */
+    uint32_t getNextEntityId() const {
+        return _nextId;
+    }
+
+    /**
      * @brief Spawns a new entity with a specific ID (for network synchronization).
      * @param id The specific ID to assign to the entity (from server)
      * @param name The name to assign to the entity

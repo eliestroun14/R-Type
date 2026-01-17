@@ -11,6 +11,7 @@ static inline float safeInvSqrt(float v)
 
 void AISystem::onUpdate(float dt)
 {
+    return;
     if (dt <= 0.0f)
         return;
 

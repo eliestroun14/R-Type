@@ -8,7 +8,10 @@
 #include "game/coordinator/Coordinator.hpp"
 #include "game/systems/AnimationSystem.hpp"
 #include "game/systems/AudioSystem.hpp"
+#include "game/systems/BackgroundSystem.hpp"
 #include "game/systems/CollisionSystem.hpp"
+#include "game/systems/LevelSystem.hpp"
+#include "game/systems/LevelTimerSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -43,6 +46,8 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<AudioSource>();
     this->_engine->registerComponent<AudioEffect>();
     this->_engine->registerComponent<Team>();
+    this->_engine->registerComponent<Level>();
+    this->_engine->registerComponent<TimerUI>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -54,6 +59,9 @@ void Coordinator::initEngine()
     auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this, this->_isServer);
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
 
+    // Register LevelSystem (server-side only, but registered for both)
+    auto levelSystem = this->_engine->registerSystem<LevelSystem>(*this->_engine, this);
+    this->_engine->setSystemSignature<LevelSystem, Level>();
     auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine, this->_isServer);
     this->_engine->setSystemSignature<ButtonSystem, ButtonComponent, Transform>();
 
@@ -72,6 +80,10 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     this->_engine->initRender();
     this->_engine->initAudio();
 
+    // Register BackgroundSystem to handle scrolling backgrounds
+    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine);
+    this->_engine->setSystemSignature<BackgroundSystem, Transform, Sprite, ScrollingBackground>();
+
     // Register CollisionSystem to handle collision detection and team-based damage
     auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
     this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
@@ -88,7 +100,11 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
 
     // Set signature: RenderSystem needs Transform and Sprite components
-    this->_engine->setSystemSignature<RenderSystem, Transform>();
+    this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
+    
+    // Register LevelTimerSystem to update countdown timers
+    auto levelTimerSystem = this->_engine->registerSystem<LevelTimerSystem>(*this->_engine);
+    this->_engine->setSystemSignature<LevelTimerSystem, TimerUI, Text>();
 }
 
 // ==============================================================
@@ -132,7 +148,8 @@ Entity Coordinator::createEnemyEntity(
     bool withRenderComponents
 )
 {
-    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(enemyId));
+    // Use createEntityWithId to ensure the entity ID matches the enemy ID
+    Entity entity = this->_engine->createEntityWithId(enemyId, "Enemy_" + std::to_string(enemyId));
     this->setupEnemyEntity(
         entity,
         enemyId,
@@ -157,7 +174,8 @@ Entity Coordinator::createProjectileEntity(
     bool withRenderComponents
 )
 {
-    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(projectileId));
+    // Use createEntityWithId to ensure the entity ID matches the projectile ID
+    Entity entity = this->_engine->createEntityWithId(projectileId, "Projectile_" + std::to_string(projectileId));
     this->setupProjectileEntity(
         entity,
         projectileId,
@@ -227,11 +245,13 @@ void Coordinator::setupEnemyEntity(
     bool withRenderComponents
 )
 {
-    (void)enemyId;
-
-    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.0f));
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 4.0f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
+    
+    // Add NetworkId so enemy is synchronized to clients
+    this->_engine->addComponent<NetworkId>(entity, NetworkId{enemyId, false});
+    
     if (withRenderComponents) {
         this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
     }
@@ -268,6 +288,76 @@ void Coordinator::setupProjectileEntity(
     this->_engine->addComponent<Projectile>(entity, Projectile(Entity::fromId(projectileId), isPlayerProjectile, damage));
     // Projectiles inherit team from their shooter
     this->_engine->addComponent<Team>(entity, isPlayerProjectile ? TeamType::PLAYER : TeamType::ENEMY);
+}
+
+Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std::string& backgroundAsset, const std::string& soundTheme)
+{
+    // Create level entity
+    Entity levelEntity = this->_engine->createEntity("Level_" + std::to_string(levelNumber));
+
+    Level level;
+    level.levelDuration = duration;
+    level.backgroundAsset = backgroundAsset;
+    level.soundTheme = soundTheme;
+    level.started = false;
+    level.completed = false;
+    level.elapsedTime = 0.f;
+    level.currentWaveIndex = 0;
+
+    // Define level waves based on level number
+    // Example for Level 1
+    if (levelNumber == LEVEL_1_NUMBER) {
+        // Wave 1: Basic enemies
+        Wave wave1;
+        wave1.startTime = LEVEL_1_WAVE_1_START_TIME;
+        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 100.f, 0.f});
+        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 300.f, 1.5f});
+
+        // Wave 2: Mix of basic and fast enemies
+        Wave wave2;
+        wave2.startTime = LEVEL_1_WAVE_2_START_TIME;
+        wave2.enemies.push_back({EnemyType::FAST, 800.f, 150.f, 0.f});
+        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 250.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 800.f, 350.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
+
+        // Wave 3: Tank wave
+        //Wave wave3;
+        //wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
+        //wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
+        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
+        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
+
+        // Wave 4: Final assault
+        //Wave wave4;
+        //wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
+        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
+        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
+
+        level.waves.push_back(wave1);
+        level.waves.push_back(wave2);
+        //level.waves.push_back(wave3);
+        //level.waves.push_back(wave4);
+    }
+    // Can add more levels later
+    else {
+        LOG_WARN_CAT("Coordinator", "Level {} not configured, using default waves", levelNumber);
+        // Default simple wave
+        Wave defaultWave;
+        defaultWave.startTime = 2.0f;
+        defaultWave.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.f});
+        level.waves.push_back(defaultWave);
+    }
+
+    this->_engine->addComponent<Level>(levelEntity, level);
+    LOG_INFO_CAT("Coordinator", "Created level {} with {} waves, duration={}s, background={}, music={}", 
+                 levelNumber, level.waves.size(), duration, backgroundAsset, soundTheme);
+
+    return levelEntity;
 }
 
 void Coordinator::processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
@@ -435,9 +525,16 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
 void Coordinator::queueWeaponFire(uint32_t shooterId, float originX, float originY,
                                   float directionX, float directionY, uint8_t weaponType)
 {
+    // Create projectile immediately to reserve the entity ID
+    // (prevents race condition where LevelSystem might take the ID before we use it)
+    uint32_t projectileId = _engine->getNextEntityId();
+    Entity shooterEntity = _engine->getEntityFromId(shooterId);
+    Entity projectile = spawnProjectile(shooterEntity, projectileId, weaponType, originX, originY, directionX, directionY);
+    
+    // Queue the weapon fire event with the already-created projectile
     WeaponFireEvent event;
     event.shooterId = shooterId;
-    event.projectileId = _nextProjectileId++;
+    event.projectileId = projectileId;
     event.originX = originX;
     event.originY = originY;
     event.directionX = directionX;
@@ -467,6 +564,34 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     _packetsToRelay.clear();
 
     // ============================================================================
+    // NEW ENTITY BROADCAST
+    // ============================================================================
+    // Detect newly created entities with NetworkId and broadcast ENTITY_SPAWN packets
+    // This ensures clients know about new enemies, powerups, etc. created server-side
+    // ============================================================================
+    auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
+    static uint32_t entitySpawnSequence = 0;
+    
+    for (size_t i = 0; i < networkIdComponents.size(); ++i) {
+        if (networkIdComponents[i].has_value()) {
+            uint32_t networkId = networkIdComponents[i].value().id;
+            Entity entity = Entity::fromId(static_cast<uint32_t>(i));
+            
+            // Check if this entity has been broadcast yet
+            if (this->_engine->isAlive(entity) && _broadcastedEntityIds.find(networkId) == _broadcastedEntityIds.end()) {
+                // New entity! Create and send ENTITY_SPAWN packet
+                common::protocol::Packet spawnPacket;
+                entitySpawnSequence++;
+                if (createPacketEntitySpawn(&spawnPacket, networkId, entitySpawnSequence)) {
+                    outgoingPackets.push_back(spawnPacket);
+                    _broadcastedEntityIds.insert(networkId);
+                    LOG_INFO_CAT("Coordinator", "Broadcasting ENTITY_SPAWN for new entity {}", networkId);
+                }
+            }
+        }
+    }
+
+    // ============================================================================
     // SERVER SNAPSHOT GENERATION
     // ============================================================================
     // Only entities with NetworkId component are synchronized via snapshots.
@@ -476,7 +601,6 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     // ============================================================================
     
     // Get all networked entities (entities with NetworkId component)
-    auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
 
     if (networkIdComponents.size() == 0) {
         // No entities to sync
@@ -565,19 +689,10 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     
     // Process pending weapon fire events and create packets
     for (const auto& fireEvent : _pendingWeaponFires) {
-        // Spawn the projectile entity on the server
+        // Projectile was already spawned in queueWeaponFire() to reserve the ID
+        // Just verify the shooter is still alive and create the network packet
         Entity shooterEntity = this->_engine->getEntityFromId(fireEvent.shooterId);
         if (this->_engine->isAlive(shooterEntity)) {
-            Entity projectile = spawnProjectile(
-                shooterEntity,
-                fireEvent.projectileId,
-                fireEvent.weaponType,
-                fireEvent.originX,
-                fireEvent.originY,
-                fireEvent.directionX,
-                fireEvent.directionY
-            );
-
             // Create weapon fire packet to broadcast to clients
             // Args format: flags_count(1) + flags(1+) + sequence_number(4) + timestamp(4) + payload(17)
             std::vector<uint8_t> weaponFireArgs;
@@ -1023,6 +1138,13 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u is_playable=%u",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
 
+    // Check if entity already exists (to avoid duplicate spawning)
+    Entity existingEntity = this->_engine->getEntityFromId(payload.entity_id);
+    if (this->_engine->isAlive(existingEntity)) {
+        LOG_WARN_CAT("Coordinator", "Entity with ID %u already exists, skipping spawn", payload.entity_id);
+        return;
+    }
+
     // Create the entity with the specific ID from the server
     Entity newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
 
@@ -1043,17 +1165,22 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY): {
+            // Convert velocity from network format (int16_t representing velocity * 1000)
+            float velX = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_x)) / 1000.0f;
+            float velY = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_y)) / 1000.0f;
+            
             this->setupEnemyEntity(
                 newEntity,
                 payload.entity_id,
                 static_cast<float>(payload.position_x),
                 static_cast<float>(payload.position_y),
-                static_cast<float>(payload.initial_velocity_x),
-                static_cast<float>(payload.initial_velocity_y),
+                velX,
+                velY,
                 payload.initial_health,
                 /*withRenderComponents=*/true
             );
-            LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
+            LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f) with velocity (%.3f, %.3f)", 
+                        payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), velX, velY);
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
@@ -1160,6 +1287,12 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         offset += sizeof(net);
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating (it might not have been spawned yet via ENTITY_SPAWN)
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received transform for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         const Transform tf(
             static_cast<float>(net.pos_x),
@@ -1171,9 +1304,14 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         try {
             this->_engine->updateComponent<Transform>(entity, tf);
             LOG_DEBUG_CAT("Coordinator", "[CLIENT] Updated entity {} position to ({}, {})", entity_id, tf.x, tf.y);
-        } catch (const std::exception&) {
-            this->_engine->emplaceComponent<Transform>(entity, tf);
-            LOG_DEBUG_CAT("Coordinator", "[CLIENT] Emplaced entity {} position to ({}, {})", entity_id, tf.x, tf.y);
+        } catch (const std::exception& e) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Failed to update transform for entity {}: {}", entity_id, e.what());
+            try {
+                this->_engine->emplaceComponent<Transform>(entity, tf);
+                LOG_DEBUG_CAT("Coordinator", "[CLIENT] Emplaced entity {} position to ({}, {})", entity_id, tf.x, tf.y);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace transform for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1227,12 +1365,22 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
         // Note: shields are not currently in the Health component, so we only update health values
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received health for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         try {
             this->_engine->updateComponent<Health>(entity, health);
         } catch (const std::exception& e) {
             // if the entity does not have the component, set the component
-            this->_engine->emplaceComponent<Health>(entity, health);
+            try {
+                this->_engine->emplaceComponent<Health>(entity, health);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace health for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1293,12 +1441,22 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
         // Note: ammo is not currently in the Weapon component
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received weapon for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         try {
             this->_engine->updateComponent<Weapon>(entity, weapon);
         } catch (const std::exception& e) {
             // if the entity does not have the component, set the component
-            this->_engine->emplaceComponent<Weapon>(entity, weapon);
+            try {
+                this->_engine->emplaceComponent<Weapon>(entity, weapon);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace weapon for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1856,7 +2014,8 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     if (next_level == 0xFF) {
         // Game is finished - stop running state
         _gameRunning = false;
-        LOG_INFO_CAT("Coordinator", "Game ended - all levels completed");
+        stopMusic();  // Stop level music
+        LOG_INFO_CAT("Coordinator", "Game ended - all levels completed, music stopped");
 
         // Display final game stats
         std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
@@ -1910,6 +2069,41 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     // Set game to running state
     _gameRunning = true;
 
+    // Create scrolling background for the level (client-side rendering)
+    Entity backgroundEntity = this->_engine->createEntity("LevelBackground");
+    this->_engine->addComponent<Transform>(backgroundEntity, Transform(0.f, 0.f, 0.f, 1.0f));
+    // Use a background asset - for now using a placeholder, should be based on level
+    // The actual asset would come from level data sent by server or configured per level
+    this->_engine->addComponent<Sprite>(backgroundEntity, 
+    Sprite(Assets::GAME_BG, ZIndex::IS_BACKGROUND, sf::IntRect(0, 0, GAME_BG_SPRITE_WIDTH, GAME_BG_SPRITE_HEIGHT)));
+    this->_engine->addComponent<ScrollingBackground>(backgroundEntity, ScrollingBackground(LEVEL_BACKGROUND_SCROLL_SPEED, true, true));
+    this->_engine->addComponent<Drawable>(backgroundEntity, Drawable());
+    LOG_INFO_CAT("Coordinator", "Created scrolling background for level {}", level_id);
+
+    // Start level music (client-side only)
+    // The music type should ideally come from the level data sent by server
+    // For now, using a default music type
+    playMusic(protocol::AudioEffectType::FIRST_LEVEL_MUSIC);
+    LOG_INFO_CAT("Coordinator", "Started level music");
+
+    //// Create UI entity to display level start information
+    //std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
+    //Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
+    //this->_engine->addComponent<Transform>(levelStartEntity, Transform(640.f, 100.f, 0.f, 1.0f));
+    //this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage, FontAssets::DEFAULT_FONT, sf::Color::White, 48, ZIndex::IS_UI_HUD));
+    //this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
+    //this->_engine->addComponent<Drawable>(levelStartEntity, Drawable());
+
+    // Display timer countdown if provided
+    //if (estimated_duration > 0) {
+    //    std::string timerMessage = "Time: " + std::to_string(static_cast<int>(estimated_duration)) + "s";
+    //    Entity timerEntity = this->_engine->createEntity("LevelTimer");
+    //    this->_engine->addComponent<Transform>(timerEntity, Transform(640.f, 50.f, 0.f, 1.0f));
+    //    this->_engine->addComponent<Text>(timerEntity, Text(timerMessage, FontAssets::DEFAULT_FONT, sf::Color::Yellow, 36, ZIndex::IS_UI_HUD));
+    //    this->_engine->addComponent<Sprite>(timerEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
+    //    this->_engine->addComponent<TimerUI>(timerEntity, TimerUI());
+    //    this->_engine->addComponent<Drawable>(timerEntity, Drawable());
+    //}
     // Create UI entity to display level start information
     std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
     Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
@@ -2154,9 +2348,13 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     // Build args vector for PacketManager
     std::vector<uint8_t> args;
 
-    // flags_count (0 for now)
-    uint8_t flags_count = 0;
+    // flags_count (1 for FLAG_RELIABLE)
+    uint8_t flags_count = 1;
     args.push_back(flags_count);
+    
+    // flags (FLAG_RELIABLE = 0x01)
+    uint8_t flags = static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE);
+    args.push_back(flags);
 
     // sequence_number
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
@@ -2191,9 +2389,9 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     uint8_t initial_health = healthOpt.has_value() ? static_cast<uint8_t>(healthOpt.value().currentHealth) : 100;
     args.push_back(initial_health);
 
-    // initial_velocity_x, initial_velocity_y
-    int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx) : 0;
-    int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy) : 0;
+    // initial_velocity_x, initial_velocity_y (multiply by 1000 for network encoding)
+    int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx * 1000.0f) : 0;
+    int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy * 1000.0f) : 0;
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_x), 
                 reinterpret_cast<uint8_t*>(&velocity_x) + sizeof(velocity_x));
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_y), 

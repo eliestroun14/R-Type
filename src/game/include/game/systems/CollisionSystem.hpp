@@ -41,7 +41,7 @@ class CollisionSystem : public System{
 
     private:
         gameEngine::GameEngine& _engine;
-        
+
         bool checkAABBCollision(const Sprite& s1, const Sprite& s2);
 };
 
