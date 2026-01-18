@@ -15,11 +15,18 @@ add_executable(ecs_tests
    engine/gameEngine/coordinator/TestCoordinator.cpp
 
    engine/LoggerTest.cpp
+    engine/audio/TestAudioManager.cpp
+    engine/audio/TestAudioStorage.cpp
    engine/coordinator/network/TestPacketManagerAssert.cpp
    engine/coordinator/network/TestProcessPacket.cpp
    engine/coordinator/network/TestNetworkManagerCreate.cpp
    engine/coordinator/network/TestNetworkManagers.cpp
    common/TestPacket.cpp
+
+   client/TestRTypeClient.cpp
+   client/TestClientNetworkManager.cpp
+   client/TestClientNetworkManagerImpl.cpp
+   client/TestRTypeClientImpl.cpp
 
    TestDebug.cpp
     Error_messages_test.cpp

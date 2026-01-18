@@ -8,6 +8,18 @@
 #ifndef ASIOSOCKET_HPP_
 #define ASIOSOCKET_HPP_
 
+// Platform-specific defines for ASIO on Windows
+#ifdef _WIN32
+    #ifndef _WIN32_WINNT
+        #define _WIN32_WINNT 0x0601  // Windows 7 or later
+    #endif
+    #define ASIO_HAS_STD_ADDRESSOF
+    #define ASIO_HAS_STD_ARRAY
+    #define ASIO_HAS_CSTDINT
+    #define ASIO_HAS_STD_SHARED_PTR
+    #define ASIO_HAS_STD_TYPE_TRAITS
+#endif
+
 #include <memory>
 #include <asio.hpp>
 #include <common/network/sockets/ASocket.hpp>

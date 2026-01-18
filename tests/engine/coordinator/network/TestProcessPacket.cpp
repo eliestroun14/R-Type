@@ -142,6 +142,28 @@ TEST_F(ProcessPacketUnknownTypeTest, UnknownPacketTypeRandom) {
 }
 
 // ============================================================================
+// Reserved Flags Validation Tests
+// ============================================================================
+
+class ProcessPacketFlagsTest : public ProcessPacketTest {
+};
+
+TEST_F(ProcessPacketFlagsTest, ReservedFlagBitsRejectPacket) {
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(PacketTypes::TYPE_CLIENT_CONNECT);
+    packet.header.flags = 0x80; // reserved bits outside 0-4 set
+
+    auto buffer = createBuffer(37);
+    setUint8At(buffer, 0, 1);
+    setStringAt(buffer, 1, "TestPlayer", 31);
+    setUint32At(buffer, 33, 42);
+    setPacketData(buffer);
+
+    auto result = nm.processPacket(packet);
+    EXPECT_FALSE(result.has_value());
+}
+
+// ============================================================================
 // Return Value Behavior Tests
 // ============================================================================
 
@@ -282,6 +304,43 @@ TEST_F(ProcessPacketDispatchTest, DispatchHeartbeatType) {
 
     auto result = nm.processPacket(packet);
     EXPECT_TRUE(result.has_value());
+}
+
+// ============================================================================
+// createPacket Dispatch Tests
+// ============================================================================
+
+class CreatePacketDispatchTest : public ::testing::Test {
+protected:
+    PacketManager manager;
+};
+
+TEST_F(CreatePacketDispatchTest, UnknownTypeReturnsNullopt) {
+    auto result = manager.createPacket(static_cast<PacketTypes>(0xFF), {});
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(CreatePacketDispatchTest, CreatesHeartbeatPacket) {
+    // flags_count(1) + flags(1) + sequence(4) + timestamp(4) + payload(4)
+    std::vector<uint8_t> args;
+    args.push_back(1);       // flags_count
+    args.push_back(0x01);    // FLAG_RELIABLE
+    uint32_t seq = 10;
+    uint32_t ts = 20;
+    uint32_t playerId = 2;
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&seq), reinterpret_cast<uint8_t*>(&seq) + sizeof(uint32_t));
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&ts), reinterpret_cast<uint8_t*>(&ts) + sizeof(uint32_t));
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&playerId), reinterpret_cast<uint8_t*>(&playerId) + sizeof(uint32_t));
+
+    auto result = manager.createPacket(PacketTypes::TYPE_HEARTBEAT, args);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->header.packet_type, static_cast<uint8_t>(PacketTypes::TYPE_HEARTBEAT));
+    EXPECT_EQ(result->header.sequence_number, seq);
+    EXPECT_EQ(result->header.timestamp, ts);
+    ASSERT_EQ(result->data.size(), 4u);
+    uint32_t parsedPlayerId;
+    std::memcpy(&parsedPlayerId, result->data.data(), sizeof(uint32_t));
+    EXPECT_EQ(parsedPlayerId, playerId);
 }
 
 // ============================================================================
