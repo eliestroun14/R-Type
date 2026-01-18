@@ -1,10 +1,11 @@
 #include <server/core/Server.hpp>
+#include <game/Game.hpp>
 #include <iostream>
 #include <cstring>
 #include <csignal>
 #include <string>
 #include <map>
-#include <engine/utils/Logger.hpp>
+#include <common/logger/Logger.hpp>
 #include <common/error/Error.hpp>
 
 namespace server {
@@ -17,6 +18,7 @@ Server::Server(const ServerConfig& config)
     : _config(config)
     , _isRunning(false)
     , _networkManager(std::make_unique<server::network::ServerNetworkManager>(_config.port, _config.maxPlayers))
+    , _game(std::make_unique<Game>(Game::Type::SERVER))
 {
 }
 
@@ -25,14 +27,24 @@ Server::~Server() {
 }
 
 bool Server::init() {
+    // Set max players for level start condition
+    if (_game) {
+        _game->setMaxPlayers(_config.maxPlayers);
+        LOG_INFO("Server: Set max players to {} for level start", _config.maxPlayers);
+    }
+
+    // Set up callback for when players connect
+    _networkManager->setOnPlayerConnectedCallback([this](uint32_t playerId) {
+        if (_game) {
+            _game->onPlayerConnected(playerId);
+        }
+    });
+
     return true;
 }
 
 void Server::run() {
     _isRunning = true;
-    _gameEngine = std::make_shared<gameEngine::GameEngine>();
-    _gameEngine->init();  // Initialize engine BEFORE network manager starts
-    _networkManager->setGameEngine(_gameEngine);
     _networkManager->start();
 
     LOG_INFO("Server running on port {}", _config.port);
@@ -40,16 +52,43 @@ void Server::run() {
     std::thread networkThread(&server::network::ServerNetworkManager::run, _networkManager.get());
     networkThread.detach(); // Detach the network thread to allow independent execution
 
-    this->gameLoop();
-    
-    // Ensure network manager is stopped
-    if (_networkManager) {
-        _networkManager->stop();
-    }
-    
-    // Give network thread a moment to process the stop signal
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    while (_isRunning && !g_shutdownRequested.load()) {
+        // Basic game processing: feed incoming packets and run game loop
+        auto incomingPackets = _networkManager->fetchIncoming();
+        if (!incomingPackets.empty()) {
+            LOG_DEBUG("Server: fetched {} incoming packets from network", incomingPackets.size());
+        }
+        for (const auto &entry : incomingPackets) {
+            if (_game) {
+                LOG_DEBUG("Server: forwarding packet type={} to game", static_cast<int>(entry.packet.header.packet_type));
+                _game->addIncomingPacket(entry);
+            }
+        }
 
+        if (_game) {
+            if (!_game->runGameLoop()) {
+                stop();
+                break;
+            }
+        }
+        // Forward any outgoing packets from Game to the network manager
+        if (_game) {
+            while (true) {
+                auto maybeOut = _game->popOutgoingPacket();
+                if (!maybeOut.has_value())
+                    break;
+                auto &out = maybeOut.value();
+                _networkManager->queueOutgoing(out.first, out.second);
+            }
+        }
+        
+        // Small sleep to prevent busy-waiting and allow time to accumulate for fixed timestep
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    if (g_shutdownRequested.load()) {
+        LOG_INFO("Shutdown requested, stopping gracefully...");
+    }
 }
 
 void Server::stop() {
@@ -58,56 +97,6 @@ void Server::stop() {
         _networkManager->stop();
     }
 }
-
-void Server::gameLoop() {
-
-    // Engine already initialized in run()
-    
-    auto next = std::chrono::steady_clock::now();
-    const std::chrono::milliseconds tick(std::chrono::milliseconds(TICK_RATE));
-
-    uint64_t currentTick = 0;
-    uint64_t lastHeartbeatTick = 0;
-
-    while (_isRunning && !g_shutdownRequested.load()) {
-
-        next += tick;
-        std::this_thread::sleep_until(next);
-
-        currentTick++;
-
-        // Calculate delta time in milliseconds
-        float deltaTime = static_cast<float>(TICK_RATE);
-
-        // Process received packets
-        std::vector<common::protocol::Packet> packetsToProcess;
-        auto incomingPackets = _networkManager->fetchIncoming();
-        for (const auto& entry : incomingPackets) {
-            packetsToProcess.push_back(entry.packet);
-        }
-
-        // Update game state every tick
-        _gameEngine->process(deltaTime, NetworkType::NETWORK_TYPE_SERVER, packetsToProcess, currentTick * TICK_RATE);
-
-        // Build and send packets based on tick intervals
-        std::vector<common::protocol::Packet> outgoingPackets;
-
-        this->_gameEngine->buildPacketBasedOnStatus(           // build packets to send to server based on game state and elapsed time
-            NetworkType::NETWORK_TYPE_CLIENT,
-            currentTick * TICK_RATE,
-            outgoingPackets
-        );
-
-        for (const auto& packet : outgoingPackets) {
-            _networkManager->queueOutgoing(packet);
-        }
-    }
-    
-    if (g_shutdownRequested.load()) {
-        LOG_INFO("Shutdown requested, stopping gracefully...");
-    }
-}
-
 } // namespace server
 
 // Signal handler
@@ -139,7 +128,7 @@ static void printHelp(const char* programName) {
 // Parse command line arguments
 static bool parseArguments(int argc, char const *argv[], server::ServerConfig& config) {
     std::map<std::string, std::string> args;
-    
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
@@ -179,7 +168,7 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
                 std::string("Unknown argument: ") + arg);
         }
     }
-    
+
     // Apply parsed values
     try {
         if (args.find("port") != args.end()) {
@@ -215,7 +204,7 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
         throw Error(ErrorType::ConfigurationError, 
             std::string("Argument value out of range: ") + e.what());
     }
-    
+
     return true;
 }
 
@@ -223,7 +212,7 @@ int main(int argc, char const *argv[])
 {
     // Initialize logger first
     logger::Logger::setup(
-        logger::LogLevel::Info,
+        logger::LogLevel::Debug,
         "server.log",
         {},
         false,
@@ -231,11 +220,11 @@ int main(int argc, char const *argv[])
         false,
         true
     );
-    
+
     // Set up signal handlers
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
-    
+
     try {
         // Default configuration
         server::ServerConfig config;

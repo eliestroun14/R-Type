@@ -9,7 +9,7 @@
 #include <iostream>
 #include <string>
 #include <map>
-#include <engine/utils/Logger.hpp>
+#include <common/logger/Logger.hpp>
 #include <common/error/Error.hpp>
 
 struct ClientConfig {
@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 {
     // Initialize logger first
     logger::Logger::setup(
-        logger::LogLevel::Info,
+        logger::LogLevel::Debug,
         "client.log",
         {},
         false,

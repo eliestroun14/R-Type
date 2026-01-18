@@ -1,0 +1,190 @@
+/*
+** EPITECH PROJECT, 2025
+** R-Type
+** File description:
+** ClientUtils
+*/
+
+#include <game/utils/ClientUtils.hpp>
+#include <random>
+#include <iostream>
+#include <chrono>
+
+uint32_t generateClientId()
+{
+    std::random_device rd;  // Random seed generator
+    std::mt19937 gen(rd());  // Mersenne Twister random engine
+    std::uniform_int_distribution<uint32_t> dis(0, UINT32_MAX);  // Uniform distribution
+
+    return dis(gen);
+}
+
+uint32_t getCurrentTimeMs()
+{
+    auto now = std::chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+
+    return milliseconds;
+}
+
+// void createButton(gameEngine::GameEngine& engine, std::string label,
+//     unsigned int textSize, sf::Color textColor, sf::Vector2f pos, float scale, sf::IntRect rectSprite,
+//     Assets noneAssetId, Assets hoverAssetId, Assets clickedAssetId,
+//     std::function<void ()> onClick)
+// {
+//     Entity button = engine.createEntity("Button_" + label);
+//     engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
+
+//     engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_UI_HUD, rectSprite));
+
+//     ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
+//     engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
+
+//     Entity textEntity = engine.createEntity("ButtonText_" + label);
+//     engine.addComponent<Transform>(textEntity, Transform(pos.x, pos.y, 0, scale));
+//     engine.addComponent<Text>(textEntity, Text(label, textColor, textSize, ZIndex::IS_UI_HUD));
+// }
+
+std::vector<Entity> createButton(gameEngine::GameEngine& engine, std::string label,
+    unsigned int textSize, sf::Color textColor, sf::Vector2f pos, float scale, sf::IntRect rectSprite,
+    Assets noneAssetId, Assets hoverAssetId, Assets clickedAssetId,
+    std::function<void ()> onClick)
+{
+    std::vector<Entity> createdEntities;
+
+    // button
+    Entity button = engine.createEntity("Button_" + label);
+    engine.addComponent<Transform>(button, Transform(pos.x, pos.y, 0, scale));
+    engine.addComponent<Sprite>(button, Sprite(noneAssetId, ZIndex::IS_GAME, rectSprite));
+    ButtonTextures textures = { noneAssetId, hoverAssetId, clickedAssetId};
+    engine.addComponent<ButtonComponent>(button, ButtonComponent(textures, onClick));
+
+    createdEntities.push_back(button);
+
+    // text
+    float centerX = pos.x + (rectSprite.width * scale) / 2.0f;
+    float centerY = pos.y + (rectSprite.height * scale) / 2.0f;
+
+    Entity textEntity = engine.createEntity("ButtonText_" + label);
+    engine.addComponent<Transform>(textEntity, Transform(centerX, centerY, 0, scale));
+    engine.addComponent<Text>(textEntity, Text(label.c_str(), textColor, textSize, ZIndex::IS_UI_HUD));
+
+    createdEntities.push_back(textEntity);
+
+    return createdEntities;
+}
+
+
+Entity createText(gameEngine::GameEngine& engine, std::string label,
+    unsigned int textSize, sf::Color textColor, sf::Vector2f pos,
+    float rotation, float scale)
+{
+    Entity text = engine.createEntity("Text_" + label);
+    engine.addComponent<Transform>(text, Transform(pos.x, pos.y, rotation, scale));
+
+    engine.addComponent<Text>(text, Text(label.c_str(), textColor, textSize, ZIndex::IS_UI_HUD));
+
+    return text;
+}
+
+
+Entity createImage(gameEngine::GameEngine& engine, Assets assetId,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex)
+{
+    Entity image = engine.createEntity("Entity");
+
+    engine.addComponent<Transform>(image, Transform(pos.x, pos.y, rotation, scale));
+    engine.addComponent<Sprite>(image, Sprite(assetId, zIndex, rect));
+
+    return image;
+}
+
+
+Entity createAnimatedImage(gameEngine::GameEngine& engine, Assets assetId, Animation animation,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rect, ZIndex zIndex)
+{
+    Entity image = engine.createEntity("Entity");
+
+    engine.addComponent<Transform>(image, Transform(pos.x, pos.y, rotation, scale));
+    engine.addComponent<Sprite>(image, Sprite(assetId, zIndex, rect));
+    engine.addComponent<Animation>(image, Animation(animation));
+
+    return image;
+}
+
+Entity createMovingBackground(gameEngine::GameEngine &engine, Assets assetId,
+    sf::Vector2f pos, float rotation, float scale, sf::IntRect rectSprite,
+    float speed, bool isHorizontal, bool shouldRepeat)
+{
+    Entity movingBg = engine.createEntity("MovingBackground");
+
+    engine.addComponent<Transform>(movingBg, Transform(pos.x, pos.y, rotation, scale));
+    engine.addComponent<Sprite>(movingBg, Sprite(assetId, ZIndex::IS_BACKGROUND, rectSprite));
+    engine.addComponent<ScrollingBackground>(movingBg, ScrollingBackground(speed, isHorizontal, shouldRepeat));
+
+    return movingBg;
+}
+
+std::vector<Entity> createRebindButton(gameEngine::GameEngine& engine, std::string label,
+    GameAction action, int textSize, sf::Vector2f pos, float scale)
+{
+    std::vector<Entity> entities = createButton(engine, label, textSize, sf::Color::White, pos, scale,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON, nullptr);
+
+    Entity buttonEnt = entities[0];
+    Entity textEnt = entities[1];
+
+    // add Rebind component to the button entity
+    engine.addComponent<Rebind>(buttonEnt, Rebind(action, textEnt));
+
+    auto& btnComp = engine.getComponentEntity<ButtonComponent>(buttonEnt);
+    btnComp->onClick = [&engine, buttonEnt, textEnt]() {
+        auto& rb = engine.getComponentEntity<Rebind>(buttonEnt);
+        auto& txt = engine.getComponentEntity<Text>(textEnt);
+
+        rb->isWaiting = true;
+        std::strcpy(txt->str, "..."); // text display when user click on the button
+    };
+
+    return entities;
+}
+
+std::string keyToString(sf::Keyboard::Key key)
+{
+    if (key >= sf::Keyboard::A && key <= sf::Keyboard::Z)
+        return std::string(1, 'A' + (key - sf::Keyboard::A));
+
+    if (key >= sf::Keyboard::Num0 && key <= sf::Keyboard::Num9)
+        return std::string(1, '0' + (key - sf::Keyboard::Num0));
+
+    static const std::map<sf::Keyboard::Key, std::string> specialKeys = {
+        {sf::Keyboard::Up, "UP"}, {sf::Keyboard::Down, "DOWN"},
+        {sf::Keyboard::Left, "LEFT"}, {sf::Keyboard::Right, "RIGHT"},
+        {sf::Keyboard::Space, "SPACE"}, {sf::Keyboard::Enter, "ENTER"},
+        {sf::Keyboard::Escape, "ESC"}, {sf::Keyboard::LShift, "SHIFT"}
+    };
+
+    if (specialKeys.count(key))
+        return specialKeys.at(key);
+
+    return "UNKNOWN";
+}
+
+std::string getKeybordKeyFromGameConfig(gameEngine::GameEngine& engine, GameAction action)
+{
+    sf::Keyboard::Key key = sf::Keyboard::Unknown;
+
+    auto& configs = engine.getComponents<GameConfig>();
+    for (auto& config : configs) {
+        if (config.has_value())
+            for (auto& k : config->_keybinds)
+                if (k.second == action) {
+                    key = k.first;
+                    break;
+                }
+    }
+
+    return keyToString(key);
+}

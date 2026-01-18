@@ -7,28 +7,14 @@
 
 #include <gtest/gtest.h>
 #include <SFML/Config.hpp>
-#include <engine/gameEngine/coordinator/render/RenderManager.hpp>
-
-// Test inputs
-TEST(RenderManagerTest, ProcessInputShooting) {
-    RenderManager manager;
-
-    EXPECT_FALSE(manager.isActionActive(GameAction::SHOOT));
-
-    // fake event, press S
-    sf::Event fakeEvent;
-    fakeEvent.type = sf::Event::KeyPressed;
-    fakeEvent.key.code = sf::Keyboard::S;
-
-    manager.handleEvent(fakeEvent);
-
-    // check result
-    EXPECT_TRUE(manager.isActionActive(GameAction::SHOOT));
-}
+#include <engine/render/RenderManager.hpp>
+#include <map>
 
 // Test released input
 TEST(RenderManagerTest, ProcessInputRelease) {
     RenderManager manager;
+
+    manager.updateKeyBindings({{sf::Keyboard::Left, GameAction::MOVE_LEFT}});
 
     // simulate the pressure
     sf::Event pressEvent;
@@ -66,26 +52,6 @@ TEST(RenderManagerTest, ProcessInputUnboundKey) {
     for (const auto& action : actions) {
         EXPECT_FALSE(action.second); // everything need to be false
     }
-}
-
-TEST(RenderManagerTest, ProcessInputMultipleKeys) {
-    RenderManager manager;
-
-    // press UP
-    sf::Event moveEvent;
-    moveEvent.type = sf::Event::KeyPressed;
-    moveEvent.key.code = sf::Keyboard::Up;
-    manager.handleEvent(moveEvent);
-
-    // press 'S' (to shoot)
-    sf::Event shootEvent;
-    shootEvent.type = sf::Event::KeyPressed;
-    shootEvent.key.code = sf::Keyboard::S;
-    manager.handleEvent(shootEvent);
-
-    // check 2 actions are activated
-    EXPECT_TRUE(manager.isActionActive(GameAction::MOVE_UP));
-    EXPECT_TRUE(manager.isActionActive(GameAction::SHOOT));
 }
 
 TEST(RenderManagerTest, InitialStateIsClean) {

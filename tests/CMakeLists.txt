@@ -12,14 +12,40 @@ add_executable(ecs_tests
 
    engine/gameEngine/coordinator/render/TestRenderManager.cpp
 
+    engine/TestRenderManagerCoverage.cpp
+
    engine/gameEngine/coordinator/TestCoordinator.cpp
 
    engine/LoggerTest.cpp
+    engine/audio/TestAudioManager.cpp
+    engine/audio/TestAudioStorage.cpp
    engine/coordinator/network/TestPacketManagerAssert.cpp
    engine/coordinator/network/TestProcessPacket.cpp
    engine/coordinator/network/TestNetworkManagerCreate.cpp
+    engine/coordinator/network/TestPacketManagerCreateCoverage.cpp
    engine/coordinator/network/TestNetworkManagers.cpp
    common/TestPacket.cpp
+    common/TestASocket.cpp
+    common/TestAsioSocket.cpp
+
+    engine/TestGameEngine.cpp
+    engine/TestComponents.cpp
+    engine/TestEntityManagerCoverage.cpp
+    engine/TestFontStorage.cpp
+    engine/TestTextureStorage.cpp
+    engine/TestAnimationSystem.cpp
+    engine/TestAudioSystem.cpp
+    engine/TestBackgroundSystem.cpp
+    engine/TestCollisionSystem.cpp
+    engine/TestLevelTimerSystem.cpp
+    engine/TestRenderSystemCoverage.cpp
+    engine/TestPlayerSystemCoverage.cpp
+    engine/TestLevelSystemCoverage.cpp
+
+   client/TestRTypeClient.cpp
+   client/TestClientNetworkManager.cpp
+   client/TestClientNetworkManagerImpl.cpp
+   client/TestRTypeClientImpl.cpp
 
    TestDebug.cpp
     Error_messages_test.cpp
@@ -29,11 +55,11 @@ add_executable(ecs_tests
 target_link_libraries(ecs_tests
     GTest::gtest
     GTest::gtest_main
-    pthread
     engine
     common
     client_lib
     server_lib
+    game
     spdlog::spdlog
 
     sfml-graphics
@@ -44,3 +70,5 @@ target_link_libraries(ecs_tests
 # Discover tests
 include(GoogleTest)
 gtest_discover_tests(ecs_tests)
+
+# Game tests removed

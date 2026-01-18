@@ -60,6 +60,7 @@ CPMAddPackage(
         "-DSFML_BUILD_DOC=OFF"
         "-DSFML_BUILD_TEST_SUITE=OFF"
         "-DSFML_USE_SYSTEM_DEPS=OFF"
+        "-DSFML_ENABLE_FLAC=OFF"
 )
 
 # SFML targets are: sfml-system, sfml-window, sfml-graphics, sfml-audio, sfml-network
@@ -73,6 +74,7 @@ add_subdirectory(src/common)
 add_subdirectory(src/engine)
 add_subdirectory(src/server)
 add_subdirectory(src/client)
+add_subdirectory(src/game)
 
 # Enable testing
 enable_testing()

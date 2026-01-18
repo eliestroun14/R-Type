@@ -1,32 +1,32 @@
 # Coordinator
 
-The `Coordinator` is the **central hub** of the ECS architecture (implementing the **Facade Pattern**). It acts as the single point of contact between the user's game logic and the internal engine subsystems (`EntityManager` and `SystemManager`).
+The `Coordinator` is the **central hub** of the ECS architecture (implementing the **Facade Pattern**). It acts as the single point of contact between the high-level Game Engine and the internal subsystems (`EntityManager`, `SystemManager`, `RenderManager`).
 
-Instead of managing memory or system logic manually, the developer communicates solely with the Coordinator to orchestrate the game.
+Instead of managing memory, system logic, rendering, or packet parsing manually, the developer communicates solely with the Coordinator to orchestrate the game state.
 
 ## Architecture Overview
 
-The Coordinator unifies the data (Entities/Components) and the logic (Systems).
+The Coordinator unifies Data (Entities), Logic (Systems), IO (Input/Render), and Networking events.
 
 ```text
-       User Code (Main Loop)
+       GameLoop (Client/Server)
               │
-        [ Coordinator ] <────── Facade Interface
+        [ Coordinator ] <────────────────── Facade Interface
               │
-      ┌───────┴───────┐
-      ▼               ▼
-[EntityManager] [SystemManager]
-      │               │
-  [Entities]      [Systems]
-  [Components]    (Logic)
+      ┌───────┼───────────────┬────────────────┐
+      ▼       ▼               ▼                ▼
+[EntityManager] [SystemManager] [RenderManager]  [Packet Logic]
+      │       │               │                │
+  [Entities]  [Systems]       [Window/Input]   [Protocol/Parsing]
+  [Components]
 ```
 
 ## Core Responsibilities
 
-1.  **Abstraction:** Hides the complexity of bitset manipulation and memory pooling.
-2.  **Life-cycle Management:** Centralizes the creation and destruction of game objects.
-3.  **Data Routing:** Ensures components are stored in the correct contiguous arrays for cache efficiency.
-4.  **System Orchestration:** Manages the registration and execution order of game systems.
+1.  **ECS Orchestration:** Manages the lifecycle of Entities, Components, and Systems.
+2.  **Input Abstraction:** Bridges SFML inputs (via RenderManager) to ECS Components (`InputComponent`).
+3.  **Render Proxying:** Exposes rendering primitives (Window, Textures) to Systems without exposing the raw manager.
+4.  **Network Reconciliation:** Decodes incoming network packets (Spawn, Move, GameState) and applies them to the ECS world.
 
 ## API Reference
 
@@ -34,85 +34,115 @@ The Coordinator unifies the data (Entities/Components) and the logic (Systems).
 
 | Method | Description |
 | :--- | :--- |
-| `void init()` | **Bootstraps the Engine**. Allocates memory for internal managers. **Must be called first.** |
+| `void init()` | **Core Init**. Allocates `EntityManager` and `SystemManager`. Essential for both Server and Client |
+| `void initRender()` | **Graphics Init.** Allocates `RenderManager` and opens the window. **Client Only.** |
 
 ### 2. Entity Management
 
-Wrappers around the `EntityManager` to handle Game Object IDs.
-
 | Method | Description |
 | :--- | :--- |
-| `Entity createEntity(string name)` | Spawns a new entity and returns its unique ID. The name is used for debugging. |
-| `void destroyEntity(Entity &e)` | Marks an entity for destruction and recycles its ID. |
-| `bool isAlive(Entity e)` | Returns `true` if the ID is valid and currently in use. |
-| `std::string getEntityName(Entity e)` | Retrieves the debug name assigned during creation. |
+| `Entity createEntity(string)` | Spawns a raw entity with a debug name. |
+| `Entity createPlayerEntity(id, playable)` | Helper to spawn a Player. Adds `InputComponent`. If `playable` is true, adds `Playable` tag (Local Player). |
+| `void destroyEntity(Entity)` | Marks an entity for destruction. |
+| `bool isAlive(Entity)` | Checks if an ID is valid. |
+| `string getEntityName(Entity)` | Retrieves the debug name assigned during creation. |
 
 ### 3. Component Management
 
-These methods use **C++ Templates** to maintain type safety while avoiding `void*` casting.
+Wrappers around `EntityManager` using C++ Templates.
 
-| Method | Usage & Performance Note |
+| Method | Description |
 | :--- | :--- |
-| `registerComponent<T>()` | Prepares the memory arrays for type `T`. Must be called before using this component. |
-| `addComponent(Entity, T&&)` | **Move Semantics:** Moves an existing object into storage. Use this if the object is already created. |
-| `emplaceComponent(Entity, Args...)` | **Zero-Copy (Recommended):** Constructs the component *directly* inside the array using `Args`. Faster than `addComponent` for complex types. |
-| `removeComponent<T>(Entity)` | Strips the specified component type from the entity. |
-| `getComponentEntity<T>(Entity)` | Returns a `std::optional<T>` (or reference) to the data. Allows read/write access to entity state. |
+| `registerComponent<T>()` | Registers a component type `T` (Arrays allocation). |
+| `addComponent(Entity, T)` | Moves a component into the array for the given entity. |
+| `getComponentEntity<T>(Entity)` | Returns `std::optional<T>` to read/write component data. |
+| `removeComponent<T>(Entity)` | Removes the component from the entity. |
 
 ### 4. System Management
 
 | Method | Description |
 | :--- | :--- |
-| `registerSystem<S>(Args...)` | Instantiates a system of type `S`. Arguments are forwarded to the system's constructor. |
-| `updateSystems(float dt)` | **The Heartbeat.** Iterates through all registered systems. `dt` (Delta Time) ensures frame-rate independence. |
+| `registerSystem<S>()` | Instantiates a system. |
+| `setSystemSignature<S, Comps...>()` | Defines which Components an entity must possess to be processed by System `S`. |
+| `updateSystems(float dt)` | **Update Loop.** Runs logic for all systems. |
+| `onCreateSystems()` / `onDestroySystems()` | Triggers `onCreate` / `onDestroy` callbacks in all systems. |
 
-## Integration Example: The Game Loop
+### 5. Input Management
 
-This example demonstrates the standard workflow: **Init -> Register -> Create -> Loop**.
+Handles the flow of inputs from hardware (Client) or Network (Server) to the Entity logic.
+
+| Method | Usage |
+| :--- | :--- |
+| `setLocalPlayerEntity(Entity, id)` | Links the RenderManager input system to a specific ECS Entity (The local player). |
+| `processInput()` | **Client Only.** Polls window events (Keyboard/Mouse) and updates the local player's `InputComponent`. |
+| `setPlayerInputAction(...)` | **Server/Network.** Manually sets an action state (used when applying an Input Packet from a client). |
+| `isPlayerActionActive(...)` | Checks if a specific action is active for a specific player entity. |
+| `isActionActive(GameAction)` | Checks if a key is currently held down locally (e.g., for UI logic). |
+| `isActionJustPressed(GameAction)` | Checks if a key was pressed this exact frame (Edge detection). |
+| `getMousePosition()` | Returns the mouse coordinates relative to the window. |
+
+### 6. Rendering & Resources (Client Only)
+
+Proxies for the `RenderManager`.
+
+| Method | Description |
+| :--- | :--- |
+| `beginFrame()` | Clears the window. Call at start of render loop. |
+| `render()` | Swaps buffers (display). Call at end of render loop. |
+| `getTexture(Assets id)` | Retrieves a shared pointer to a loaded texture resource. |
+| `getWindow()` | Returns the raw `sf::RenderWindow&`. |
+| `getScaleFactor()` | Returns the window scaling factor for velocity adjustments. |
+
+### 7. Network Packet Processing
+
+Methods to apply network state to the local world.
+
+| Method | Description |
+| :--- | :--- |
+| `processServerPackets(...)` | **Server Side.** Parses packets (Inputs) and updates entities input state via `PacketManager`. |
+| `processClientPackets(...)` | **Client Side.** Handles Game State updates (`ENTITY_SPAWN`, `TRANSFORM_SNAPSHOT`, `GAME_END`, etc.) and reconciles the world state. |
+| `handlePacketCreateEntity(...)` | **Internal.** Logic to spawn entities (Player, Enemy, Projectile) based on server data. |
+| `handlePacketTransformSnapshot(...)` | **Internal.** Interpolates position/rotation from server snapshots. |
+
+## Integration Example: Client Game Loop
 
 ```cpp
 #include "Coordinator.hpp"
 
-// 1. Define Components (Data)
-struct Transform { float x, y; };
-struct RigidBody { float velocity, mass; };
-
-// 2. Define System (Logic)
-class GravitySystem : public ISystem {
-public:
-    void update(float dt) override {
-        // In a real engine, we would iterate over entities with RigidBody here
-        std::cout << "Applying gravity..." << std::endl;
-    }
-};
-
-int main() {
+// Example Workflow
+void runClient() {
     Coordinator gCoordinator;
 
-    // A. Bootstrap
-    gCoordinator.init();
+    // 1. Initialize
+    gCoordinator.init();       // ECS Logic
+    gCoordinator.initRender(); // Window & Assets
 
-    // B. Register Data Types
+    // 2. Register Logic
     gCoordinator.registerComponent<Transform>();
-    gCoordinator.registerComponent<RigidBody>();
+    gCoordinator.registerComponent<Sprite>();
+    gCoordinator.registerComponent<InputComponent>();
+    
+    // 3. Register Systems
+    auto& renderSys = gCoordinator.registerSystem<RenderSystem>();
+    gCoordinator.setSystemSignature<RenderSystem, Transform, Sprite>();
+    
+    // 4. Game Loop
+    while (gCoordinator.isOpen()) {
+        
+        // A. Input
+        gCoordinator.processInput(); // Polls events -> Updates Local Player Component
 
-    // C. Register Logic
-    gCoordinator.registerSystem<GravitySystem>();
+        // B. Network (Incoming)
+        // std::vector<Packet> packets = network.receive();
+        // gCoordinator.processClientPackets(packets, time);
 
-    // D. Create Game Objects (Entities)
-    Entity player = gCoordinator.createEntity("Player1");
-
-    // E. Compose the Entity
-    // "Emplace" is preferred over "Add" for efficiency
-    gCoordinator.emplaceComponent<Transform>(player, 10.0f, 50.0f);
-    gCoordinator.emplaceComponent<RigidBody>(player, 0.0f, 70.0f);
-
-    // F. Main Loop
-    float dt = 0.016f;
-    while (true) {
+        // C. Logic
         gCoordinator.updateSystems(dt);
-        // ... Rendering code ...
+
+        // D. Render
+        gCoordinator.beginFrame();
+        gCoordinator.updateSystems(dt); // Calls RenderSystem::update
+        gCoordinator.render();
     }
-    return 0;
 }
 ```

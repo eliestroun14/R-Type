@@ -1,0 +1,118 @@
+/*
+** EPITECH PROJECT, 2025
+** R-Type
+** File description:
+** Game
+*/
+
+#ifndef GAME_HPP_
+#define GAME_HPP_
+#include <deque>
+#include <optional>
+#include <mutex>
+#include <cstdint>
+#include <chrono>
+#include <memory>
+#include <unordered_map>
+#include <common/network/NetworkManager.hpp>
+#include <common/protocol/Packet.hpp>
+#include <game/coordinator/Coordinator.hpp>
+#include <game/menu/IMenu.hpp>
+
+class Game {
+    public:
+        enum class Type : uint8_t {
+            SERVER = 0,
+            CLIENT = 1,
+            STAND_ALONE = 2
+        };
+
+        Game(Type type = Type::SERVER);
+        ~Game();
+
+        bool runGameLoop(); // process packet + update systems / components + render + packet creation
+
+        void addIncomingPacket(const common::network::ReceivedPacket& packet);
+        std::optional<std::pair<common::protocol::Packet, std::optional<uint32_t>>> popOutgoingPacket();
+
+        void setConnected(bool status) { _isConnected = status; }
+        bool isConnected() const { return _isConnected; }
+        void setRunning(bool status) { _isRunning = status; }
+        bool isRunning() const { return _isRunning; }
+
+        // Get coordinator for initialization purposes
+        std::shared_ptr<Coordinator> getCoordinator() { return _coordinator; }
+
+        // Server-side: Handle a new player connection
+        void onPlayerConnected(uint32_t playerId);
+        
+        // Server-side: Set max players for level start condition
+        void setMaxPlayers(uint32_t maxPlayers) { _maxPlayers = maxPlayers; }
+
+        // Server-side: Check if level should start
+        bool shouldStartLevel() const;
+        
+        // Server-side: Notify that a player is ready
+        void notifyPlayerReady(uint32_t playerId);
+        
+        // Server-side: Notify that a player is not ready
+        void notifyPlayerNotReady(uint32_t playerId);
+
+        void setMenu(std::shared_ptr<IMenu> menu) { _menu = menu; }
+        
+        // Client-side: Clear the menu when level starts (hide all menu entities)
+        void clearMenuOnLevelStart() { if (_menu) _menu->clearMenuEntities(); }
+
+    protected:
+        void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);
+        std::optional<common::network::ReceivedPacket> popIncomingPacket();
+
+        // Server-side simulation step
+        void serverTick(uint64_t elapsedMs);
+
+        // Client-side prediction and reconciliation step
+        void clientTick(uint64_t elapsedMs);
+        
+        // Helper method to send existing players to a new client
+        void sendExistingPlayersToNewClient(uint32_t newPlayerId);
+
+    private:
+        Type _type;
+
+        // Coordinator manages ECS and packet handling
+        std::shared_ptr<Coordinator> _coordinator;
+
+        std::deque<common::network::ReceivedPacket> _incoming;
+        std::deque<std::pair<common::protocol::Packet, std::optional<uint32_t>>> _outgoing;
+
+        // Mutexes to protect queue access across threads
+        std::mutex _incomingMutex;
+        std::mutex _outgoingMutex;
+
+        bool _isConnected = false;
+        bool _isRunning = false;
+
+        // Timing for fixed timestep
+        std::chrono::steady_clock::time_point _lastTickTime;
+        static constexpr uint64_t TICK_RATE_MS = 16; // ~60 FPS
+        uint64_t _accumulatedTime = 0;
+        
+        // Track connected player IDs for spawning existing players to new clients
+        std::vector<uint32_t> _connectedPlayers;
+        
+        // Track which players are ready
+        std::unordered_map<uint32_t, bool> _playerReadyStatus;
+        
+        // Level management (server-side)
+        Entity _currentLevelEntity = Entity::fromId(0);  // Current level entity ID
+        bool _levelStarted = false;
+        uint32_t _maxPlayers = 2;  // Set by server
+        
+        /** @brief Check if level should start and start it if conditions are met (server-side only). */
+        void checkAndStartLevel();
+
+
+        std::shared_ptr<IMenu> _menu;
+};
+
+#endif /* !GAME_HPP_ */

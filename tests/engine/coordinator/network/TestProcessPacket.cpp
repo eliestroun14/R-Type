@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <vector>
-#include <engine/gameEngine/coordinator/network/PacketManager.hpp>
+#include <common/protocol/PacketManager.hpp>
 #include <common/protocol/Packet.hpp>
 #include <common/protocol/Protocol.hpp>
 
@@ -135,6 +135,28 @@ TEST_F(ProcessPacketUnknownTypeTest, UnknownPacketTypeRandom) {
     packet.header.packet_type = 0x99;
     
     auto buffer = createBuffer(10);
+    setPacketData(buffer);
+
+    auto result = nm.processPacket(packet);
+    EXPECT_FALSE(result.has_value());
+}
+
+// ============================================================================
+// Reserved Flags Validation Tests
+// ============================================================================
+
+class ProcessPacketFlagsTest : public ProcessPacketTest {
+};
+
+TEST_F(ProcessPacketFlagsTest, ReservedFlagBitsRejectPacket) {
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(PacketTypes::TYPE_CLIENT_CONNECT);
+    packet.header.flags = 0x80; // reserved bits outside 0-4 set
+
+    auto buffer = createBuffer(37);
+    setUint8At(buffer, 0, 1);
+    setStringAt(buffer, 1, "TestPlayer", 31);
+    setUint32At(buffer, 33, 42);
     setPacketData(buffer);
 
     auto result = nm.processPacket(packet);
@@ -282,6 +304,20 @@ TEST_F(ProcessPacketDispatchTest, DispatchHeartbeatType) {
 
     auto result = nm.processPacket(packet);
     EXPECT_TRUE(result.has_value());
+}
+
+// ============================================================================
+// createPacket Dispatch Tests
+// ============================================================================
+
+class CreatePacketDispatchTest : public ::testing::Test {
+protected:
+    PacketManager manager;
+};
+
+TEST_F(CreatePacketDispatchTest, UnknownTypeReturnsNullopt) {
+    auto result = manager.createPacket(static_cast<PacketTypes>(0xFF), {});
+    EXPECT_FALSE(result.has_value());
 }
 
 // ============================================================================

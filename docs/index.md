@@ -15,13 +15,13 @@ R-Type is a modern C++ game engine project built from scratch. It demonstrates a
 
 ### For New Contributors
 
-1. Read the [Contributing Guide](Documentation/index.md)
+1. Read the [Contributing Guide](Contributing/index.md)
 2. Explore the [Game Engine Architecture](GameEngine&Architecture/index.md)
 
 ### For Game Development
 
-1. Understand the [ECS Architecture](GameEngine&Architecture/ECS/index.md)
-2. Learn about [Entity and Components](GameEngine&Architecture/ECS/entity.md)
+1. Understand the [ECS Architecture](GameEngine&Architecture/GameEngine/ECS/index.md)
+2. Learn about [Entity and Components](GameEngine&Architecture/GameEngine/ECS/entity.md)
 3. Explore the [Game Engine](GameEngine&Architecture/GameEngine/index.md) class
 
 ### For Debugging
@@ -41,6 +41,7 @@ R-Type is a modern C++ game engine project built from scratch. It demonstrates a
 | **Tests** | Testing framework and best practices |
 | **Build System** | CPM dependency management rationale |
 | **Client** | Client-side implementation details |
+| **Server** | Server-side implementation details and protocol |
 | **Contributing** | How to contribute and documentation guidelines |
 
 ---
@@ -97,8 +98,8 @@ make
 
 ## 📖 Need Help?
 
-- **Getting Started**: Check the [documentation guide](Contributing/overview.md)
-- **Contributing**: Read [how to contribute](Contributing/overview.md)
+- **Getting Started**: Check the [documentation guide](Contributing/contributing.md)
+- **Contributing**: Read [how to contribute](Contributing/contributing.md)
 - **Questions**: See the [FAQ](#faq) below
 
 ---

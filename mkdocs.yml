@@ -88,17 +88,30 @@ nav:
 
   - Game Engine & Architecture:
     - Overview: GameEngine&Architecture/index.md
-    - Game Engine: GameEngine&Architecture/GameEngine/index.md
-    - Coordinator:
-      - Overview: GameEngine&Architecture/GameEngine/Coordinator/index.md
+    - Game Engine:
+      - Overview: GameEngine&Architecture/GameEngine/index.md
       - ECS:
-        - Overview: GameEngine&Architecture/GameEngine/Coordinator/ECS/index.md
-        - Entity: GameEngine&Architecture/GameEngine/Coordinator/ECS/entity.md
-        - Components: GameEngine&Architecture/GameEngine/Coordinator/ECS/components.md
-        - Component Manager: GameEngine&Architecture/GameEngine/Coordinator/ECS/component-manager.md
-        - System: GameEngine&Architecture/GameEngine/Coordinator/ECS/system.md
-        - Coordinator: GameEngine&Architecture/GameEngine/Coordinator/ECS/coordinator.md
-      - Render: 
+        - Components:
+          - Overview: GameEngine&Architecture/GameEngine/ECS/Components/index.md
+          - Components: GameEngine&Architecture/GameEngine/ECS/Components/components.md
+        - Systems:
+          - Overview: GameEngine&Architecture/GameEngine/ECS/Systems/index.md
+          - AI System: GameEngine&Architecture/GameEngine/ECS/Systems/AI-system.md
+          - Animation System: GameEngine&Architecture/GameEngine/ECS/Systems/animation-system.md
+          - Background System: GameEngine&Architecture/GameEngine/ECS/Systems/background-system.md
+          - Collision System: GameEngine&Architecture/GameEngine/ECS/Systems/collision-system.md
+          - Level System: GameEngine&Architecture/GameEngine/ECS/Systems/level-system.md
+          - Movement System: GameEngine&Architecture/GameEngine/ECS/Systems/movement-system.md
+          - Player System: GameEngine&Architecture/GameEngine/ECS/Systems/player-system.md
+          - Render System: GameEngine&Architecture/GameEngine/ECS/Systems/render-system.md
+          - Shoot System: GameEngine&Architecture/GameEngine/ECS/Systems/shoot-system.md
+
+        - Overview: GameEngine&Architecture/GameEngine/ECS/index.md
+        - Entity: GameEngine&Architecture/GameEngine/ECS/entity.md
+      - Render: GameEngine&Architecture/GameEngine/Render/index.md
+      - Audio: GameEngine&Architecture/GameEngine/Audio/index.md
+
+    - Coordinator: GameEngine&Architecture/GameEngine/Coordinator/index.md
 
   - Logger:
     - Overview: Logger/index.md
@@ -122,6 +135,10 @@ nav:
   - Client:
     - Overview: Client/index.md
     - Graphical library: Client/graphical-lib.md
+
+  - Server:
+    - Overview: Server/index.md
+    - Protocol: Server/protocol.md
 
   - Contributing:
     - Overview: Contributing/index.md

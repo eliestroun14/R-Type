@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include <engine/gameEngine/coordinator/ecs/component/ComponentManager.hpp>
+#include <engine/ecs/component/ComponentManager.hpp>
 
 struct Health {
     int current;

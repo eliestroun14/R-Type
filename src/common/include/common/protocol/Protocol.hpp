@@ -29,6 +29,8 @@ namespace protocol {
 
         //INPUT               = 0x10-0x1F 
         TYPE_PLAYER_INPUT = 0x10,
+        TYPE_PLAYER_IS_READY = 0x11,
+        TYPE_PLAYER_NOT_READY = 0x12,
 
         //WORLD_STATE         = 0x20-0x3F (Reserved for future use or legacy)
         // TYPE_WORLD_SNAPSHOT      = 0x20,  // DEPRECATED: Use ECS Component Snapshots instead (0x24-0x2F)
@@ -173,6 +175,20 @@ namespace protocol {
         uint16_t               aim_direction_y;        // Optional Aim direction Y (normalized from float to uint16_t to gain speed)
     };
     // total size: 24 bytes
+
+    // Client -> Server
+    struct PlayerIsReady {
+        protocol::PacketHeader header;                 // type = 0x11 + FLAG_RELIABLE
+        uint32_t               player_id;              // Unique player identifier
+    };
+    // total size: 16 bytes
+
+    // Client -> Server
+    struct PlayerNotReady {
+        protocol::PacketHeader header;                 // type = 0x12 + FLAG_RELIABLE
+        uint32_t               player_id;              // Unique player identifier
+    };
+    // total size: 16 bytes
 
     enum class InputFlags : uint16_t {
         // Bit 0 - Bit 15
@@ -333,7 +349,8 @@ namespace protocol {
         POWERUP_FORCE                = 0x02,    // R-Type signature
         POWERUP_SHIELD               = 0x03,
         POWERUP_EXTRA_LIFE           = 0x04,
-        POWERUP_INVINCIBILITY        = 0x05
+        POWERUP_INVINCIBILITY        = 0x05,
+        POWERUP_HEAL                 = 0x06
         // Add here if we need...
     };
 
@@ -352,7 +369,7 @@ namespace protocol {
 
     enum class WeaponTypes : uint8_t {
         WEAPON_TYPE_BASIC          = 0x00,
-        WEAPON_TYPE_Charged        = 0x01,
+        WEAPON_TYPE_CHARGED        = 0x01,
         WEAPON_TYPE_SPREAD         = 0x02,
         WEAPON_TYPE_LASER          = 0x03,
         WEAPON_TYPE_MISSILE        = 0x04,
@@ -449,7 +466,7 @@ namespace protocol {
         COMPONENT_WEAPON          = 0x04,       // Weapon state
         COMPONENT_AI              = 0x05,       // AI behavior
         COMPONENT_FORCE           = 0x06,       // R-Type Force attachment
-        COMPONENT_COLLISION       = 0x07,       // Collision bounds
+        COMPONENT_HITBOX          = 0x07,       // Collision bounds
         COMPONENT_SPRITE          = 0x08,       // Visual representation
         COMPONENT_ANIMATION       = 0x09,       // Animation state
         COMPONENT_POWERUP         = 0x0A,       // Powerup effect
@@ -767,19 +784,47 @@ namespace protocol {
     };
 
     enum class AudioEffectType : uint8_t {
-        SFX_SHOOT_BASIC           = 0x00,
-        SFX_SHOOT_CHARGED         = 0x01,
-        SFX_SHOOT_LASER           = 0x02,
-        SFX_EXPLOSION_SMALL       = 0x03,
-        SFX_EXPLOSION_LARGE       = 0x04,
-        SFX_POWERUP_COLLECT       = 0x05,
-        SFX_PLAYER_HIT            = 0x06,
-        SFX_PLAYER_DEATH          = 0x07,
-        SFX_FORCE_ATTACH          = 0x08,
-        SFX_FORCE_DETACH          = 0x09,
-        SFX_BOSS_ROAR             = 0x0A,
-        SFX_MENU_SELECT           = 0x0B,
-        SFX_ALERT                 = 0x0C
+        // WEAPONS
+        SFX_SHOOT_BASIC            = 0x00,
+        SFX_SHOOT_CHARGED          = 0x01,
+        SFX_SHOOT_LASER            = 0x02,
+
+        // EXPLOSIONS
+        SFX_EXPLOSION_SMALL_1      = 0x03,
+        SFX_EXPLOSION_SMALL_2      = 0x04,
+        SFX_EXPLOSION_LARGE_1      = 0x05,
+        SFX_EXPLOSION_LARGE_2      = 0x06,
+
+        // POWERUPS
+        SFX_POWERUP_COLLECT_1      = 0x07,
+        SFX_POWERUP_COLLECT_2      = 0x08,
+
+        // PLAYER
+        SFX_PLAYER_HIT             = 0x09,
+        SFX_PLAYER_DEATH_1         = 0x0A,
+        SFX_PLAYER_DEATH_2         = 0x0B,
+        SFX_PLAYER_DEATH_3         = 0x0C,
+
+        // FORCE
+        SFX_FORCE_ATTACH           = 0x0D,
+        SFX_FORCE_DETACH           = 0x0E,
+
+        // BOSS
+        SFX_BOSS_ROAR              = 0x0F,
+
+        // UI
+        SFX_MENU_SELECT            = 0x10,
+        SFX_MENU_ALERT             = 0x11,
+
+        // MUSIC
+        MAIN_MENU_MUSIC            = 0x12,
+        FIRST_LEVEL_MUSIC          = 0x13,
+        SECOND_LEVEL_MUSIC         = 0x14,
+        THIRD_LEVEL_MUSIC          = 0x15,
+        FOURTH_LEVEL_MUSIC         = 0x16,
+        VICTORY_MUSIC              = 0x17,
+        DEFEAT_MUSIC               = 0x18
+
         // Add more as needed
     };
 

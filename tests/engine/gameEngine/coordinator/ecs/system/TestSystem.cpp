@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include <engine/gameEngine/coordinator/ecs/system/System.hpp>
+#include <engine/ecs/system/System.hpp>
 
 class TestableSystem : public System {
 public:
