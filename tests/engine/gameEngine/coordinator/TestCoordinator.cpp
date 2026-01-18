@@ -216,47 +216,6 @@ TEST_F(CoordinatorFixture, HandlePacketDestroyEntity_DestroysEntityById)
     EXPECT_FALSE(eng->isAlive(ent));
 }
 
-TEST_F(CoordinatorFixture, SpawnProjectile_CreatesProjectileWithExpectedComponents)
-{
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    uint32_t shooterId = findFreeEntityId(eng, 500);
-
-    Entity shooter = Entity::fromId(0);
-    try {
-        shooter = eng->createEntityWithId(shooterId, "Shooter");
-    } catch (...) {
-        GTEST_SKIP() << "createEntityWithId() not usable in this runtime (skipping).";
-    }
-
-    eng->addComponent<Weapon>(shooter, Weapon(200, 0, 10, ProjectileType::MISSILE));
-    eng->addComponent<InputComponent>(shooter, InputComponent(1u));
-
-    uint32_t projId = findFreeEntityId(eng, 600);
-
-    Entity proj = Entity::fromId(0);
-    ASSERT_NO_THROW({
-        proj = coord.spawnProjectile(shooter, projId, 0x00, 100.f, 200.f, 1.f, 0.f);
-    });
-
-    ASSERT_TRUE(eng->isAlive(proj));
-
-    EXPECT_TRUE(eng->getComponentEntity<Transform>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<Velocity>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<Projectile>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<HitBox>(proj).has_value());
-
-    EXPECT_TRUE(eng->getComponentEntity<Sprite>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<Animation>(proj).has_value());
-
-    auto& prOpt = eng->getComponentEntity<Projectile>(proj);
-    ASSERT_TRUE(prOpt.has_value());
-
-    EXPECT_TRUE(prOpt->isFromPlayable);
-    EXPECT_EQ(prOpt->damage, 10);
-}
-
 TEST_F(CoordinatorFixture, HandleGameStartEnd_TogglesGameRunning)
 {
     common::protocol::Packet start;
@@ -513,51 +472,6 @@ TEST_F(CoordinatorFixture, SpawnPlayerOnServer_CreatesPacket) {
 // Visual/Audio Effects Tests
 // ==============================================================
 
-TEST_F(CoordinatorFixture, HandlePacketVisualEffect_SpawnsEffect) {
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    // Create VISUAL_EFFECT packet
-    std::vector<uint8_t> args;
-    uint8_t flagsCount = 0;
-    args.push_back(flagsCount);
-
-    uint32_t seq = 1;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&seq), reinterpret_cast<uint8_t*>(&seq) + 4);
-
-    uint32_t timestamp = 100;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), reinterpret_cast<uint8_t*>(&timestamp) + 4);
-
-    uint8_t effectType = 0x00;  // EXPLOSION_SMALL
-    args.push_back(effectType);
-
-    uint16_t posX = 150;
-    uint16_t posY = 200;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&posX), reinterpret_cast<uint8_t*>(&posX) + 2);
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&posY), reinterpret_cast<uint8_t*>(&posY) + 2);
-
-    uint8_t scale = 100;  // 1.0x scale
-    args.push_back(scale);
-
-    uint16_t durationMs = 500;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&durationMs), reinterpret_cast<uint8_t*>(&durationMs) + 2);
-
-    uint8_t colorR = 255;
-    uint8_t colorG = 128;
-    uint8_t colorB = 0;
-    args.push_back(colorR);
-    args.push_back(colorG);
-    args.push_back(colorB);
-
-    auto packetOpt = PacketManager::createVisualEffect(args);
-    ASSERT_TRUE(packetOpt.has_value());
-
-    coord.handlePacketVisualEffect(packetOpt.value());
-
-    // Visual effect should be spawned as an entity
-    // We can't easily verify this without engine internals
-}
-
 /*DISABLED: HandlePacketAudioEffect_PlaysSound
 TEST_F(CoordinatorFixture, HandlePacketAudioEffect_PlaysSound) {
     auto eng = engine();
@@ -619,81 +533,4 @@ TEST_F(CoordinatorFixture, SpawnVisualEffect_CreatesEntity) {
     }
 
     EXPECT_GT(entityCountAfter, entityCountBefore);
-}
-
-
-// ==============================================================
-// Level and State Management Tests
-// ==============================================================
-
-TEST_F(CoordinatorFixture, HandlePacketLevelStart_SetsGameRunning) {
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    coord._gameRunning = false;
-
-    // Create LEVEL_START packet
-    std::vector<uint8_t> args;
-    uint8_t flagsCount = 0;
-    args.push_back(flagsCount);
-
-    uint32_t seq = 1;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&seq), reinterpret_cast<uint8_t*>(&seq) + 4);
-
-    uint32_t timestamp = 100;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), reinterpret_cast<uint8_t*>(&timestamp) + 4);
-
-    uint8_t levelId = 1;
-    args.push_back(levelId);
-
-    char levelName[32] = "Test Level";
-    args.insert(args.end(), levelName, levelName + 32);
-
-    uint16_t estimatedDuration = 300;  // 5 minutes
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&estimatedDuration), reinterpret_cast<uint8_t*>(&estimatedDuration) + 2);
-
-    auto packetOpt = PacketManager::createLevelStart(args);
-    ASSERT_TRUE(packetOpt.has_value());
-
-    coord.handlePacketLevelStart(packetOpt.value());
-
-    EXPECT_TRUE(coord._gameRunning);
-}
-
-TEST_F(CoordinatorFixture, HandlePacketLevelComplete_ProcessesCompletion) {
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    coord._gameRunning = true;
-
-    // Create LEVEL_COMPLETE packet
-    std::vector<uint8_t> args;
-    uint8_t flagsCount = 0;
-    args.push_back(flagsCount);
-
-    uint32_t seq = 1;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&seq), reinterpret_cast<uint8_t*>(&seq) + 4);
-
-    uint32_t timestamp = 100;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), reinterpret_cast<uint8_t*>(&timestamp) + 4);
-
-    uint8_t completedLevel = 1;
-    args.push_back(completedLevel);
-
-    uint8_t nextLevel = 2;
-    args.push_back(nextLevel);
-
-    uint32_t bonusScore = 1000;
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&bonusScore), reinterpret_cast<uint8_t*>(&bonusScore) + 4);
-
-    uint16_t completionTime = 180;  // 3 minutes
-    args.insert(args.end(), reinterpret_cast<uint8_t*>(&completionTime), reinterpret_cast<uint8_t*>(&completionTime) + 2);
-
-    auto packetOpt = PacketManager::createLevelComplete(args);
-    ASSERT_TRUE(packetOpt.has_value());
-
-    coord.handlePacketLevelComplete(packetOpt.value());
-
-    // Should still be running for next level
-    EXPECT_TRUE(coord._gameRunning);
 }

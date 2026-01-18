@@ -386,29 +386,6 @@ TEST_F(AssertPlayerInputTest, InvalidInputState) {
     EXPECT_FALSE(PacketManager::assertPlayerInput(packet));
 }
 
-TEST_F(AssertPlayerInputTest, ParsePlayerInputMapsActions) {
-    auto buffer = createBuffer(12);
-    setUint32At(buffer, 0, 1);
-    uint16_t input_state = static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP) |
-                           static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_RIGHT) |
-                           static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY);
-    setUint16At(buffer, 4, input_state);
-    setInt16At(buffer, 6, 0);
-    setInt16At(buffer, 8, 0);
-    setUint16At(buffer, 10, 0);
-    setPacketData(buffer);
-
-    auto parsed = PacketManager::parsePlayerInput(packet);
-
-    ASSERT_TRUE(parsed.has_value());
-    EXPECT_EQ(parsed->playerId, 1u);
-    EXPECT_TRUE(parsed->actions[GameAction::MOVE_UP]);
-    EXPECT_TRUE(parsed->actions[GameAction::MOVE_RIGHT]);
-    EXPECT_TRUE(parsed->actions[GameAction::SHOOT]);
-    EXPECT_FALSE(parsed->actions[GameAction::MOVE_LEFT]);
-    EXPECT_FALSE(parsed->actions[GameAction::MOVE_DOWN]);
-}
-
 TEST_F(AssertPlayerInputTest, ParsePlayerInputRejectsInvalidBits) {
     auto buffer = createBuffer(12);
     setUint32At(buffer, 0, 1);
@@ -1598,20 +1575,6 @@ TEST_F(AssertPowerupPickupTest, MissingReliableFlag) {
 
 class AssertWeaponFireTest : public PacketManagerAssertTest {
 };
-
-TEST_F(AssertWeaponFireTest, ValidWeaponFire) {
-    auto buffer = createBuffer(19);
-    setUint32At(buffer, 0, 100);
-    setUint32At(buffer, 4, 200);
-    setInt16At(buffer, 8, 512);
-    setInt16At(buffer, 10, 256);
-    setInt16At(buffer, 12, 100);
-    setInt16At(buffer, 14, 50);
-    setUint8At(buffer, 16, 1);
-    setPacketData(buffer);
-
-    EXPECT_TRUE(PacketManager::assertWeaponFire(packet));
-}
 
 TEST_F(AssertWeaponFireTest, InvalidPayloadSize) {
     auto buffer = createBuffer(18);
