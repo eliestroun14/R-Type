@@ -82,44 +82,41 @@ void CollisionSystem::onUpdate(float dt)
             Team e1Team = e1 < teams.size() && teams[e1] ? teams[e1].value() : Team(TeamType::NEUTRAL);
             Team e2Team = e2 < teams.size() && teams[e2] ? teams[e2].value() : Team(TeamType::NEUTRAL);
 
-        auto applyDamage = [&](size_t target, int damage, const Team& sourceTeam) {
-            if (target >= healths.size() || !healths[target])
-                return;
+            auto applyDamage = [&](size_t target, int damage, const Team& sourceTeam) {
+                if (target >= healths.size() || !healths[target])
+                    return;
 
-            Team targetTeam = (target < teams.size() && teams[target]) ? teams[target].value()
-                                                                    : Team(TeamType::NEUTRAL);
+                Team targetTeam = (target < teams.size() && teams[target]) ? teams[target].value()
+                                                                        : Team(TeamType::NEUTRAL);
 
-            // player takes damage => -10
-            if (damage > 0 && targetTeam.hasTeam(TeamType::PLAYER)) {
-                _engine.getSystem<ScoreSystem>().pushEvent(-10);
-            }
-
-            auto& h = healths[target].value();
-            h.currentHealth -= damage;
-
-            std::cout << "Entity " << target << " took damage! HP: "
-                    << h.currentHealth << "/" << h.maxHp << std::endl;
-
-            if (h.currentHealth <= 0) {
-                // player kills enemy => +100
-                bool targetIsEnemy = targetTeam.hasTeam(TeamType::ENEMY) || targetTeam.hasTeam(TeamType::BOSS);
-                bool sourceIsPlayer = sourceTeam.hasTeam(TeamType::PLAYER);
-                if (targetIsEnemy && sourceIsPlayer) {
-                    _engine.getSystem<ScoreSystem>().pushEvent(100);
+                // PLAYER hit => score -10, mais PAS de dégâts HP
+                if (damage > 0 && targetTeam.hasTeam(TeamType::PLAYER)) {
+                    _engine.getSystem<ScoreSystem>().pushEvent(-10);
+                    return; // stop ici: pas de réduction de HP, pas de mort
                 }
 
-                std::cout << "Entity " << target << " is destroyed!" << std::endl;
+                // Non-player: dégâts normaux
+                auto& h = healths[target].value();
+                h.currentHealth -= damage;
 
-                Entity ent = Entity::fromId(target);
-                this->_engine.removeComponent<Transform>(ent);
-                this->_engine.removeComponent<Sprite>(ent);
-                this->_engine.removeComponent<Health>(ent);
-                this->_engine.removeComponent<HitBox>(ent);
-                if (target < teams.size() && teams[target]) {
-                    this->_engine.removeComponent<Team>(ent);
+                if (h.currentHealth <= 0) {
+                    // PLAYER kills ENEMY/BOSS => +100
+                    const bool targetIsEnemy = targetTeam.hasTeam(TeamType::ENEMY) || targetTeam.hasTeam(TeamType::BOSS);
+                    const bool sourceIsPlayer = sourceTeam.hasTeam(TeamType::PLAYER);
+                    if (targetIsEnemy && sourceIsPlayer) {
+                        _engine.getSystem<ScoreSystem>().pushEvent(100);
+                    }
+
+                    Entity ent = Entity::fromId(target);
+                    this->_engine.removeComponent<Transform>(ent);
+                    this->_engine.removeComponent<Sprite>(ent);
+                    this->_engine.removeComponent<Health>(ent);
+                    this->_engine.removeComponent<HitBox>(ent);
+                    if (target < teams.size() && teams[target]) {
+                        this->_engine.removeComponent<Team>(ent);
+                    }
                 }
-            }
-        };
+            };
 
             auto destroyProjectile = [&](size_t projId) {
                 Entity ent = Entity::fromId(projId);

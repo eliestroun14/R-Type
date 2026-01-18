@@ -13,6 +13,7 @@
 #include "game/systems/ScoreSystem.hpp"
 #include "game/systems/LevelSystem.hpp"
 #include "game/systems/LevelTimerSystem.hpp"
+#include <game/systems/DestroySystem.hpp>
 
 void Coordinator::initEngine()
 {
@@ -81,6 +82,9 @@ void Coordinator::initEngine()
     // Must run on both client AND server for authoritative damage
     auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
     this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
+
+    auto destroySystem = this->_engine->registerSystem<DestroySystem>(*this->_engine);
+    this->_engine->setSystemSignature<DestroySystem, Transform>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
