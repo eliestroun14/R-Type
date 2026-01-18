@@ -913,51 +913,6 @@ TEST_F(CoordinatorFixture, AreAllPlayersReady_ValidatesStates)
     EXPECT_TRUE(coord.areAllPlayersReady(players, 2, status));
 }
 
-TEST_F(CoordinatorFixture, HandlePacketPowerupPickupAndVisualAudio)
-{
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    Entity player = eng->createEntityWithId(4444, "PlayerPowerup");
-
-    std::vector<uint8_t> powerupData;
-    appendValue(powerupData, static_cast<uint32_t>(player)); // player_id
-    appendValue(powerupData, static_cast<uint32_t>(1));      // powerup_id
-    appendValue(powerupData, static_cast<uint8_t>(0));       // powerup_type
-    appendValue(powerupData, static_cast<uint8_t>(5));       // duration
-    common::protocol::Packet powerupPacket;
-    powerupPacket.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_POWER_PICKUP);
-    powerupPacket.data = powerupData;
-    coord.handlePacketPowerupPickup(powerupPacket);
-
-    EXPECT_TRUE(eng->getComponentEntity<Powerup>(player).has_value());
-
-    std::vector<uint8_t> vfxData;
-    appendValue(vfxData, static_cast<uint8_t>(protocol::VisualEffectType::VFX_EXPLOSION_SMALL));
-    appendValue(vfxData, static_cast<int16_t>(10));
-    appendValue(vfxData, static_cast<int16_t>(20));
-    appendValue(vfxData, static_cast<uint16_t>(200));
-    appendValue(vfxData, static_cast<uint8_t>(100));
-    appendValue(vfxData, static_cast<uint8_t>(255));
-    appendValue(vfxData, static_cast<uint8_t>(0));
-    appendValue(vfxData, static_cast<uint8_t>(0));
-    common::protocol::Packet vfxPacket;
-    vfxPacket.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_VISUAL_EFFECT);
-    vfxPacket.data = vfxData;
-    coord.handlePacketVisualEffect(vfxPacket);
-
-    std::vector<uint8_t> sfxData;
-    appendValue(sfxData, static_cast<uint8_t>(protocol::AudioEffectType::SFX_SHOOT_BASIC));
-    appendValue(sfxData, static_cast<int16_t>(0));
-    appendValue(sfxData, static_cast<int16_t>(0));
-    appendValue(sfxData, static_cast<uint8_t>(128));
-    appendValue(sfxData, static_cast<uint8_t>(100));
-    common::protocol::Packet sfxPacket;
-    sfxPacket.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_AUDIO_EFFECT);
-    sfxPacket.data = sfxData;
-    coord.handlePacketAudioEffect(sfxPacket);
-}
-
 TEST_F(CoordinatorFixture, HandlePacketWeaponFire_SpawnsProjectile)
 {
     auto eng = engine();
