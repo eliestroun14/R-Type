@@ -89,6 +89,15 @@ class Coordinator {
             bool withRenderComponents = true
         );
 
+        Entity createScoreEntity(
+            uint32_t scoreId,
+            float posX,
+            float posY,
+            uint32_t initialScore,
+            bool isLocalScore,
+            bool withRenderComponents
+        );
+
         Entity createEnemyEntity(
             uint32_t enemyId,
             float posX,
@@ -318,6 +327,16 @@ class Coordinator {
             float velY,
             uint16_t initialHealth,
             bool isPlayable,
+            bool withRenderComponents
+        );
+
+        void setupScoreEntity(
+            Entity entity,
+            uint32_t scoreId,
+            float posX,
+            float posY,
+            uint32_t initialScore,
+            bool isLocalScore,
             bool withRenderComponents
         );
 
