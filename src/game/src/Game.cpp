@@ -34,7 +34,7 @@ Game::Game(Type type)
             _coordinator->initEngineRender();
             _coordinator->createScoreEntity(
                 /*scoreId*/ 1,
-                /*posX*/ 50.f,
+                /*posX*/ 300.f,
                 /*posY*/ 50.f,
                 /*initialScore*/ 0,
                 /*isLocalScore*/ true,
