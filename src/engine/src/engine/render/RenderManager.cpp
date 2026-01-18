@@ -14,22 +14,22 @@
 
 RenderManager::RenderManager() : _coordinator(nullptr), _localPlayerEntity(Entity::fromId(0))
 {
-    this->_keyBindings[sf::Keyboard::Up] = GameAction::MOVE_UP;
-    // this->_keyBindings[sf::Keyboard::Z] = GameAction::MOVE_UP; // to support ZQSD
+    // this->_keyBindings[sf::Keyboard::Up] = GameAction::MOVE_UP;
+    // // this->_keyBindings[sf::Keyboard::Z] = GameAction::MOVE_UP; // to support ZQSD
 
-    this->_keyBindings[sf::Keyboard::Down] = GameAction::MOVE_DOWN;
-    // this->_keyBindings[sf::Keyboard::S] = GameAction::MOVE_DOWN; // to support ZQSD
+    // this->_keyBindings[sf::Keyboard::Down] = GameAction::MOVE_DOWN;
+    // // this->_keyBindings[sf::Keyboard::S] = GameAction::MOVE_DOWN; // to support ZQSD
 
-    this->_keyBindings[sf::Keyboard::Left] = GameAction::MOVE_LEFT;
-    // this->_keyBindings[sf::Keyboard::Q] = GameAction::MOVE_LEFT; // to support ZQSD
+    // this->_keyBindings[sf::Keyboard::Left] = GameAction::MOVE_LEFT;
+    // // this->_keyBindings[sf::Keyboard::Q] = GameAction::MOVE_LEFT; // to support ZQSD
 
-    this->_keyBindings[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
-    // this->_keyBindings[sf::Keyboard::D] = GameAction::MOVE_RIGHT; // to support ZQSD
+    // this->_keyBindings[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
+    // // this->_keyBindings[sf::Keyboard::D] = GameAction::MOVE_RIGHT; // to support ZQSD
 
-    // Primary shoot bindings
-    this->_keyBindings[sf::Keyboard::Space] = GameAction::SHOOT;
-    // this->_keyBindings[sf::Keyboard::P] = GameAction::OPTIONS;
-    this->_keyBindings[sf::Keyboard::Escape] = GameAction::EXIT;
+    // // Primary shoot bindings
+    // this->_keyBindings[sf::Keyboard::Space] = GameAction::SHOOT;
+    // // this->_keyBindings[sf::Keyboard::P] = GameAction::OPTIONS;
+    // this->_keyBindings[sf::Keyboard::Escape] = GameAction::EXIT;
 
 
     this->_activeActions[GameAction::MOVE_UP] = false;
