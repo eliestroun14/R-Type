@@ -447,25 +447,25 @@ Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std
         wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
 
         // Wave 3: Tank wave
-        //Wave wave3;
-        //wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
-        //wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
-        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
-        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
+        Wave wave3;
+        wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
+        wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
+        wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
 
         // Wave 4: Final assault
-        //Wave wave4;
-        //wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
-        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
-        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
-        //wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
-        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
-        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
+        Wave wave4;
+        wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
+        wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
+        wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
 
         level.waves.push_back(wave1);
         level.waves.push_back(wave2);
-        //level.waves.push_back(wave3);
-        //level.waves.push_back(wave4);
+        level.waves.push_back(wave3);
+        level.waves.push_back(wave4);
     }
     // Can add more levels later
     else {
@@ -907,6 +907,18 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
 std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_t playerId, float posX, float posY)
 {
+    // Calculate the actual entity ID that will be used (playerId + NETWORKED_ID_OFFSET)
+    uint32_t expectedEntityId = NETWORKED_ID_OFFSET + playerId;
+    
+    // Check if an entity already exists with this ID (e.g., a projectile took this ID)
+    // If so, destroy it first - players have priority
+    Entity existingEntity = this->_engine->getEntityFromId(expectedEntityId);
+    if (this->_engine->isAlive(existingEntity)) {
+        LOG_WARN_CAT("Coordinator", "Entity {} already exists when spawning player {} - destroying existing entity (likely a projectile)", 
+                     expectedEntityId, playerId);
+        this->_engine->destroyEntity(expectedEntityId);
+    }
+    
     // Create the player entity on the server
     Entity playerEntity = this->createPlayerEntity(
         playerId,
@@ -1375,16 +1387,35 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     LOG_INFO_CAT("Coordinator", "Entity created: id={} type={} pos=({}, {}) health={} is_playable={}",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
 
-    // Check if entity already exists in NETWORKED list (to avoid duplicate spawning)
-    // Only check NETWORKED entities, not LOCAL entities (which can have the same IDs)
+    // Check if entity already exists in NETWORKED list
     const auto& networkedEntities = this->_engine->getNetworkedEntities();
     if (networkedEntities.find(payload.entity_id) != networkedEntities.end()) {
-        LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists in NETWORKED list, skipping spawn", payload.entity_id);
-        return;
+        // If incoming entity is a PLAYER, destroy the existing entity (likely a projectile)
+        // and create the player instead - players have priority over projectiles
+        if (payload.entity_type == static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER)) {
+            LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists but incoming is PLAYER - destroying existing entity to make room", payload.entity_id);
+            Entity existingEntity = this->_engine->getEntityFromId(payload.entity_id);
+            if (this->_engine->isAlive(existingEntity)) {
+                this->_engine->destroyEntity(existingEntity);
+            }
+        } else {
+            LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists in NETWORKED list, skipping spawn", payload.entity_id);
+            return;
+        }
     }
 
     // Create the entity with the specific ID from the server
-    Entity newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
+    Entity newEntity = Entity::fromId(0);  // Placeholder, will be replaced
+    try {
+        newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
+        LOG_DEBUG_CAT("Coordinator", "handlePacketCreateEntity: Successfully created entity {}", payload.entity_id);
+    } catch (const Error& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: Failed to create entity {}: {}", payload.entity_id, e.what());
+        return;
+    } catch (const std::exception& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: Unexpected error creating entity {}: {}", payload.entity_id, e.what());
+        return;
+    }
 
     // Add type-specific components
     switch (payload.entity_type) {
