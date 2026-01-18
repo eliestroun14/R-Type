@@ -70,14 +70,12 @@ void Coordinator::initEngine()
     auto accessibilitySystem = this->_engine->registerSystem<AccessibilitySystem>(*this->_engine);
     this->_engine->setSystemSignature<AccessibilitySystem, GameConfig>();
 
-    auto scoreSystem = this->_engine->registerSystem<ScoreSystem>(*this->_engine);
-    this->_engine->setSystemSignature<ScoreSystem, Score, Text>();
-
-    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine, this->_isServer);
-    this->_engine->setSystemSignature<BackgroundSystem, ScrollingBackground>();
-
     auto rebindSystem = this->_engine->registerSystem<RebindSystem>(*this->_engine);
     this->_engine->setSystemSignature<RebindSystem, Rebind>();
+
+    // Score system
+    auto scoreSystem = this->_engine->registerSystem<ScoreSystem>(*this->_engine);
+    this->_engine->setSystemSignature<ScoreSystem, Score, Text>();
 
     // Register CollisionSystem to handle collision detection and team-based damage
     // Must run on both client AND server for authoritative damage
@@ -107,11 +105,12 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
 
     // Set signature: RenderSystem needs Transform and Sprite components
     this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
-    
+
     // Register LevelTimerSystem to update countdown timers
     auto levelTimerSystem = this->_engine->registerSystem<LevelTimerSystem>(*this->_engine);
     this->_engine->setSystemSignature<LevelTimerSystem, TimerUI, Text>();
 }
+
 
 // ==============================================================
 //                       Entity creation helpers
@@ -153,7 +152,10 @@ Entity Coordinator::createScoreEntity(
     bool withRenderComponents
 )
 {
-    Entity entity = this->_engine->createEntity("Score_" + std::to_string(scoreId));
+    Entity entity = isLocalScore
+        ? this->_engine->createEntity("Score_" + std::to_string(scoreId), EntityCategory::LOCAL)
+        : this->_engine->createEntityWithId(scoreId, "Score_" + std::to_string(scoreId), EntityCategory::NETWORKED);
+
     this->setupScoreEntity(
         entity,
         scoreId,
@@ -263,30 +265,58 @@ void Coordinator::setupPlayerEntity(
 
 void Coordinator::setupScoreEntity(
     Entity entity,
-    uint32_t scoreId,
+    uint32_t /*scoreId*/,
     float posX,
     float posY,
     uint32_t initialScore,
-    bool isLocalScore,
+    bool /*isLocalScore*/,
     bool withRenderComponents
 )
 {
-    _engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
-    _engine->addComponent<Text>(
-    entity,
-    Text(std::to_string(initialScore).c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
-);
+    // Transform
+    if (!_engine->hasComponent<Transform>(entity)) {
+        _engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
+    } else {
+        _engine->updateComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
+    }
 
-    _engine->addComponent<Drawable>(entity, Drawable{});
+    // Score: struct Score{ uint32_t score; } d'apres tes erreurs
+    if (!_engine->hasComponent<Score>(entity)) {
+        _engine->addComponent<Score>(entity, Score{initialScore});
+    } else {
+        _engine->updateComponent<Score>(entity, Score{initialScore});
+    }
+
+    // Render
+    if (withRenderComponents) {
+        const std::string scoreStr = std::to_string(initialScore);
+
+        if (!_engine->hasComponent<Text>(entity)) {
+            _engine->addComponent<Text>(
+                entity,
+                Text(scoreStr.c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
+            );
+        } else {
+            _engine->updateComponent<Text>(
+                entity,
+                Text(scoreStr.c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
+            );
+        }
+
+        if (!_engine->hasComponent<Drawable>(entity)) {
+            _engine->addComponent<Drawable>(entity, Drawable{});
+        }
+    }
 
     LOG_INFO_CAT("Coordinator",
-    "Score entity e={} comps: Transform={} Text={} Drawable={}",
-    static_cast<size_t>(entity),
-    _engine->hasComponent<Transform>(entity),
-    _engine->hasComponent<Text>(entity),
-    _engine->hasComponent<Drawable>(entity));
+        "Score entity e={} comps: Transform={} Score={} Text={} Drawable={}",
+        static_cast<size_t>(entity),
+        _engine->hasComponent<Transform>(entity),
+        _engine->hasComponent<Score>(entity),
+        _engine->hasComponent<Text>(entity),
+        _engine->hasComponent<Drawable>(entity)
+    );
 }
-
 
 void Coordinator::setupEnemyEntity(
     Entity entity,
