@@ -469,33 +469,48 @@ Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std
         // Wave 1: Basic enemies
         Wave wave1;
         wave1.startTime = LEVEL_1_WAVE_1_START_TIME;
-        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 100.f, 0.f});
-        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 1.5f});
-        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 300.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 200.f, 0.f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 300.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 400.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 500.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 600.f, 1.5f});
 
         // Wave 2: Mix of basic and fast enemies
         Wave wave2;
         wave2.startTime = LEVEL_1_WAVE_2_START_TIME;
-        wave2.enemies.push_back({EnemyType::FAST, 800.f, 150.f, 0.f});
-        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 250.f, 1.0f});
-        wave2.enemies.push_back({EnemyType::FAST, 800.f, 350.f, 1.0f});
-        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 1940.f, 250.f, 0.f});
+        wave2.enemies.push_back({EnemyType::BASIC, 1960.f, 300.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 1940.f, 450.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::BASIC, 1960.f, 500.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 1940.f, 600.f, 1.0f});
 
         // Wave 3: Tank wave
         Wave wave3;
         wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
-        wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
-        wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
-        wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
+        wave3.enemies.push_back({EnemyType::TANK, 1940.f, 300.f, 0.f});
+        wave3.enemies.push_back({EnemyType::FAST, 1940.f, 200.f, 0.5f});
+        wave3.enemies.push_back({EnemyType::FAST, 1960.f, 250.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1940.f, 300.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1960.f, 350.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1940.f, 400.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1960.f, 450.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::TANK, 1940.f, 600.f, 0.f});
+
 
         // Wave 4: Final assault
         Wave wave4;
         wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
-        wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
-        wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
-        wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
-        wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
-        wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 2000.f, 100.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1940.f, 100.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1970.f, 100.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::FAST, 1970.f, 200.f, 0.f});
+        wave4.enemies.push_back({EnemyType::BASIC, 1970.f, 300.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::FAST, 1970.f, 400.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::BASIC, 1970.f, 500.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1970.f, 600.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1970.f, 600.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 2000.f, 600.f, 0.5f});
+
 
         level.waves.push_back(wave1);
         level.waves.push_back(wave2);
