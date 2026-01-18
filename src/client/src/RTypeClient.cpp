@@ -7,7 +7,6 @@
 
 #include <client/RTypeClient.hpp>
 #include <string.h>
-#include <arpa/inet.h>
 #include <game/utils/ClientUtils.hpp>
 #include <thread>
 #include <chrono>
@@ -34,9 +33,10 @@ void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerNa
     // will init the engine && coordinator
     _game = std::make_unique<Game>(Game::Type::CLIENT);
 
-    // create menu using engine inside the game
-    auto engine = _game->getCoordinator()->getEngine();
-    auto menu = std::make_shared<ClientMenu>(engine);
+    // create menu using engine and coordinator inside the game
+    auto coordinator = _game->getCoordinator();
+    auto engine = coordinator->getEngine();
+    auto menu = std::make_shared<ClientMenu>(engine, coordinator);
 
     // set menu in the game
     _game->setMenu(menu);

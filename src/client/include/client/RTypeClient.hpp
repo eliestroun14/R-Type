@@ -8,10 +8,10 @@
 #ifndef RTYPECLIENT_HPP_
 #define RTYPECLIENT_HPP_
 
+#define NOMINMAX
+//#include <winsock2.h>
 #include <cstdint>
-#include <sys/socket.h>
 #include <SFML/Graphics.hpp>
-#include <netinet/in.h>
 #include <memory>
 #include <common/protocol/Protocol.hpp>
 #include <client/network/ClientNetworkManager.hpp>

@@ -21,6 +21,17 @@ void RenderSystem::onUpdate(float dt)
 
     auto& sprites = this->_engine.getComponents<Sprite>();
     auto& texts = this->_engine.getComponents<Text>();
+    auto& transforms = this->_engine.getComponents<Transform>();
+
+    // Add entities that have Transform + Text but not Sprite (pure text entities like button labels)
+    for (size_t i = 0; i < texts.size(); ++i) {
+        if (texts[i] && transforms[i] && !sprites[i]) {
+            // Check if this entity is not already in _sortedEntities
+            if (std::find(this->_sortedEntities.begin(), this->_sortedEntities.end(), i) == this->_sortedEntities.end()) {
+                this->_sortedEntities.push_back(i);
+            }
+        }
+    }
 
     auto& configs = this->_engine.getComponents<GameConfig>();
     for (auto& config : configs) {
@@ -38,7 +49,6 @@ void RenderSystem::onUpdate(float dt)
     );
 
     sf::RenderWindow& window = this->_engine.getWindow();
-    auto& transforms = this->_engine.getComponents<Transform>();
 
     // this part is to render propely in function of the window size
     sf::Vector2u windowSize = window.getSize();
@@ -108,7 +118,9 @@ void RenderSystem::onUpdate(float dt)
             auto& text = texts[entity].value();
             std::shared_ptr<sf::Font> font = this->_engine.getFont(this->_targetFont);
 
-            if (font) {
+            if (!font) {
+                std::cerr << "[RenderSystem] ERROR: Font is nullptr for text: " << text.str << std::endl;
+            } else {
                 sf::Text sfText;
                 sfText.setFont(*font);
                 sfText.setString(text.str);
@@ -116,6 +128,12 @@ void RenderSystem::onUpdate(float dt)
                 sfText.setFillColor(text.color);
 
                 sf::FloatRect textBounds = sfText.getGlobalBounds();
+                
+                // DEBUG: Log text info when size is 0 or text is not empty
+                if (text.size == 0 && text.str[0] != '\0') {
+                    std::cerr << "[RenderSystem] WARNING: Text size is 0 for text: '" << text.str << "'" << std::endl;
+                }
+                
                 sfText.setOrigin(textBounds.left + textBounds.width / 2.0f,
                                  textBounds.top + textBounds.height / 2.0f);
 

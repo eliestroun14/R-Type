@@ -46,30 +46,54 @@ void AudioSystem::onUpdate(float dt)
     // Get component arrays
     auto& audioSources = this->_engine.getComponents<AudioSource>();
     auto& transforms = this->_engine.getComponents<Transform>();
+    auto& configs = this->_engine.getComponents<GameConfig>();
+
+    bool musicEnabled = true;
+    bool soundEnabled = true;
+
+    for (auto& config : configs)
+        if (config.has_value()) {
+            if (config->musicEnabled == false && config->soundEnabled == false)
+                return;
+            musicEnabled = config->musicEnabled;
+            soundEnabled = config->soundEnabled;
+        }
 
     // Process entities with AudioSource components
     // These are sounds attached to entities (e.g., projectile sounds)
-    for (size_t e : this->_entities) {
-        if (!audioSources[e] || !transforms[e]) {
+    for (size_t e = 0; e < audioSources.size(); e++) {
+        if (!audioSources[e])
             continue;
-        }
 
         try {
             auto& audioSource = audioSources[e].value();
-            auto& transform = transforms[e].value();
 
-            // Update elapsed time
+            // check game config settings
+            if (!audioSource.loop && !soundEnabled)
+                continue;
+            if (audioSource.loop && !musicEnabled)
+                continue;
+
+            // handle transform (not for UI sounds)
+            float posX = 0, posY = 0;
+            if (!audioSource.isUI) {
+                if (e < transforms.size() && transforms[e].has_value()) {
+                    posX = transforms[e]->x;
+                    posY = transforms[e]->y;
+                } else
+                    continue; // if there is no transform for a 3d sound, we do not play it
+            }
+
             audioSource.elapsedTimeSincePlay += dt;
 
             // Determine if we should play the sound
             bool shouldPlay = false;
-            
+
             if (!audioSource.loop) {
                 // Play only once (loop=false means one-shot)
                 shouldPlay = !audioSource.hasBeenPlayed;
             } else {
-                // Play repeatedly when the sound finishes (loop=true means replay)
-                shouldPlay = !audioSource.hasBeenPlayed || 
+                shouldPlay = !audioSource.hasBeenPlayed ||
                            audioSource.elapsedTimeSincePlay >= audioSource.soundDuration;
             }
 
@@ -83,9 +107,9 @@ void AudioSystem::onUpdate(float dt)
                     spdlog::debug("AudioSystem: Playing UI sound for asset {}", static_cast<int>(audioSource.assetId));
                 } else {
                     // 3D audio with positional attenuation
-                    this->_engine.playSound(effectType, transform.x, transform.y, 1.0f, 1.0f);
+                    this->_engine.playSound(effectType, posX, posY, 1.0f, 1.0f);
                     spdlog::debug("AudioSystem: Playing 3D sound '{}' at position ({}, {})",
-                                static_cast<int>(audioSource.assetId), transform.x, transform.y);
+                                static_cast<int>(audioSource.assetId), posX, posY);
                 }
 
                 // Mark as played and reset timer for next cycle

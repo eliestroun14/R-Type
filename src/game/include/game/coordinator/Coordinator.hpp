@@ -10,6 +10,8 @@
 
 #include <memory>
 #include <string>
+#include <functional>
+#include <deque>
 
 #include <engine/GameEngine.hpp>
 #include <engine/ecs/component/Components.hpp>
@@ -25,6 +27,7 @@
 #include <game/systems/PlayerSystem.hpp>
 #include <game/systems/MovementSystem.hpp>
 #include <game/systems/ShootSystem.hpp>
+#include <set>
 #include <game/systems/ButtonSystem.hpp>
 #include <game/systems/AnimationSystem.hpp>
 #include <game/systems/AccessibilitySystem.hpp>
@@ -60,6 +63,16 @@ class Coordinator {
         
         /** @brief Returns whether this coordinator is running on the server. */
         bool isServer() const { return _isServer; }
+        
+        /** @brief Set a callback to notify when players are ready/not ready. */
+        void setGameNotificationCallback(std::function<void(uint32_t, bool)> callback) {
+            _gameNotificationCallback = callback;
+        }
+        
+        /** @brief Set a callback to notify when level starts (client-side). */
+        void setLevelStartCallback(std::function<void()> callback) {
+            _levelStartCallback = callback;
+        }
 
         // ==============================================================
         //                       Entity creation helpers
@@ -147,6 +160,11 @@ class Coordinator {
         // Helper to spawn a player entity and broadcast ENTITY_SPAWN packet
         std::optional<common::protocol::Packet> spawnPlayerOnServer(uint32_t playerId, float posX, float posY);
 
+        /** @brief Mark an entity as already broadcasted to prevent duplicate ENTITY_SPAWN packets.
+         * Used when manually sending ENTITY_SPAWN packets instead of relying on the broadcast system.
+         */
+        void markEntityAsBroadcasted(uint32_t entityId);
+
         /** @brief Check if a PLAYER_INPUT packet should be sent to a specific player.
          * Returns false if the packet is a PLAYER_INPUT from that player (they shouldn't receive their own relayed input).
          * This prevents double-processing of input on the sender's client.
@@ -196,8 +214,38 @@ class Coordinator {
         void handlePacketAudioEffect(const common::protocol::Packet& packet);
         void handlePacketParticleSpawn(const common::protocol::Packet& packet);
 
+        void handlePacketPlayerIsReady(const common::protocol::Packet& packet);
+        void handlePacketPlayerNotReady(const common::protocol::Packet& packet);
+
+        /** @brief Check if all players are ready to start the level.
+         * @param connectedPlayers List of connected player IDs
+         * @param maxPlayers Maximum number of players required
+         * @param playerReadyStatus Map of player ready status
+         * @return true if all connected players are ready and max players reached, false otherwise
+         */
+        bool areAllPlayersReady(
+            const std::vector<uint32_t>& connectedPlayers,
+            uint32_t maxPlayers,
+            const std::unordered_map<uint32_t, bool>& playerReadyStatus
+        ) const;
+        
+        /** @brief Queue a player ready event (client-side). */
+        void queuePlayerIsReady(uint32_t playerId);
+        
+        /** @brief Queue a player not ready event (client-side). */
+        void queuePlayerNotReady(uint32_t playerId);
+
         /** @brief Get the GameEngine instance for direct access. */
         std::shared_ptr<gameEngine::GameEngine> getEngine() { return _engine; }
+
+        /** @brief Create and initialize a level entity (server-side only).
+         * @param levelNumber The level number (used for naming).
+         * @param duration Level duration in seconds (0 = infinite/until all waves complete).
+         * @param backgroundAsset Asset path for the scrolling background.
+         * @param soundTheme Asset path for the background music.
+         * @return The created level entity.
+         */
+        Entity createLevelEntity(int levelNumber, float duration, const std::string& backgroundAsset, const std::string& soundTheme);
 
         void handleGameStart(const common::protocol::Packet& packet);
         void handleGameEnd(const common::protocol::Packet& packet);
@@ -252,6 +300,22 @@ class Coordinator {
 
     public:
         bool _gameRunning = false;
+        
+        // Callback to notify Game of player ready/not ready status
+        std::function<void(uint32_t, bool)> _gameNotificationCallback;
+        
+        // Callback to notify Game when level starts (client-side)
+        std::function<void()> _levelStartCallback;
+        
+    private:
+        // Event structure for player ready/not ready
+        struct PlayerReadyEvent {
+            uint32_t playerId;
+            bool isReady;
+        };
+        
+        // Queue of pending player ready/not ready events (client-side)
+        std::deque<PlayerReadyEvent> _pendingPlayerReadyEvents;
 
     private:
         void setupPlayerEntity(
@@ -367,10 +431,13 @@ class Coordinator {
         
         // Queue of weapon fire events to process
         std::vector<WeaponFireEvent> _pendingWeaponFires;
-        uint32_t _nextProjectileId = 10000; // Start projectile IDs at 10000
         
         // Queue of PLAYER_INPUT packets to relay to other clients (but NOT to the source player)
         std::vector<RelayPacket> _packetsToRelay;
+        
+        // Track entities that have been broadcast to clients (server-side only)
+        // Used to send initial ENTITY_SPAWN packets for newly created networked entities
+        std::set<uint32_t> _broadcastedEntityIds;
 };
 
 #endif /* !COORDINATOR_HPP_ */

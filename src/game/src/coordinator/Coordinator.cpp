@@ -8,8 +8,11 @@
 #include "game/coordinator/Coordinator.hpp"
 #include "game/systems/AnimationSystem.hpp"
 #include "game/systems/AudioSystem.hpp"
+#include "game/systems/BackgroundSystem.hpp"
 #include "game/systems/CollisionSystem.hpp"
 #include "game/systems/ScoreSystem.hpp"
+#include "game/systems/LevelSystem.hpp"
+#include "game/systems/LevelTimerSystem.hpp"
 
 void Coordinator::initEngine()
 {
@@ -45,6 +48,8 @@ void Coordinator::initEngine()
     this->_engine->registerComponent<AudioEffect>();
     this->_engine->registerComponent<Team>();
     this->_engine->registerComponent<Score>();
+    this->_engine->registerComponent<Level>();
+    this->_engine->registerComponent<TimerUI>();
 
     // Register gameplay systems (both client and server)
     auto playerSystem = this->_engine->registerSystem<PlayerSystem>(*this->_engine);
@@ -56,6 +61,9 @@ void Coordinator::initEngine()
     auto shootSystem = this->_engine->registerSystem<ShootSystem>(*this->_engine, *this, this->_isServer);
     this->_engine->setSystemSignature<ShootSystem, Weapon, Transform>();
 
+    // Register LevelSystem (server-side only, but registered for both)
+    auto levelSystem = this->_engine->registerSystem<LevelSystem>(*this->_engine, this);
+    this->_engine->setSystemSignature<LevelSystem, Level>();
     auto buttonSystem = this->_engine->registerSystem<ButtonSystem>(*this->_engine, this->_isServer);
     this->_engine->setSystemSignature<ButtonSystem, ButtonComponent, Transform>();
 
@@ -70,6 +78,11 @@ void Coordinator::initEngine()
 
     auto rebindSystem = this->_engine->registerSystem<RebindSystem>(*this->_engine);
     this->_engine->setSystemSignature<RebindSystem, Rebind>();
+
+    // Register CollisionSystem to handle collision detection and team-based damage
+    // Must run on both client AND server for authoritative damage
+    auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
+    this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
@@ -77,9 +90,9 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     this->_engine->initRender();
     this->_engine->initAudio();
 
-    // Register CollisionSystem to handle collision detection and team-based damage
-    auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
-    this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
+    // Register BackgroundSystem to handle scrolling backgrounds
+    auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine,  this->_isServer);
+    this->_engine->setSystemSignature<BackgroundSystem, Transform, Sprite, ScrollingBackground>();
 
     // Register AnimationSystem before RenderSystem (animation must update before rendering)
     auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
@@ -93,7 +106,11 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     auto renderSystem = this->_engine->registerSystem<RenderSystem>(*this->_engine);
 
     // Set signature: RenderSystem needs Transform and Sprite components
-    this->_engine->setSystemSignature<RenderSystem, Transform>();
+    this->_engine->setSystemSignature<RenderSystem, Transform, Sprite>();
+    
+    // Register LevelTimerSystem to update countdown timers
+    auto levelTimerSystem = this->_engine->registerSystem<LevelTimerSystem>(*this->_engine);
+    this->_engine->setSystemSignature<LevelTimerSystem, TimerUI, Text>();
 }
 
 // ==============================================================
@@ -159,7 +176,8 @@ Entity Coordinator::createEnemyEntity(
     bool withRenderComponents
 )
 {
-    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(enemyId));
+    // Use createEntityWithId to ensure the entity ID matches the enemy ID
+    Entity entity = this->_engine->createEntityWithId(enemyId, "Enemy_" + std::to_string(enemyId));
     this->setupEnemyEntity(
         entity,
         enemyId,
@@ -184,7 +202,8 @@ Entity Coordinator::createProjectileEntity(
     bool withRenderComponents
 )
 {
-    Entity entity = this->_engine->createEntity("Entity_" + std::to_string(projectileId));
+    // Use createEntityWithId to ensure the entity ID matches the projectile ID
+    Entity entity = this->_engine->createEntityWithId(projectileId, "Projectile_" + std::to_string(projectileId));
     this->setupProjectileEntity(
         entity,
         projectileId,
@@ -219,11 +238,10 @@ void Coordinator::setupPlayerEntity(
     // CRITICAL: Add NetworkId component so entity is included in server snapshots
     this->_engine->addComponent<NetworkId>(entity, NetworkId(playerId));
 
-    if (withRenderComponents) {
-        Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
-        this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
-        this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
-    }
+    // Always add Sprite and Animation (needed for CollisionSystem even on server)
+    Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
+    this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
+    this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
 
     this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 14.5f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
@@ -239,7 +257,7 @@ void Coordinator::setupPlayerEntity(
 
         //FIXME: fix here the method in game engine
         // this->_engine->setLocalPlayerEntity(entity, playerId);
-        LOG_INFO_CAT("Coordinator", "Local player created with ID %u", playerId);
+        LOG_INFO_CAT("Coordinator", "Local player created with ID {}", playerId);
     }
 }
 
@@ -281,17 +299,40 @@ void Coordinator::setupEnemyEntity(
     bool withRenderComponents
 )
 {
-    (void)enemyId;
-
-    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 2.0f));
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 4.0f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
-    if (withRenderComponents) {
-        this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
-    }
+    
+    // Add NetworkId so enemy is synchronized to clients
+    this->_engine->addComponent<NetworkId>(entity, NetworkId{enemyId, false});
+    
+    // Always add Sprite (needed for CollisionSystem even on server)
+    // IntRect: (left, top, width, height) - defines which part of the texture to display
+    this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
     this->_engine->addComponent<HitBox>(entity, HitBox());
-    this->_engine->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+    
+    // Add Animation component for proper sprite animation
+    this->_engine->addComponent<Animation>(entity, Animation(
+        BASE_ENEMY_SPRITE_WIDTH,  // frameWidth
+        BASE_ENEMY_SPRITE_HEIGHT, // frameHeight
+        0,     // currentFrame
+        0.f,   // elapsedTime
+        0.1f,  // frameDuration
+        0,     // startFrame
+        7,     // endFrame (8 frames total: 0-7)
+        true   // loop
+    ));
+    
+    LOG_DEBUG_CAT("Coordinator", "setupEnemyEntity: entity={} enemyId={} sprite.rect=({},{},{}x{})",
+        static_cast<size_t>(entity), enemyId, 0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT);
+    
+    // Note: Weapon component is added in LevelSystem based on enemy type
     this->_engine->addComponent<Team>(entity, TeamType::ENEMY);
+    this->_engine->addComponent<Enemy>(entity, Enemy{});
+    
+    if (withRenderComponents) {
+        this->_engine->addComponent<Drawable>(entity, Drawable{});
+    }
 }
 
 void Coordinator::setupProjectileEntity(
@@ -324,12 +365,87 @@ void Coordinator::setupProjectileEntity(
     this->_engine->addComponent<Team>(entity, isPlayerProjectile ? TeamType::PLAYER : TeamType::ENEMY);
 }
 
+Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std::string& backgroundAsset, const std::string& soundTheme)
+{
+    // Create level entity with a very high ID to avoid collision with networked entities
+    // Use a reserved range starting from 1,000,000 for special server-only entities
+    constexpr uint32_t LEVEL_ENTITY_ID_BASE = 1000000;
+    uint32_t levelEntityId = LEVEL_ENTITY_ID_BASE + static_cast<uint32_t>(levelNumber);
+    Entity levelEntity = this->_engine->createEntityWithId(levelEntityId, "Level_" + std::to_string(levelNumber), EntityCategory::LOCAL);
+
+    Level level;
+    level.levelDuration = duration;
+    level.backgroundAsset = backgroundAsset;
+    level.soundTheme = soundTheme;
+    level.started = false;
+    level.completed = false;
+    level.elapsedTime = 0.f;
+    level.currentWaveIndex = 0;
+
+    // Define level waves based on level number
+    // Example for Level 1
+    if (levelNumber == LEVEL_1_NUMBER) {
+        // Wave 1: Basic enemies
+        Wave wave1;
+        wave1.startTime = LEVEL_1_WAVE_1_START_TIME;
+        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 100.f, 0.f});
+        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 300.f, 1.5f});
+
+        // Wave 2: Mix of basic and fast enemies
+        //Wave wave2;
+        //wave2.startTime = LEVEL_1_WAVE_2_START_TIME;
+        //wave2.enemies.push_back({EnemyType::FAST, 800.f, 150.f, 0.f});
+        //wave2.enemies.push_back({EnemyType::BASIC, 800.f, 250.f, 1.0f});
+        //wave2.enemies.push_back({EnemyType::FAST, 800.f, 350.f, 1.0f});
+        //wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
+
+        // Wave 3: Tank wave
+        //Wave wave3;
+        //wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
+        //wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
+        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
+        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
+
+        // Wave 4: Final assault
+        //Wave wave4;
+        //wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
+        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
+        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
+        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
+
+        level.waves.push_back(wave1);
+        //level.waves.push_back(wave2);
+        //level.waves.push_back(wave3);
+        //level.waves.push_back(wave4);
+    }
+    // Can add more levels later
+    else {
+        LOG_WARN_CAT("Coordinator", "Level {} not configured, using default waves", levelNumber);
+        // Default simple wave
+        Wave defaultWave;
+        defaultWave.startTime = 2.0f;
+        defaultWave.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.f});
+        level.waves.push_back(defaultWave);
+    }
+
+    this->_engine->addComponent<Level>(levelEntity, level);
+    LOG_INFO_CAT("Coordinator", "Created level {} with {} waves, duration={}s, background={}, music={}", 
+                 levelNumber, level.waves.size(), duration, backgroundAsset, soundTheme);
+
+    return levelEntity;
+}
+
 void Coordinator::processServerPackets(const std::vector<common::protocol::Packet>& packetsToProcess, uint64_t elapsedMs)
 {
     LOG_INFO_CAT("Coordinator", "processServerPackets: processing {} packets", packetsToProcess.size());
 
     for (const auto& packet : packetsToProcess) {
-        if (PacketManager::assertPlayerInput(packet)) {
+        const auto packetType = static_cast<protocol::PacketTypes>(packet.header.packet_type);
+        
+        if (packetType == protocol::PacketTypes::TYPE_PLAYER_INPUT && PacketManager::assertPlayerInput(packet)) {
             LOG_INFO_CAT("Coordinator", "Processing PLAYER_INPUT packet");
             
             // Parse to get the source player ID
@@ -345,6 +461,12 @@ void Coordinator::processServerPackets(const std::vector<common::protocol::Packe
             } else {
                 LOG_ERROR_CAT("Coordinator", "Failed to parse PLAYER_INPUT packet");
             }
+        } else if (packetType == protocol::PacketTypes::TYPE_PLAYER_IS_READY && PacketManager::assertPlayerIsReady(packet)) {
+            LOG_INFO_CAT("Coordinator", "Processing PLAYER_IS_READY packet");
+            handlePacketPlayerIsReady(packet);
+        } else if (packetType == protocol::PacketTypes::TYPE_PLAYER_NOT_READY && PacketManager::assertPlayerNotReady(packet)) {
+            LOG_INFO_CAT("Coordinator", "Processing PLAYER_NOT_READY packet");
+            handlePacketPlayerNotReady(packet);
         } else {
             LOG_WARN_CAT("Coordinator", "Received non-input packet type {} on server", static_cast<int>(packet.header.packet_type));
         }
@@ -489,9 +611,17 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
 void Coordinator::queueWeaponFire(uint32_t shooterId, float originX, float originY,
                                   float directionX, float directionY, uint8_t weaponType)
 {
+    // Create projectile immediately to reserve the entity ID
+    // (prevents race condition where LevelSystem might take the ID before we use it)
+    // Use getNextNetworkedEntityId() because projectiles are networked entities
+    uint32_t projectileId = _engine->getNextNetworkedEntityId();
+    Entity shooterEntity = _engine->getEntityFromId(shooterId);
+    Entity projectile = spawnProjectile(shooterEntity, projectileId, weaponType, originX, originY, directionX, directionY);
+    
+    // Queue the weapon fire event with the already-created projectile
     WeaponFireEvent event;
     event.shooterId = shooterId;
-    event.projectileId = _nextProjectileId++;
+    event.projectileId = projectileId;
     event.originX = originX;
     event.originY = originY;
     event.directionX = directionX;
@@ -521,6 +651,34 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     _packetsToRelay.clear();
 
     // ============================================================================
+    // NEW ENTITY BROADCAST
+    // ============================================================================
+    // Detect newly created entities with NetworkId and broadcast ENTITY_SPAWN packets
+    // This ensures clients know about new enemies, powerups, etc. created server-side
+    // ============================================================================
+    auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
+    static uint32_t entitySpawnSequence = 0;
+    
+    for (size_t i = 0; i < networkIdComponents.size(); ++i) {
+        if (networkIdComponents[i].has_value()) {
+            uint32_t networkId = networkIdComponents[i].value().id;
+            Entity entity = Entity::fromId(static_cast<uint32_t>(i));
+            
+            // Check if this entity has been broadcast yet
+            if (this->_engine->isAlive(entity) && _broadcastedEntityIds.find(networkId) == _broadcastedEntityIds.end()) {
+                // New entity! Create and send ENTITY_SPAWN packet
+                common::protocol::Packet spawnPacket;
+                entitySpawnSequence++;
+                if (createPacketEntitySpawn(&spawnPacket, networkId, entitySpawnSequence)) {
+                    outgoingPackets.push_back(spawnPacket);
+                    _broadcastedEntityIds.insert(networkId);
+                    LOG_INFO_CAT("Coordinator", "Broadcasting ENTITY_SPAWN for new entity {}", networkId);
+                }
+            }
+        }
+    }
+
+    // ============================================================================
     // SERVER SNAPSHOT GENERATION
     // ============================================================================
     // Only entities with NetworkId component are synchronized via snapshots.
@@ -530,7 +688,6 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     // ============================================================================
     
     // Get all networked entities (entities with NetworkId component)
-    auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
 
     if (networkIdComponents.size() == 0) {
         // No entities to sync
@@ -619,19 +776,10 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     
     // Process pending weapon fire events and create packets
     for (const auto& fireEvent : _pendingWeaponFires) {
-        // Spawn the projectile entity on the server
+        // Projectile was already spawned in queueWeaponFire() to reserve the ID
+        // Just verify the shooter is still alive and create the network packet
         Entity shooterEntity = this->_engine->getEntityFromId(fireEvent.shooterId);
         if (this->_engine->isAlive(shooterEntity)) {
-            Entity projectile = spawnProjectile(
-                shooterEntity,
-                fireEvent.projectileId,
-                fireEvent.weaponType,
-                fireEvent.originX,
-                fireEvent.originY,
-                fireEvent.directionX,
-                fireEvent.directionY
-            );
-
             // Create weapon fire packet to broadcast to clients
             // Args format: flags_count(1) + flags(1+) + sequence_number(4) + timestamp(4) + payload(17)
             std::vector<uint8_t> weaponFireArgs;
@@ -785,7 +933,17 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     // Note: The network manager should handle setting this to 1 for the owning client
     args.push_back(0);
 
+    // Mark this player as already broadcasted to prevent duplicate ENTITY_SPAWN from auto-broadcast system
+    // This must be done BEFORE returning so the next buildServerPacketBasedOnStatus() tick won't resend it
+    this->markEntityAsBroadcasted(playerId);
+
     return PacketManager::createEntitySpawn(args);
+}
+
+void Coordinator::markEntityAsBroadcasted(uint32_t entityId)
+{
+    _broadcastedEntityIds.insert(entityId);
+    LOG_DEBUG_CAT("Coordinator", "Marked entity {} as already broadcasted", entityId);
 }
 
 bool Coordinator::shouldSendPacketToPlayer(const common::protocol::Packet& packet, uint32_t targetPlayerId) const
@@ -861,6 +1019,60 @@ std::vector<uint32_t> Coordinator::getAllConnectedPlayerIds() const
 // Should only be called on client side to send input packets to server
 void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
+    // ============================================================================
+    // HANDLE PLAYER READY/NOT READY EVENTS
+    // ============================================================================
+    // Create PLAYER_IS_READY and PLAYER_NOT_READY packets from pending events
+    for (const auto& event : _pendingPlayerReadyEvents) {
+        std::vector<uint8_t> args;
+
+        // flags_count (1 byte)
+        args.push_back(1);
+
+        // flags (FLAG_RELIABLE)
+        args.push_back(static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE));
+
+        // sequence_number (4 bytes)
+        uint32_t sequence = static_cast<uint32_t>(std::time(nullptr));
+        args.push_back(static_cast<uint8_t>(sequence & 0xFF));
+        args.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
+        args.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
+        args.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
+
+        // timestamp (4 bytes)
+        uint32_t timestamp = static_cast<uint32_t>(std::time(nullptr));
+        args.push_back(static_cast<uint8_t>(timestamp & 0xFF));
+        args.push_back(static_cast<uint8_t>((timestamp >> 8) & 0xFF));
+        args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
+        args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
+
+        // player_id (4 bytes)
+        args.push_back(static_cast<uint8_t>(event.playerId & 0xFF));
+        args.push_back(static_cast<uint8_t>((event.playerId >> 8) & 0xFF));
+        args.push_back(static_cast<uint8_t>((event.playerId >> 16) & 0xFF));
+        args.push_back(static_cast<uint8_t>((event.playerId >> 24) & 0xFF));
+
+        // Create the appropriate packet type
+        std::optional<common::protocol::Packet> packet;
+        if (event.isReady) {
+            packet = PacketManager::createPlayerIsReady(args);
+            LOG_INFO_CAT("Coordinator", "buildClientPacketBasedOnStatus: created PLAYER_IS_READY packet for player {}", event.playerId);
+        } else {
+            packet = PacketManager::createPlayerNotReady(args);
+            LOG_INFO_CAT("Coordinator", "buildClientPacketBasedOnStatus: created PLAYER_NOT_READY packet for player {}", event.playerId);
+        }
+
+        if (packet.has_value()) {
+            outgoingPackets.push_back(packet.value());
+        } else {
+            LOG_ERROR_CAT("Coordinator", "buildClientPacketBasedOnStatus: failed to create player ready/not ready packet");
+        }
+    }
+    _pendingPlayerReadyEvents.clear();
+
+    // ============================================================================
+    // THROTTLE INPUT PACKET SENDING
+    // ============================================================================
     // Throttle input packet sending using INPUT_SEND_TICK_INTERVAL
     static uint64_t tickCounter = 0;
     tickCounter++;
@@ -872,6 +1084,7 @@ void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::P
     // Only send input every INPUT_SEND_TICK_INTERVAL ticks (defined in defines.hpp as 2)
     // This limits input packets to ~30 Hz instead of 60 Hz
     if (tickCounter % INPUT_SEND_TICK_INTERVAL != 0) {
+        LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: created {} packets", outgoingPackets.size());
         return;
     }
 
@@ -904,13 +1117,13 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
     // Get the entity for the player ID
     Entity playerEntity = this->_engine->getEntityFromId(playerId);
     if (!this->_engine->isAlive(playerEntity)) {
-        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player entity %u is not alive", playerId);
+        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player entity {} is not alive", playerId);
         return false;
     }
 
     auto& inputOpt = this->_engine->getComponentEntity<InputComponent>(playerEntity);
     if (!inputOpt.has_value()) {
-        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player %u has no input component", playerId);
+        LOG_WARN_CAT("Coordinator", "createPacketInputClient: player {} has no input component", playerId);
         return false;
     }
 
@@ -992,7 +1205,7 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
     }
 
     *packet = playerInputPacket.value();
-    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: packet created for player %u", actualPlayerId);
+    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: packet created for player {}", actualPlayerId);
     return true;
 }
 
@@ -1066,7 +1279,7 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != ENTITY_SPAWN_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: invalid packet size %zu, expected %d", packet.data.size(), ENTITY_SPAWN_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: invalid packet size {}, expected {}", packet.data.size(), ENTITY_SPAWN_PAYLOAD_SIZE);
         return;
     }
 
@@ -1074,8 +1287,16 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     protocol::EntitySpawnPayload payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "Entity created: id=%u type=%u pos=(%.1f, %.1f) health=%u is_playable=%u",
+    LOG_INFO_CAT("Coordinator", "Entity created: id={} type={} pos=({}, {}) health={} is_playable={}",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
+
+    // Check if entity already exists in NETWORKED list (to avoid duplicate spawning)
+    // Only check NETWORKED entities, not LOCAL entities (which can have the same IDs)
+    const auto& networkedEntities = this->_engine->getNetworkedEntities();
+    if (networkedEntities.find(payload.entity_id) != networkedEntities.end()) {
+        LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists in NETWORKED list, skipping spawn", payload.entity_id);
+        return;
+    }
 
     // Create the entity with the specific ID from the server
     Entity newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
@@ -1097,17 +1318,22 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY): {
+            // Convert velocity from network format (int16_t representing velocity * 1000)
+            float velX = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_x)) / 1000.0f;
+            float velY = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_y)) / 1000.0f;
+            
             this->setupEnemyEntity(
                 newEntity,
                 payload.entity_id,
                 static_cast<float>(payload.position_x),
                 static_cast<float>(payload.position_y),
-                static_cast<float>(payload.initial_velocity_x),
-                static_cast<float>(payload.initial_velocity_y),
+                velX,
+                velY,
                 payload.initial_health,
                 /*withRenderComponents=*/true
             );
-            LOG_INFO_CAT("Coordinator", "Enemy created with ID %u at (%.1f, %.1f)", payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y));
+            LOG_INFO_CAT("Coordinator", "Enemy created with ID {} at ({}, {}) with velocity ({}, {})", 
+                        payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), velX, velY);
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
@@ -1143,7 +1369,7 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
             // TODO: Initialize background element-specific components
             break;
         default:
-            LOG_WARN_CAT("Coordinator", "Unknown entity type %u", payload.entity_type);
+            LOG_WARN_CAT("Coordinator", "Unknown entity type {}", payload.entity_type);
             break;
     }
 }
@@ -1154,7 +1380,7 @@ void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &pack
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != ENTITY_DESTROY_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size %zu, expected %d", packet.data.size(), ENTITY_DESTROY_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketDestroyEntity: invalid packet size {}, expected {}", packet.data.size(), ENTITY_DESTROY_PAYLOAD_SIZE);
         return;
     }
 
@@ -1162,7 +1388,7 @@ void Coordinator::handlePacketDestroyEntity(const common::protocol::Packet &pack
     protocol::EntityDestroyPayload payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "Entity destroyed: id=%u reason=%u final_pos=(%.1f, %.1f)",
+    LOG_INFO_CAT("Coordinator", "Entity destroyed: id={} reason={} final_pos=({}, {})",
         payload.entity_id, payload.destroy_reason, static_cast<float>(payload.final_position_x), static_cast<float>(payload.final_position_y));
 
     // Destroy the entity
@@ -1177,11 +1403,11 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
 
     const std::size_t size = packet.data.size();
     if (size < BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: payload too small (%zu), expected >= %zu",size, BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: payload too small ({}), expected >= {}",size, BASE_SIZE);
         return;
     }
     if ((size - BASE_SIZE) % ENTRY_SIZE != 0) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: invalid payload size %zu, expected %zu + %zu*N", size, BASE_SIZE, ENTRY_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: invalid payload size {} , expected {} + {}*N", size, BASE_SIZE, ENTRY_SIZE);
         return;
     }
 
@@ -1195,7 +1421,7 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
 
     const std::size_t computed_count = (size - BASE_SIZE) / ENTRY_SIZE;
     if (static_cast<std::size_t>(entity_count) != computed_count) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: entity_count mismatch (packet=%u computed=%zu)", entity_count, computed_count);
+        LOG_ERROR_CAT("Coordinator", "handlePacketTransformSnapshot: entity_count mismatch (packet={}, computed={})", entity_count, computed_count);
         return;
     }
 
@@ -1214,6 +1440,12 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         offset += sizeof(net);
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating (it might not have been spawned yet via ENTITY_SPAWN)
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received transform for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         const Transform tf(
             static_cast<float>(net.pos_x),
@@ -1225,9 +1457,14 @@ void Coordinator::handlePacketTransformSnapshot(const common::protocol::Packet& 
         try {
             this->_engine->updateComponent<Transform>(entity, tf);
             LOG_DEBUG_CAT("Coordinator", "[CLIENT] Updated entity {} position to ({}, {})", entity_id, tf.x, tf.y);
-        } catch (const std::exception&) {
-            this->_engine->emplaceComponent<Transform>(entity, tf);
-            LOG_DEBUG_CAT("Coordinator", "[CLIENT] Emplaced entity {} position to ({}, {})", entity_id, tf.x, tf.y);
+        } catch (const std::exception& e) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Failed to update transform for entity {}: {}", entity_id, e.what());
+            try {
+                this->_engine->emplaceComponent<Transform>(entity, tf);
+                LOG_DEBUG_CAT("Coordinator", "[CLIENT] Emplaced entity {} position to ({}, {})", entity_id, tf.x, tf.y);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace transform for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1236,7 +1473,7 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
 {
     // Minimum size check: must have at least entity_count (2 bytes)
     if (packet.data.size() < 2) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: packet too small, size=%zu", packet.data.size());
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: packet too small, size={}", packet.data.size());
         return;
     }
 
@@ -1249,7 +1486,7 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
     const size_t expected_size = 2 + (entity_count * HEALTH_ENTRY_SIZE);
     
     if (packet.data.size() != expected_size) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size %zu, expected %zu for %u entities",
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshot: invalid packet size {}, expected {} for {} entities",
             packet.data.size(), expected_size, entity_count);
         return;
     }
@@ -1276,17 +1513,30 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
         std::memcpy(&max_shield, packet.data.data() + offset, sizeof(max_shield));
         offset += sizeof(max_shield);
 
+        LOG_DEBUG_CAT("Coordinator", "[CLIENT] Received health for entity {}: currentHealth={}, maxHp={}", 
+                     entity_id, static_cast<int>(current_health), static_cast<int>(max_health));
+
         // Convert uint8_t network format to int component format
         Health health(static_cast<int>(current_health), static_cast<int>(max_health));
         // Note: shields are not currently in the Health component, so we only update health values
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received health for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         try {
             this->_engine->updateComponent<Health>(entity, health);
         } catch (const std::exception& e) {
             // if the entity does not have the component, set the component
-            this->_engine->emplaceComponent<Health>(entity, health);
+            try {
+                this->_engine->emplaceComponent<Health>(entity, health);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace health for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1295,7 +1545,7 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
 {
     // Minimum size check: must have at least entity_count (2 bytes)
     if (packet.data.size() < 2) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: packet too small, size=%zu", packet.data.size());
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: packet too small, size={}", packet.data.size());
         return;
     }
 
@@ -1308,7 +1558,7 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
     const size_t expected_size = 2 + (entity_count * WEAPON_ENTRY_SIZE);
 
     if (packet.data.size() != expected_size) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: invalid packet size %zu, expected %zu for %u entities",
+        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponSnapshot: invalid packet size {}, expected {} for {} entities",
             packet.data.size(), expected_size, entity_count);
         return;
     }
@@ -1347,12 +1597,22 @@ void Coordinator::handlePacketWeaponSnapshot(const common::protocol::Packet &pac
         // Note: ammo is not currently in the Weapon component
 
         Entity entity = this->_engine->getEntityFromId(entity_id);
+        
+        // Check if entity exists before updating
+        if (!this->_engine->isAlive(entity)) {
+            LOG_WARN_CAT("Coordinator", "[CLIENT] Received weapon for non-existent entity {}, skipping", entity_id);
+            continue;
+        }
 
         try {
             this->_engine->updateComponent<Weapon>(entity, weapon);
         } catch (const std::exception& e) {
             // if the entity does not have the component, set the component
-            this->_engine->emplaceComponent<Weapon>(entity, weapon);
+            try {
+                this->_engine->emplaceComponent<Weapon>(entity, weapon);
+            } catch (const std::exception& e2) {
+                LOG_ERROR_CAT("Coordinator", "[CLIENT] Failed to emplace weapon for entity {}: {}", entity_id, e2.what());
+            }
         }
     }
 }
@@ -1368,7 +1628,7 @@ void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &
 
     // Minimum size: 6 bytes (world_tick + entity_count)
     if (data.size() < 6) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketAnimationSnapshot: packet too small (%zu bytes)", data.size());
+        LOG_ERROR_CAT("Coordinator", "handlePacketAnimationSnapshot: packet too small ({} bytes)", data.size());
         return;
     }
 
@@ -1385,12 +1645,12 @@ void Coordinator::handlePacketAnimationSnapshot(const common::protocol::Packet &
     // Validate total size: 6 bytes base + (entity_count × 11 bytes)
     // Each entity has: entity_id(4) + ComponentAnimation(7) = 11 bytes
     if (data.size() != 6 + (entity_count * 11)) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketAnimationSnapshot: invalid packet size %zu, expected %zu", 
+        LOG_ERROR_CAT("Coordinator", "handlePacketAnimationSnapshot: invalid packet size {}, expected {}", 
             data.size(), 6 + (entity_count * 11));
         return;
     }
 
-    LOG_INFO_CAT("Coordinator", "AnimationSnapshot: world_tick=%u entity_count=%u", world_tick, entity_count);
+    LOG_INFO_CAT("Coordinator", "AnimationSnapshot: world_tick={} entity_count={}", world_tick, entity_count);
 
     for (uint16_t i = 0; i < entity_count; ++i) {
         uint32_t entity_id = 0;
@@ -1428,7 +1688,7 @@ void Coordinator::handlePacketComponentRemove(const common::protocol::Packet &pa
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != COMPONENT_REMOVE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketComponentRemove: invalid packet size %zu, expected %d", packet.data.size(), COMPONENT_REMOVE_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketComponentRemove: invalid packet size {} , expected {}", packet.data.size(), COMPONENT_REMOVE_PAYLOAD_SIZE);
         return;
     }
 
@@ -1436,7 +1696,7 @@ void Coordinator::handlePacketComponentRemove(const common::protocol::Packet &pa
     protocol::ComponentRemove payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "ComponentRemove: component_type=%u entity_id=%u",
+    LOG_INFO_CAT("Coordinator", "ComponentRemove: component_type={} entity_id={}",
         payload.component_type, payload.entity_id);
 
     Entity entity = this->_engine->getEntityFromId(payload.entity_id);
@@ -1453,7 +1713,7 @@ void Coordinator::handlePacketHealthSnapshotDelta(const common::protocol::Packet
 {
     // Validate snapshot size using the protocol define
     if (packet.data.size() != HEALTH_SNAPSHOT_DELTA_BASE_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshotDelta: invalid packet size %zu, expected %d", packet.data.size(), HEALTH_SNAPSHOT_DELTA_BASE_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketHealthSnapshotDelta: invalid packet size {}, expected {}", packet.data.size(), HEALTH_SNAPSHOT_DELTA_BASE_SIZE);
         return;
     }
 
@@ -1461,7 +1721,7 @@ void Coordinator::handlePacketHealthSnapshotDelta(const common::protocol::Packet
     protocol::HealthSnapshotDelta snapshot;
     std::memcpy(&snapshot, packet.data.data(), sizeof(snapshot));
 
-    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick=%u entity_count=%u",
+    LOG_INFO_CAT("Coordinator", "HealthSnaphot: world_tick={} entity_count={}",
         snapshot.world_tick, snapshot.entity_count);
 
     size_t offset = sizeof(protocol::HealthSnapshotDelta);
@@ -1490,7 +1750,7 @@ void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
 {
      // Validate payload size using the protocol define
     if (packet.data.size() != PLAYER_HIT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerHit: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_HIT_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerHit: invalid packet size {}, expected {}", packet.data.size(), PLAYER_HIT_PAYLOAD_SIZE);
         return;
     }
 
@@ -1498,7 +1758,7 @@ void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
     protocol::PlayerHit payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "attacker_id: id=%u damage=%u hit_pos=(%.1f, %.1f) player_id=%u remaining_health=%u remaining_shield=%u",
+    LOG_INFO_CAT("Coordinator", "attacker_id: id={} damage={} hit_pos=({}, {}) player_id={} remaining_health={} remaining_shield={}",
         payload.attacker_id, payload.damage, static_cast<float>(payload.hit_pos_x), static_cast<float>(payload.hit_pos_y), payload.player_id,
         payload.remaining_health, payload.remaining_shield);
 
@@ -1512,7 +1772,7 @@ void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
         health->currentHealth = payload.remaining_health;
         // TODO: handle the shied here, add a component and add the remaining_shield
 
-        LOG_INFO_CAT("Coordinator", "Player %u health updated: hp=%u shield=%u",
+        LOG_INFO_CAT("Coordinator", "Player {} health updated: hp={} shield={}",
             payload.player_id, payload.remaining_health, payload.remaining_shield);
 
 
@@ -1523,7 +1783,7 @@ void Coordinator::handlePacketPlayerHit(const common::protocol::Packet &packet)
     }
     catch(const Error &e)
     {
-        LOG_ERROR_CAT("Coordinator", "Failed to update player %u health: %s",
+        LOG_ERROR_CAT("Coordinator", "Failed to update player {} health: {}",
             payload.player_id, e.what());
         std::cerr << "Error: " << e.what() << std::endl;
         if (e.getType() == ErrorType::CorruptedData) {
@@ -1536,7 +1796,7 @@ void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != PLAYER_DEATH_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerDeath: invalid packet size %zu, expected %d", packet.data.size(), PLAYER_DEATH_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerDeath: invalid packet size {}, expected {}", packet.data.size(), PLAYER_DEATH_PAYLOAD_SIZE);
         return;
     }
 
@@ -1544,7 +1804,7 @@ void Coordinator::handlePacketPlayerDeath(const common::protocol::Packet &packet
     protocol::PlayerDeath payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "killer_id: id=%u death_pos=(%.1f, %.1f) player_id=%u score_before_death=%u",
+    LOG_INFO_CAT("Coordinator", "killer_id: id={} death_pos=({}, {}) player_id={} score_before_death={}",
         payload.killer_id, static_cast<float>(payload.death_pos_x), static_cast<float>(payload.death_pos_y), payload.player_id,
         payload.score_before_death);
 
@@ -1559,7 +1819,7 @@ void Coordinator::handlePacketScoreUpdate(const common::protocol::Packet &packet
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != SCORE_UPDATE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketScoreUpdate: invalid packet size %zu, expected %d", packet.data.size(), SCORE_UPDATE_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketScoreUpdate: invalid packet size {}, expected {}", packet.data.size(), SCORE_UPDATE_PAYLOAD_SIZE);
         return;
     }
 
@@ -1567,7 +1827,7 @@ void Coordinator::handlePacketScoreUpdate(const common::protocol::Packet &packet
     protocol::ScoreUpdate payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "player_id=%u new_score=%u reason=%u score_delta=%u",
+    LOG_INFO_CAT("Coordinator", "player_id={} new_score={} reason={} score_delta={}",
                 payload.player_id, payload.new_score, payload.reason, payload.score_delta);
 
     // get the player
@@ -1591,7 +1851,7 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != POWER_PICKUP_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketPowerupPickup: invalid packet size %zu, expected %d", packet.data.size(), POWER_PICKUP_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketPowerupPickup: invalid packet size {}, expected {}", packet.data.size(), POWER_PICKUP_PAYLOAD_SIZE);
         return;
     }
 
@@ -1599,7 +1859,7 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
     protocol::PowerupPickup payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "player_id=%u powerup_id=%u powerup_type=%u duration=%u",
+    LOG_INFO_CAT("Coordinator", "player_id={} powerup_id={} powerup_type={} duration={}",
                 payload.player_id, payload.powerup_id, payload.powerup_type, payload.duration);
 
     // get the player
@@ -1652,79 +1912,59 @@ void Coordinator::handlePacketPowerupPickup(const common::protocol::Packet &pack
 
 void Coordinator::handlePacketWeaponFire(const common::protocol::Packet &packet)
 {
-    // Parse the weapon fire packet
-    auto parsed = PacketManager::parseWeaponFire(packet);
-    if (!parsed.has_value()) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: failed to parse weapon fire packet");
-        return;
+    // Only clients process WEAPON_FIRE packets from server
+    // Servers generate their own projectiles through queueWeaponFire()
+    if (!_isServer) {
+        // Parse the weapon fire packet
+        auto parsed = PacketManager::parseWeaponFire(packet);
+        if (!parsed.has_value()) {
+            LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: failed to parse weapon fire packet");
+            return;
+        }
+
+        const auto& payload = parsed.value();
+
+        LOG_INFO_CAT("Coordinator", "shooter_id={} projectile_id={} weapon_type={} origin_pos=({}, {}), direction_pos=({}, {})",
+                    payload.shooterId, payload.projectileId, payload.weaponType, 
+                    payload.originX, payload.originY, payload.directionX, payload.directionY);
+
+        // Check if projectile already exists (duplicate packet or not yet cleaned up)
+        Entity existingProjectile = this->_engine->getEntityFromId(payload.projectileId);
+        if (this->_engine->isAlive(existingProjectile)) {
+            LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectileId);
+            return;
+        }
+
+        // get the shooter
+        Entity shooter = this->_engine->getEntityFromId(payload.shooterId);
+
+        // Convert from int16_t to float
+        float origin_x = static_cast<float>(payload.originX);
+        float origin_y = static_cast<float>(payload.originY);
+
+        // Convert direction from int16_t (normalized*1000) back to float
+        float direction_x = static_cast<float>(payload.directionX) / 1000.0f;
+        float direction_y = static_cast<float>(payload.directionY) / 1000.0f;
+
+        try {
+            LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: About to spawn projectile {}", payload.projectileId);
+            Entity projectile = spawnProjectile(shooter, payload.projectileId, payload.weaponType, 
+                                                origin_x, origin_y, direction_x, direction_y);
+            LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: Successfully spawned projectile {}", payload.projectileId);
+        } catch (const Error& e) {
+            LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {}: {}", payload.projectileId, e.what());
+            return;
+        } catch (const std::exception& e) {
+            LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {} with unexpected error: {}", payload.projectileId, e.what());
+            return;
+        }
     }
-
-    const auto& payload = parsed.value();
-
-    LOG_INFO_CAT("Coordinator", "shooter_id={} projectile_id={} weapon_type={} origin_pos=({}, {}), direction_pos=({}, {})",
-                payload.shooterId, payload.projectileId, payload.weaponType, 
-                payload.originX, payload.originY, payload.directionX, payload.directionY);
-
-    // Check if projectile already exists (duplicate packet or not yet cleaned up)
-    Entity existingProjectile = this->_engine->getEntityFromId(payload.projectileId);
-    if (this->_engine->isAlive(existingProjectile)) {
-        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: projectile {} already exists, skipping spawn", payload.projectileId);
-        return;
-    }
-
-    // get the shooter
-    Entity shooter = this->_engine->getEntityFromId(payload.shooterId);
-
-    // Convert from int16_t to float
-    float origin_x = static_cast<float>(payload.originX);
-    float origin_y = static_cast<float>(payload.originY);
-
-    // Convert direction from int16_t (normalized*1000) back to float
-    float direction_x = static_cast<float>(payload.directionX) / 1000.0f;
-    float direction_y = static_cast<float>(payload.directionY) / 1000.0f;
-
-    try {
-        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: About to spawn projectile {}", payload.projectileId);
-        Entity projectile = spawnProjectile(shooter, payload.projectileId, payload.weaponType, 
-                                            origin_x, origin_y, direction_x, direction_y);
-        LOG_DEBUG_CAT("Coordinator", "handlePacketWeaponFire: Successfully spawned projectile {}", payload.projectileId);
-    } catch (const Error& e) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {}: {}", payload.projectileId, e.what());
-        return;
-    } catch (const std::exception& e) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketWeaponFire: Failed to spawn projectile {} with unexpected error: {}", payload.projectileId, e.what());
-        return;
-    }
-
-    // Play shooting sound client-side at the projectile origin position
-    // Determine sound type based on weapon type
-    // TODO: a fix
-/*     protocol::AudioEffectType soundType;
-    switch (payload.weaponType) {
-        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC):
-            soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
-            break;
-        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_CHARGED):
-            soundType = protocol::AudioEffectType::SFX_SHOOT_CHARGED;
-            break;
-        case static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_LASER):
-            soundType = protocol::AudioEffectType::SFX_SHOOT_LASER;
-            break;
-        default:
-            soundType = protocol::AudioEffectType::SFX_SHOOT_BASIC;
-            break;
-    }
-    
-    playAudioEffect(soundType, origin_x, origin_y, 0.7f, 1.0f);
- */
-    LOG_INFO_CAT("Coordinator", "Projectile {} spawned from shooter {}", 
-                 payload.projectileId, payload.shooterId);
 }
 
 void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packet)
 {
     if (packet.data.size() != VISUAL_EFFECT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketVisualEffect: invalid packet size %zu, expected %d", packet.data.size(), VISUAL_EFFECT_PAYLOAD_SIZE);
+        LOG_ERROR_CAT("Coordinator", "handlePacketVisualEffect: invalid packet size {}, expected {}", packet.data.size(), VISUAL_EFFECT_PAYLOAD_SIZE);
         return;
     }
 
@@ -1732,7 +1972,7 @@ void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packe
     protocol::VisualEffect payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "effect_type=%u scale=%u duration_ms=%u color_tint_r=%u color_tint_g=%u color_tint_b=%u pos=(%.1f, %.1f)",
+    LOG_INFO_CAT("Coordinator", "effect_type={} scale={} duration_ms={} color_tint_r={} color_tint_g={} color_tint_b={} pos=({}, {})",
                 payload.effect_type, payload.scale, payload.duration_ms,
                 payload.color_tint_r, payload.color_tint_g, payload.color_tint_b,
                 payload.pos_x, payload.pos_y);
@@ -1757,7 +1997,7 @@ void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packe
         color_r, color_g, color_b
     );
 
-    LOG_INFO_CAT("Coordinator", "Visual effect %u spawned at (%.1f, %.1f) with scale %.2fx for %.2fs", 
+    LOG_INFO_CAT("Coordinator", "Visual effect {} spawned at ({}, {}) with scale {}x for {}s", 
                  payload.effect_type, pos_x, pos_y, scale, duration);
 
 }
@@ -1765,7 +2005,7 @@ void Coordinator::handlePacketVisualEffect(const common::protocol::Packet &packe
 void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet)
 {
     if (packet.data.size() != AUDIO_EFFECT_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketAudioEffect: invalid packet size %zu, expected %d", 
+        LOG_ERROR_CAT("Coordinator", "handlePacketAudioEffect: invalid packet size {}, expected {}", 
                       packet.data.size(), AUDIO_EFFECT_PAYLOAD_SIZE);
         return;
     }
@@ -1773,7 +2013,7 @@ void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet
     protocol::AudioEffect payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "audio_effect_type=%u volume=%u pitch=%u pos=(%.1f, %.1f)",
+    LOG_INFO_CAT("Coordinator", "audio_effect_type={} volume={} pitch={} pos=({}, {})",
                  payload.effect_type, payload.volume, payload.pitch,
                  payload.pos_x, payload.pos_y);
 
@@ -1796,7 +2036,7 @@ void Coordinator::handlePacketAudioEffect(const common::protocol::Packet &packet
 void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &packet)
 {
     if (packet.data.size() != PARTICLE_SPAWN_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "handlePacketParticleSpawn: invalid packet size %zu, expected %d", 
+        LOG_ERROR_CAT("Coordinator", "handlePacketParticleSpawn: invalid packet size {}, expected {}", 
                       packet.data.size(), PARTICLE_SPAWN_PAYLOAD_SIZE);
         return;
     }
@@ -1805,7 +2045,7 @@ void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &pack
     protocol::ParticleSpawn payload;
     std::memcpy(&payload, packet.data.data(), sizeof(payload));
 
-    LOG_INFO_CAT("Coordinator", "particle_system_id=%u particle_count=%u lifetime_ms=%u pos=(%.1f, %.1f) velocity=(%.1f, %.1f) color_start=(%u,%u,%u) color_end=(%u,%u,%u)",
+    LOG_INFO_CAT("Coordinator", "particle_system_id={} particle_count={} lifetime_ms={} pos=({}, {}) velocity=({}, {}) color_start=({}, {}, {}) color_end=({}, {}, {})",
                  payload.particle_system_id, payload.particle_count, payload.lifetime_ms,
                  static_cast<float>(payload.pos_x), static_cast<float>(payload.pos_y),
                  static_cast<float>(payload.velocity_x), static_cast<float>(payload.velocity_y),
@@ -1834,14 +2074,101 @@ void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &pack
     //     colorEnd
     // );
 
-    LOG_INFO_CAT("Coordinator", "Particle system %u spawned with %u particles at (%.1f, %.1f)", 
+    LOG_INFO_CAT("Coordinator", "Particle system {} spawned with {} particles at ({}, {})", 
                  payload.particle_system_id, payload.particle_count, pos_x, pos_y);
+}
+
+void Coordinator::handlePacketPlayerIsReady(const common::protocol::Packet& packet)
+{
+    // Validate payload size
+    if (packet.data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerIsReady: invalid packet size {}, expected {}", 
+                     packet.data.size(), PLAYER_READY_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse player_id
+    uint32_t playerId;
+    std::memcpy(&playerId, packet.data.data(), sizeof(uint32_t));
+
+    LOG_INFO_CAT("Coordinator", "Player {} is READY", playerId);
+    
+    // Notify Game if callback is set
+    if (_gameNotificationCallback) {
+        _gameNotificationCallback(playerId, true);
+    }
+}
+
+void Coordinator::handlePacketPlayerNotReady(const common::protocol::Packet& packet)
+{
+    // Validate payload size
+    if (packet.data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerNotReady: invalid packet size {}, expected {}", 
+                     packet.data.size(), PLAYER_READY_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse player_id
+    uint32_t playerId;
+    std::memcpy(&playerId, packet.data.data(), sizeof(uint32_t));
+
+    LOG_INFO_CAT("Coordinator", "Player {} is NOT READY", playerId);
+    
+    // Notify Game if callback is set
+    if (_gameNotificationCallback) {
+        _gameNotificationCallback(playerId, false);
+    }
+}
+
+bool Coordinator::areAllPlayersReady(
+    const std::vector<uint32_t>& connectedPlayers,
+    uint32_t maxPlayers,
+    const std::unordered_map<uint32_t, bool>& playerReadyStatus
+) const
+{
+    // If no players are connected, not all players are ready
+    if (connectedPlayers.empty()) {
+        return false;
+    }
+
+    // Check if we have the right number of players
+    if (connectedPlayers.size() < maxPlayers) {
+        return false;
+    }
+
+    // Check if all connected players are ready
+    for (uint32_t playerId : connectedPlayers) {
+        auto it = playerReadyStatus.find(playerId);
+        if (it == playerReadyStatus.end() || !it->second) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void Coordinator::queuePlayerIsReady(uint32_t playerId)
+{
+    PlayerReadyEvent event;
+    event.playerId = playerId;
+    event.isReady = true;
+    _pendingPlayerReadyEvents.push_back(event);
+    LOG_INFO_CAT("Coordinator", "Queued PLAYER_IS_READY event for player {}", playerId);
+}
+
+void Coordinator::queuePlayerNotReady(uint32_t playerId)
+{
+    PlayerReadyEvent event;
+    event.playerId = playerId;
+    event.isReady = false;
+    _pendingPlayerReadyEvents.push_back(event);
+    LOG_INFO_CAT("Coordinator", "Queued PLAYER_NOT_READY event for player {}", playerId);
 }
 
 void Coordinator::handleGameStart(const common::protocol::Packet& packet)
 {
     if (packet.data.size() != GAME_START_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "GameStart: invalid size %zu", packet.data.size());
+        LOG_ERROR_CAT("Coordinator", "GameStart: invalid size {}", packet.data.size());
         return;
     }
 
@@ -1851,7 +2178,7 @@ void Coordinator::handleGameStart(const common::protocol::Packet& packet)
 void Coordinator::handleGameEnd(const common::protocol::Packet& packet)
 {
     if (packet.data.size() != GAME_END_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "GameEnd: invalid size %zu", packet.data.size());
+        LOG_ERROR_CAT("Coordinator", "GameEnd: invalid size {}", packet.data.size());
         return;
     }
 
@@ -1862,7 +2189,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != LEVEL_COMPLETE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_COMPLETE payload size: expected %zu, got %zu",
+        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_COMPLETE payload size: expected {}, got {}",
             LEVEL_COMPLETE_PAYLOAD_SIZE, packet.data.size());
         return;
     }
@@ -1885,7 +2212,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     uint16_t completion_time = 0;
     std::memcpy(&completion_time, ptr, sizeof(completion_time));
 
-    LOG_INFO_CAT("Coordinator", "Level completed: level=%u next=%u bonus_score=%u time=%u seconds",
+    LOG_INFO_CAT("Coordinator", "Level completed: level={} next={} bonus_score={} time={} seconds",
         completed_level, next_level, bonus_score, completion_time);
 
     // Display level completion message
@@ -1893,11 +2220,11 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     if (next_level == 0xFF) {
         // Game is complete
         completionMessage = "GAME COMPLETE! Final Score Bonus: " + std::to_string(bonus_score);
-        LOG_INFO_CAT("Coordinator", "Game completed! Final bonus: %u", bonus_score);
+        LOG_INFO_CAT("Coordinator", "Game completed! Final bonus: {}", bonus_score);
     } else {
         // Level complete, more levels ahead
         completionMessage = "LEVEL " + std::to_string(completed_level) + " COMPLETE! Bonus: " + std::to_string(bonus_score);
-        LOG_INFO_CAT("Coordinator", "Level %u completed, preparing level %u", completed_level, next_level);
+        LOG_INFO_CAT("Coordinator", "Level {} completed, preparing level {}", completed_level, next_level);
     }
 
     // Create a UI text entity to display the completion message
@@ -1910,7 +2237,8 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
     if (next_level == 0xFF) {
         // Game is finished - stop running state
         _gameRunning = false;
-        LOG_INFO_CAT("Coordinator", "Game ended - all levels completed");
+        stopMusic();  // Stop level music
+        LOG_INFO_CAT("Coordinator", "Game ended - all levels completed, music stopped");
 
         // Display final game stats
         std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
@@ -1920,7 +2248,7 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         this->_engine->addComponent<Sprite>(timeEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     } else {
         // More levels to play - keep game running
-        LOG_INFO_CAT("Coordinator", "Waiting for server to start level %u", next_level);
+        LOG_INFO_CAT("Coordinator", "Waiting for server to start level {}", next_level);
 
         // Display "Next Level" message
         std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
@@ -1935,7 +2263,7 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != LEVEL_START_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_START payload size: expected %zu, got %zu",
+        LOG_ERROR_CAT("Coordinator", "Invalid LEVEL_START payload size: expected {}, got {}",
             LEVEL_START_PAYLOAD_SIZE, packet.data.size());
         return;
     }
@@ -1958,18 +2286,59 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
     level_name[31] = '\0';
     std::string levelNameStr(level_name);
 
-    LOG_INFO_CAT("Coordinator", "Level started: id=%u name=\"%s\" estimated_duration=%u seconds",
+    LOG_INFO_CAT("Coordinator", "Level started: id={} name=\"{}\"   estimated_duration={} seconds",
         level_id, levelNameStr.c_str(), estimated_duration);
 
     // Set game to running state
     _gameRunning = true;
+    
+    // Notify Game to clear the menu (client-side)
+    if (_levelStartCallback) {
+        _levelStartCallback();
+    }
 
-    // Create UI entity to display level start information
+    // Create scrolling background for the level (client-side rendering)
+    Entity backgroundEntity = this->_engine->createEntity("LevelBackground");
+    this->_engine->addComponent<Transform>(backgroundEntity, Transform(0.f, 0.f, 0.f, 1.0f));
+    // Use a background asset - for now using a placeholder, should be based on level
+    // The actual asset would come from level data sent by server or configured per level
+    this->_engine->addComponent<Sprite>(backgroundEntity, 
+    Sprite(Assets::GAME_BG, ZIndex::IS_BACKGROUND, sf::IntRect(0, 0, GAME_BG_SPRITE_WIDTH, GAME_BG_SPRITE_HEIGHT)));
+    this->_engine->addComponent<ScrollingBackground>(backgroundEntity, ScrollingBackground(LEVEL_BACKGROUND_SCROLL_SPEED, true, true));
+    this->_engine->addComponent<Drawable>(backgroundEntity, Drawable());
+    LOG_INFO_CAT("Coordinator", "Created scrolling background for level {}", level_id);
+
+    // Start level music (client-side only)
+    // The music type should ideally come from the level data sent by server
+    // For now, using a default music type
+    playMusic(protocol::AudioEffectType::FIRST_LEVEL_MUSIC);
+    LOG_INFO_CAT("Coordinator", "Started level music");
+
+    //// Create UI entity to display level start information
+    //std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
+    //Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
+    //this->_engine->addComponent<Transform>(levelStartEntity, Transform(640.f, 100.f, 0.f, 1.0f));
+    //this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage.c_str(), sf::Color::White, 48, ZIndex::IS_UI_HUD));
+    //this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
+    //this->_engine->addComponent<Drawable>(levelStartEntity, Drawable());
+
+    // Display timer countdown if provided
+    //if (estimated_duration > 0) {
+    //    std::string timerMessage = "Time: " + std::to_string(static_cast<int>(estimated_duration)) + "s";
+    //    Entity timerEntity = this->_engine->createEntity("LevelTimer");
+    //    this->_engine->addComponent<Transform>(timerEntity, Transform(640.f, 50.f, 0.f, 1.0f));
+    //    this->_engine->addComponent<Text>(timerEntity, Text(timerMessage.c_str(), sf::Color::Yellow, 36, ZIndex::IS_UI_HUD));
+    //    this->_engine->addComponent<Sprite>(timerEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));  // Dummy sprite for rendering system
+    //    this->_engine->addComponent<TimerUI>(timerEntity, TimerUI());
+    //    this->_engine->addComponent<Drawable>(timerEntity, Drawable());
+    //}
+
+/*     // Create UI entity to display level start information
     std::string startMessage = "LEVEL " + std::to_string(level_id) + ": " + levelNameStr;
     Entity levelStartEntity = this->_engine->createEntity("LevelStartMessage");
     this->_engine->addComponent<Transform>(levelStartEntity, Transform(400.f, 200.f, 0.f, 2.0f));
     this->_engine->addComponent<Text>(levelStartEntity, Text(startMessage.c_str()));
-    this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    //this->_engine->addComponent<Sprite>(levelStartEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
 
     // Display estimated duration if provided
     if (estimated_duration > 0) {
@@ -1977,12 +2346,12 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
         Entity durationEntity = this->_engine->createEntity("LevelDuration");
         this->_engine->addComponent<Transform>(durationEntity, Transform(400.f, 250.f, 0.f, 1.0f));
         this->_engine->addComponent<Text>(durationEntity, Text(durationMessage.c_str()));
-        this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
-    }
+        //this->_engine->addComponent<Sprite>(durationEntity, Sprite(DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    } */
 
     // Initialize level component if needed
     // Note: The server will spawn level entities and waves through TYPE_ENTITY_SPAWN packets
-    LOG_INFO_CAT("Coordinator", "Level %u (%s) ready - waiting for entity spawns", 
+    LOG_INFO_CAT("Coordinator", "Level {} ({}) ready - waiting for entity spawns", 
         level_id, levelNameStr.c_str());
 }
 
@@ -1990,7 +2359,7 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
 {
     // Validate payload size using the protocol define
     if (packet.data.size() != FORCE_STATE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "Invalid FORCE_STATE payload size: expected %zu, got %zu",
+        LOG_ERROR_CAT("Coordinator", "Invalid FORCE_STATE payload size: expected {}, got {}",
             FORCE_STATE_PAYLOAD_SIZE, packet.data.size());
         return;
     }
@@ -2032,14 +2401,14 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
         default: attachment_str = "UNKNOWN"; break;
     }
 
-    LOG_INFO_CAT("Coordinator", "Force state: entity=%u parent=%u attach=%s power=%u charge=%u%% firing=%s",
+    LOG_INFO_CAT("Coordinator", "Force state: entity={} parent={} attach={} power={} charge={}%% firing={}",
         force_entity_id, parent_ship_id, attachment_str, power_level, charge_percentage,
         is_firing ? "YES" : "NO");
 
     // Get the Force entity
     Entity forceEntity = Entity::fromId(force_entity_id);
     if (!this->_engine->isAlive(forceEntity)) {
-        LOG_WARN_CAT("Coordinator", "Force entity %u does not exist in engine", force_entity_id);
+        LOG_WARN_CAT("Coordinator", "Force entity {} does not exist in engine", force_entity_id);
         return;
     }
 
@@ -2050,7 +2419,7 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
         this->_engine->addComponent<Force>(forceEntity, 
             Force(parent_ship_id, static_cast<ForceAttachmentPoint>(attachment_point), 
                   power_level, charge_percentage, is_firing != 0));
-        LOG_DEBUG_CAT("Coordinator", "Created Force component for entity %u", force_entity_id);
+        LOG_DEBUG_CAT("Coordinator", "Created Force component for entity {}", force_entity_id);
     } else {
         // Update existing Force component
         forceComponent->parentShipId = parent_ship_id;
@@ -2063,7 +2432,7 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
     // Update Force position based on attachment
     if (parent_ship_id == 0) {
         // Force is detached - it should move independently
-        LOG_DEBUG_CAT("Coordinator", "Force %u is detached and moving independently", force_entity_id);
+        LOG_DEBUG_CAT("Coordinator", "Force {} is detached and moving independently", force_entity_id);
     } else {
         // Force is attached to a parent ship - update its position relative to parent
         Entity parentEntity = Entity::fromId(parent_ship_id);
@@ -2102,11 +2471,11 @@ void Coordinator::handlePacketForceState(const common::protocol::Packet &packet)
                 forceTransform->x = parentTransform->x + offsetX;
                 forceTransform->y = parentTransform->y + offsetY;
 
-                LOG_DEBUG_CAT("Coordinator", "Force %u attached to parent %u at (%.1f, %.1f)",
+                LOG_DEBUG_CAT("Coordinator", "Force {} attached to parent {} at ({:.1f}, {:.1f})",
                     force_entity_id, parent_ship_id, forceTransform->x, forceTransform->y);
             }
         } else {
-            LOG_WARN_CAT("Coordinator", "Parent ship %u does not exist for Force %u", 
+            LOG_WARN_CAT("Coordinator", "Parent ship {} does not exist for Force {}", 
                 parent_ship_id, force_entity_id);
         }
     }
@@ -2116,7 +2485,7 @@ void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
 {
     // Validate payload size
     if (packet.data.size() != AI_STATE_PAYLOAD_SIZE) {
-        LOG_ERROR_CAT("Coordinator", "AIState: invalid packet size %zu, expected %d",
+        LOG_ERROR_CAT("Coordinator", "AIState: invalid packet size {}, expected {}",
             packet.data.size(), AI_STATE_PAYLOAD_SIZE);
         return;
     }
@@ -2155,14 +2524,14 @@ void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
     // Get the entity
     Entity entity = Entity::fromId(entity_id);
     if (!this->_engine->isAlive(entity)) {
-        LOG_WARN_CAT("Coordinator", "AIState: entity %u is not alive", entity_id);
+        LOG_WARN_CAT("Coordinator", "AIState: entity {} is not alive", entity_id);
         return;
     }
 
     // Get the AI component
     auto& optAI = this->_engine->getComponentEntity<AI>(entity);
     if (!optAI.has_value()) {
-        LOG_WARN_CAT("Coordinator", "AIState: entity %u has no AI component", entity_id);
+        LOG_WARN_CAT("Coordinator", "AIState: entity {} has no AI component", entity_id);
         return;
     }
 
@@ -2170,7 +2539,7 @@ void Coordinator::handlePacketAIState(const common::protocol::Packet &packet)
     AI& ai = optAI.value();
     ai.internalTime = static_cast<float>(state_timer);
 
-    LOG_DEBUG_CAT("Coordinator", "AIState updated: entity=%u state=%u behavior=%u target=%u waypoint=(%.0f, %.0f) timer=%u",
+    LOG_DEBUG_CAT("Coordinator", "AIState updated: entity={} state={} behavior={} target={} waypoint=({}, {}) timer={}",
         entity_id, current_state, behavior_type, target_entity_id,
         static_cast<float>(waypoint_x), static_cast<float>(waypoint_y), state_timer);
 }
@@ -2188,7 +2557,7 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
 
     Entity entity = Entity::fromId(entityId);
     if (!this->_engine->isAlive(entity)) {
-        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: entity %u is not alive", entityId);
+        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: entity {} is not alive", entityId);
         return false;
     }
 
@@ -2199,7 +2568,7 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     auto networkIdOpt = this->_engine->getComponentEntity<NetworkId>(entity);
 
     if (!transformOpt.has_value()) {
-        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: entity %u has no Transform component", entityId);
+        LOG_ERROR_CAT("Coordinator", "createPacketEntitySpawn: entity {} has no Transform component", entityId);
         return false;
     }
 
@@ -2208,9 +2577,13 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     // Build args vector for PacketManager
     std::vector<uint8_t> args;
 
-    // flags_count (0 for now)
-    uint8_t flags_count = 0;
+    // flags_count (1 for FLAG_RELIABLE)
+    uint8_t flags_count = 1;
     args.push_back(flags_count);
+    
+    // flags (FLAG_RELIABLE = 0x01)
+    uint8_t flags = static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE);
+    args.push_back(flags);
 
     // sequence_number
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&sequence_number), 
@@ -2245,9 +2618,9 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     uint8_t initial_health = healthOpt.has_value() ? static_cast<uint8_t>(healthOpt.value().currentHealth) : 100;
     args.push_back(initial_health);
 
-    // initial_velocity_x, initial_velocity_y
-    int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx) : 0;
-    int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy) : 0;
+    // initial_velocity_x, initial_velocity_y (multiply by 1000 for network encoding)
+    int16_t velocity_x = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vx * 1000.0f) : 0;
+    int16_t velocity_y = velocityOpt.has_value() ? static_cast<int16_t>(velocityOpt.value().vy * 1000.0f) : 0;
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_x), 
                 reinterpret_cast<uint8_t*>(&velocity_x) + sizeof(velocity_x));
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&velocity_y), 
@@ -2273,7 +2646,7 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     // Copy to output packet
     *packet = result.value();
 
-    LOG_DEBUG_CAT("Coordinator", "createPacketEntitySpawn: created packet for entity %u", entityId);
+    LOG_DEBUG_CAT("Coordinator", "createPacketEntitySpawn: created packet for entity {}", entityId);
     return true;
 }
 
@@ -2309,13 +2682,13 @@ bool Coordinator::createPacketTransformSnapshot(common::protocol::Packet* packet
     for (uint32_t entityId : entityIds) {
         Entity entity = Entity::fromId(entityId);
         if (!this->_engine->isAlive(entity)) {
-            LOG_WARN_CAT("Coordinator", "createPacketTransformSnapshot: skipping dead entity %u", entityId);
+            LOG_WARN_CAT("Coordinator", "createPacketTransformSnapshot: skipping dead entity {}", entityId);
             continue;
         }
 
         auto transformOpt = this->_engine->getComponentEntity<Transform>(entity);
         if (!transformOpt.has_value()) {
-            LOG_WARN_CAT("Coordinator", "createPacketTransformSnapshot: entity %u has no Transform", entityId);
+            LOG_WARN_CAT("Coordinator", "createPacketTransformSnapshot: entity {} has no Transform", entityId);
             continue;
         }
 
@@ -2360,7 +2733,7 @@ bool Coordinator::createPacketTransformSnapshot(common::protocol::Packet* packet
     }
 
     *packet = result.value();
-    LOG_DEBUG_CAT("Coordinator", "createPacketTransformSnapshot: created packet for %zu entities", entityIds.size());
+    LOG_DEBUG_CAT("Coordinator", "createPacketTransformSnapshot: created packet for {} entities", entityIds.size());
     return true;
 }
 
@@ -2405,6 +2778,9 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
 
         Health& health = healthOpt.value();
         
+        LOG_DEBUG_CAT("Coordinator", "[SERVER] Entity {} Health component BEFORE conversion: currentHealth={}, maxHp={}", 
+                     entityId, health.currentHealth, health.maxHp);
+        
         // Skip entities with invalid health values
         if (health.maxHp <= 0) {
             LOG_DEBUG_CAT("Coordinator", "Skipping entity {} with invalid maxHp: {}", entityId, health.maxHp);
@@ -2423,6 +2799,9 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
         // max_health (1 byte) - must be > 0
         uint8_t max_health = static_cast<uint8_t>(std::min(255, std::max(1, static_cast<int>(health.maxHp))));
         args.push_back(max_health);
+        
+        LOG_DEBUG_CAT("Coordinator", "[SERVER] Sending health for entity {}: currentHealth={}, maxHp={}", 
+                     entityId, static_cast<int>(current_health), static_cast<int>(max_health));
 
         // current_shield (1 byte) - 0 for now
         args.push_back(0);
@@ -2443,7 +2822,7 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
     }
 
     *packet = result.value();
-    LOG_DEBUG_CAT("Coordinator", "createPacketHealthSnapshot: created packet for %zu entities", entityIds.size());
+    LOG_DEBUG_CAT("Coordinator", "createPacketHealthSnapshot: created packet for {} entities", entityIds.size());
     return true;
 }
 
@@ -2522,7 +2901,7 @@ bool Coordinator::createPacketWeaponSnapshot(common::protocol::Packet* packet, c
     }
 
     *packet = result.value();
-    LOG_DEBUG_CAT("Coordinator", "createPacketWeaponSnapshot: created packet for %zu entities", entityIds.size());
+    LOG_DEBUG_CAT("Coordinator", "createPacketWeaponSnapshot: created packet for {} entities", entityIds.size());
     return true;
 }
 
@@ -2589,7 +2968,7 @@ bool Coordinator::createPacketEntityDestroy(common::protocol::Packet* packet, ui
     }
 
     *packet = result.value();
-    LOG_DEBUG_CAT("Coordinator", "createPacketEntityDestroy: created packet for entity %u", entityId);
+    LOG_DEBUG_CAT("Coordinator", "createPacketEntityDestroy: created packet for entity {}", entityId);
     return true;
 }
 

@@ -27,16 +27,30 @@
 #include <cstdint>
 
 /**
+ * @enum EntityCategory
+ * @brief Categorizes entities into local and networked types.
+ */
+enum class EntityCategory : uint8_t {
+    LOCAL = 0,      /**< Local entity (not synchronized over network) */
+    NETWORKED = 1   /**< Networked entity (synchronized over network) */
+};
+
+/**
  * @class EntityManager
  * @brief Manages entity creation, destruction, signatures, and components.
  *
  * Responsibilities:
  *  - allocate and recycle entity IDs;
- *  - store each entity’s signature;
+ *  - store each entity's signature;
  *  - handle component addition and removal through ComponentManager;
- *  - notify the SystemManager whenever an entity’s signature changes.
+ *  - notify the SystemManager whenever an entity's signature changes;
+ *  - manage separate ID spaces for local and networked entities.
  *
  * Does not store any system logic.
+ * 
+ * Entity ID space is divided:
+ *  - Local entities:    1 to 999,999
+ *  - Networked entities: 1,000,000+
  */
 class EntityManager {
 
@@ -82,6 +96,20 @@ public:
      */
     void setSystemManager(SystemManager* sm) {
         _systemManager = sm;
+    }
+
+    /**
+     * @brief Get all local entities.
+     */
+    const std::unordered_set<std::size_t>& getLocalEntities() const {
+        return _localEntities;
+    }
+
+    /**
+     * @brief Get all networked entities.
+     */
+    const std::unordered_set<std::size_t>& getNetworkedEntities() const {
+        return _networkedEntities;
     }
 
     /**
@@ -158,21 +186,33 @@ public:
 
     /**
      * @brief Spawns a new entity and assigns it a name.
+     * @param name The name of the entity
+     * @param category The category of the entity (LOCAL or NETWORKED)
+     * @return The created entity
      */
-    Entity spawnEntity(std::string name) {
+    Entity spawnEntity(std::string name, EntityCategory category = EntityCategory::LOCAL) {
         size_t id;
+        std::vector<std::size_t>& freeIdsList = (category == EntityCategory::LOCAL) ? _freeIdsLocal : _freeIdsNetworked;
+        size_t& nextId = (category == EntityCategory::LOCAL) ? _nextIdLocal : _nextIdNetworked;
 
-        if (!_freeIds.empty()) {
-            id = _freeIds.back();
-            _freeIds.pop_back();
+        if (!freeIdsList.empty()) {
+            id = freeIdsList.back();
+            freeIdsList.pop_back();
         } else {
-            id = _nextId++;
+            id = nextId++;
+            
             if (id >= _signatures.size())
                 _signatures.resize(id + 1);
         }
 
         _signatures[id].reset();
-        _aliveEntities.insert(id);
+        
+        // Add to appropriate list
+        if (category == EntityCategory::LOCAL) {
+            _localEntities.insert(id);
+        } else {
+            _networkedEntities.insert(id);
+        }
 
         if (id >= _entitiesName.size())
             _entitiesName.resize(id + 1);
@@ -185,26 +225,79 @@ public:
     }
 
     /**
+     * @brief Get the next entity ID that will be assigned.
+     * @return The next available local entity ID.
+     */
+    uint32_t getNextEntityId() const {
+        return _nextIdLocal;
+    }
+
+    /**
+     * @brief Get the next networked entity ID that will be assigned.
+     * Prioritizes reusing recycled IDs from the free list (only if they're actually free).
+     * Skips any IDs that are still in use.
+     * @return The next available networked entity ID.
+     */
+    uint32_t getNextNetworkedEntityId() {
+        // Clean up free list: remove IDs that are still alive (shouldn't happen, but be safe)
+        while (!_freeIdsNetworked.empty()) {
+            uint32_t candidateId = _freeIdsNetworked.back();
+            if (_networkedEntities.find(candidateId) == _networkedEntities.end()) {
+                // This ID is truly free, use it
+                _freeIdsNetworked.pop_back();
+                return candidateId;
+            }
+            // This ID is still alive somehow, remove it from free list and continue
+            _freeIdsNetworked.pop_back();
+        }
+        
+        // No recyclable IDs available, generate a new one
+        // Skip any IDs that are still in use (shouldn't happen normally)
+        while (_networkedEntities.find(_nextIdNetworked) != _networkedEntities.end()) {
+            _nextIdNetworked++;
+        }
+        return _nextIdNetworked++;
+    }
+
+    /**
      * @brief Spawns a new entity with a specific ID (for network synchronization).
      * @param id The specific ID to assign to the entity (from server)
      * @param name The name to assign to the entity
+     * @param category The category of the entity (LOCAL or NETWORKED)
      * @return The created Entity
      */
-    Entity spawnEntityWithId(std::size_t id, std::string name) {
-        // check if id already exists
-        if (_aliveEntities.find(id) != _aliveEntities.end()) {
-            LOG_ERROR("Entity with ID %zu already exists, cannot spawn", id);
-            throw Error(ErrorType::EcsInvalidEntity, "Entity ID already in use");
+    Entity spawnEntityWithId(std::size_t id, std::string name, EntityCategory category = EntityCategory::NETWORKED) {
+        // Check only in the appropriate list (not in both)
+        if (category == EntityCategory::LOCAL) {
+            if (_localEntities.find(id) != _localEntities.end()) {
+                LOG_ERROR("Entity with ID {} already exists in LOCAL list, cannot spawn", id);
+                throw Error(ErrorType::EcsInvalidEntity, "Entity ID already in use");
+            }
+        } else {
+            if (_networkedEntities.find(id) != _networkedEntities.end()) {
+                LOG_ERROR("Entity with ID {} already exists in NETWORKED list, cannot spawn", id);
+                throw Error(ErrorType::EcsInvalidEntity, "Entity ID already in use");
+            }
         }
 
-        // remove the id from the free ids'list if it is inside
-        auto it = std::find(_freeIds.begin(), _freeIds.end(), id);
-        if (it != _freeIds.end())
-            _freeIds.erase(it);
+        // Get the appropriate free list and next ID based on category
+        std::vector<std::size_t>& freeIdsList = (category == EntityCategory::LOCAL) ? _freeIdsLocal : _freeIdsNetworked;
+        size_t& nextId = (category == EntityCategory::LOCAL) ? _nextIdLocal : _nextIdNetworked;
+
+        // remove the id from the free ids' list if it is inside
+        auto it = std::find(freeIdsList.begin(), freeIdsList.end(), id);
+        if (it != freeIdsList.end())
+            freeIdsList.erase(it);
 
         // update _nextId to avoid collision
-        if (id >= _nextId)
-            _nextId = id + 1;
+        if (category == EntityCategory::LOCAL) {
+            if (id >= _nextIdLocal)
+                _nextIdLocal = id + 1;
+        } else {
+            // For networked entities
+            if (id >= _nextIdNetworked)
+                _nextIdNetworked = id + 1;
+        }
 
         // resize vectors (if necessary)
         if (id >= _signatures.size())
@@ -214,7 +307,14 @@ public:
 
         // init the entity
         _signatures[id].reset();
-        _aliveEntities.insert(id);
+        
+        // Add to appropriate list
+        if (category == EntityCategory::LOCAL) {
+            _localEntities.insert(id);
+        } else {
+            _networkedEntities.insert(id);
+        }
+        
         _entitiesName[id] = name;
 
         // notify the systemManager
@@ -237,11 +337,21 @@ public:
      * @brief Destroys an entity and removes all its components.
      */
     void killEntity(Entity const &entity) {
-        if (_aliveEntities.find(entity) == _aliveEntities.end())
+        // Find which list it's in
+        bool isLocal = _localEntities.find(entity) != _localEntities.end();
+        bool isNetworked = _networkedEntities.find(entity) != _networkedEntities.end();
+
+        if (!isLocal && !isNetworked)
             return;
 
-        _aliveEntities.erase(entity);
-        _freeIds.push_back(entity);
+        // Remove from appropriate list
+        if (isLocal) {
+            _localEntities.erase(entity);
+            _freeIdsLocal.push_back(entity);
+        } else {
+            _networkedEntities.erase(entity);
+            _freeIdsNetworked.push_back(entity);
+        }
 
         _signatures[entity].reset();
 
@@ -256,7 +366,7 @@ public:
      * @brief Checks whether an entity is alive.
      */
     bool isAlive(Entity const& e) const {
-        return _aliveEntities.find(e) != _aliveEntities.end();
+        return _localEntities.find(e) != _localEntities.end() || _networkedEntities.find(e) != _networkedEntities.end();
     }
 
     /**
@@ -380,9 +490,17 @@ private:
     std::unordered_map<std::type_index, std::any> _componentsArrays; /**< Storage for all component arrays */
     std::unordered_map<std::type_index, std::function<void(EntityManager&,Entity const&)>> _erasers; /**< Generic component removers */
 
-    size_t _nextId = 1;  // Start at 1, 0 is reserved for errors
-    std::vector<std::size_t> _freeIds; /**< Recycled entity IDs */
-    std::unordered_set<std::size_t> _aliveEntities; /**< Active entities */
+    // Local entity management
+    size_t _nextIdLocal = 1;  // Start at 1, 0 is reserved for errors
+    std::vector<std::size_t> _freeIdsLocal; /**< Recycled local entity IDs */
+    std::unordered_set<std::size_t> _localEntities; /**< Local entities (not networked) */
+
+    // Networked entity management
+    size_t _nextIdNetworked = 1;  // Start at 1, 0 is reserved for errors
+    std::vector<std::size_t> _freeIdsNetworked; /**< Recycled networked entity IDs */
+    std::unordered_set<std::size_t> _networkedEntities; /**< Networked entities (synchronized) */
+
+    // Shared state
     std::vector<Signature> _signatures; /**< Signatures per entity */
     std::vector<std::string> _entitiesName; /**< Names per entity */
 
