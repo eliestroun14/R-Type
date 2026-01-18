@@ -82,26 +82,44 @@ void CollisionSystem::onUpdate(float dt)
             Team e1Team = e1 < teams.size() && teams[e1] ? teams[e1].value() : Team(TeamType::NEUTRAL);
             Team e2Team = e2 < teams.size() && teams[e2] ? teams[e2].value() : Team(TeamType::NEUTRAL);
 
-            auto applyDamage = [&](size_t target, int damage) {
-                if (target >= healths.size() || !healths[target])
-                    return;
-                auto& h = healths[target].value();
-                h.currentHealth -= damage;
-                std::cout << "Entity " << target << " took damage! HP: "
-                          << h.currentHealth << "/" << h.maxHp << std::endl;
-                if (h.currentHealth <= 0) {
+        auto applyDamage = [&](size_t target, int damage, const Team& sourceTeam) {
+            if (target >= healths.size() || !healths[target])
+                return;
+
+            Team targetTeam = (target < teams.size() && teams[target]) ? teams[target].value()
+                                                                    : Team(TeamType::NEUTRAL);
+
+            // player takes damage => -10
+            if (damage > 0 && targetTeam.hasTeam(TeamType::PLAYER)) {
+                _engine.getSystem<ScoreSystem>().pushEvent(-10);
+            }
+
+            auto& h = healths[target].value();
+            h.currentHealth -= damage;
+
+            std::cout << "Entity " << target << " took damage! HP: "
+                    << h.currentHealth << "/" << h.maxHp << std::endl;
+
+            if (h.currentHealth <= 0) {
+                // player kills enemy => +100
+                bool targetIsEnemy = targetTeam.hasTeam(TeamType::ENEMY) || targetTeam.hasTeam(TeamType::BOSS);
+                bool sourceIsPlayer = sourceTeam.hasTeam(TeamType::PLAYER);
+                if (targetIsEnemy && sourceIsPlayer) {
                     _engine.getSystem<ScoreSystem>().pushEvent(100);
-                    std::cout << "Entity " << target << " is destroyed!" << std::endl;
-                    Entity ent = Entity::fromId(target);
-                    this->_engine.removeComponent<Transform>(ent);
-                    this->_engine.removeComponent<Sprite>(ent);
-                    this->_engine.removeComponent<Health>(ent);
-                    this->_engine.removeComponent<HitBox>(ent);
-                    if (target < teams.size() && teams[target]) {
-                        this->_engine.removeComponent<Team>(ent);
-                    }
                 }
-            };
+
+                std::cout << "Entity " << target << " is destroyed!" << std::endl;
+
+                Entity ent = Entity::fromId(target);
+                this->_engine.removeComponent<Transform>(ent);
+                this->_engine.removeComponent<Sprite>(ent);
+                this->_engine.removeComponent<Health>(ent);
+                this->_engine.removeComponent<HitBox>(ent);
+                if (target < teams.size() && teams[target]) {
+                    this->_engine.removeComponent<Team>(ent);
+                }
+            }
+        };
 
             auto destroyProjectile = [&](size_t projId) {
                 Entity ent = Entity::fromId(projId);
@@ -125,7 +143,7 @@ void CollisionSystem::onUpdate(float dt)
                     continue;
                 }
 
-                applyDamage(e2, proj.damage);
+                applyDamage(e2, proj.damage, e1Team);
                 destroyProjectile(e1);
                 continue;
             }
@@ -141,7 +159,7 @@ void CollisionSystem::onUpdate(float dt)
                     continue;
                 }
 
-                applyDamage(e1, proj.damage);
+                applyDamage(e1, proj.damage, e2Team);
                 destroyProjectile(e2);
                 continue;
             }
@@ -158,10 +176,10 @@ void CollisionSystem::onUpdate(float dt)
 
                 if ((e1IsPlayer && e2IsEnemy) || (e1IsEnemy && e2IsPlayer)) {
                     if (e1IsPlayer && e2 < healths.size() && healths[e2]) {
-                        applyDamage(e2, 10);
+                        applyDamage(e2, 10, e1Team);
                     }
                     if (e2IsPlayer && e1 < healths.size() && healths[e1]) {
-                        applyDamage(e1, 10);
+                        applyDamage(e1, 10, e2Team);
                     }
                 }
             }
