@@ -346,6 +346,7 @@ TEST_F(CoordinatorFixture, CreateEnemyEntity_CreatesEntityWithComponents) {
         /*velX=*/-1.0f,
         /*velY=*/0.0f,
         /*initialHealth=*/50,
+        /*enemyType=*/EnemyType::BASIC,
         /*withRenderComponents=*/true
     );
 
@@ -395,6 +396,7 @@ TEST_F(CoordinatorFixture, SetupEnemyEntity_AddsAllComponents) {
         /*velX=*/-0.5f,
         /*velY=*/0.0f,
         /*initialHealth=*/30,
+        /*enemyType=*/EnemyType::BASIC,
         /*withRenderComponents=*/false
     );
 
@@ -413,7 +415,7 @@ TEST_F(CoordinatorFixture, SetupProjectileEntity_AddsProjectileComponents) {
 
     coord.setupProjectileEntity(
         projectile,
-        /*projectileId=*/456,
+        /*shooterId=*/shooter,
         /*posX=*/200.0f,
         /*posY=*/150.0f,
         /*velX=*/3.0f,
