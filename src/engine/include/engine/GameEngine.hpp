@@ -28,7 +28,6 @@
 namespace gameEngine {
 
         struct ScoreEvent {
-        Entity scorer;      // ou uint32_t scorerId selon ton design
         uint32_t amount;
     };
     /**
