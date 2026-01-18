@@ -1,4 +1,4 @@
-#include "ClientUtilsTestStubs.hpp"
+/* #include "ClientUtilsTestStubs.hpp"
 
 #include <game/utils/ClientUtils.hpp>
 #include <engine/ecs/component/Components.hpp>
@@ -106,3 +106,4 @@ std::vector<Entity> createRebindButton(gameEngine::GameEngine& engine, std::stri
         pos, scale, dummyRect, Assets::DEFAULT_NONE_BUTTON, Assets::DEFAULT_HOVER_BUTTON, Assets::DEFAULT_CLICKED_BUTTON,
         []() {});
 }
+ */
