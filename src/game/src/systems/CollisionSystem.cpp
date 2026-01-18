@@ -12,7 +12,21 @@
 
 bool CollisionSystem::checkAABBCollision(const Sprite& s1, const Sprite& s2)
 {
+    // If globalBounds are not set (e.g., on server), we can't check collision
+    if (s1.globalBounds.width == 0 || s1.globalBounds.height == 0 ||
+        s2.globalBounds.width == 0 || s2.globalBounds.height == 0) {
+        return false;
+    }
     return s1.globalBounds.intersects(s2.globalBounds);
+}
+
+void CollisionSystem::updateGlobalBounds(Sprite& sprite, const Transform& transform)
+{
+    // Manually calculate globalBounds from sprite rect and transform
+    // This is needed on the server where RenderSystem doesn't run
+    float width = sprite.rect.width * transform.scale;
+    float height = sprite.rect.height * transform.scale;
+    sprite.globalBounds = sf::FloatRect(transform.x, transform.y, width, height);
 }
 
 void CollisionSystem::onUpdate(float dt)
@@ -28,6 +42,15 @@ void CollisionSystem::onUpdate(float dt)
     entities.reserve(this->_entities.size());
     for (size_t entity : this->_entities) {
         entities.push_back(entity);
+    }
+
+    // Update globalBounds for all entities (needed on server where RenderSystem doesn't run)
+    for (size_t e : entities) {
+        if (transforms[e] && sprites[e]) {
+            auto& sprite = sprites[e].value();
+            auto& transform = transforms[e].value();
+            updateGlobalBounds(sprite, transform);
+        }
     }
 
     for (size_t i = 0; i < entities.size(); ++i) {

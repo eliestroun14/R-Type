@@ -29,7 +29,6 @@ add_executable(ecs_tests
 target_link_libraries(ecs_tests
     GTest::gtest
     GTest::gtest_main
-    pthread
     engine
     common
     client_lib

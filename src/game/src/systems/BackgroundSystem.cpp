@@ -7,9 +7,12 @@
 
 #include <game/systems/BackgroundSystem.hpp>
 #include <engine/ecs/component/Components.hpp>
+#include <common/logger/Logger.hpp>
+
 
 void BackgroundSystem::onUpdate(float dt)
 {
+    LOG_DEBUG_CAT("BackgroundSystem","BackgroundSystem::onUpdate - dt: {} ", dt);
     // BackgroundSystem should only run on client side
     if (_isServer) {
         return;

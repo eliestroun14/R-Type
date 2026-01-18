@@ -27,7 +27,7 @@ std::optional<common::protocol::Packet> PacketManager::processPacket(const commo
 
     // Check magic number
     if (header.magic != 0x5254) {
-        LOG_ERROR_CAT("NetworkManager", "processPacket: invalid magic number 0x%04hx", header.magic);
+        LOG_ERROR_CAT("NetworkManager", "processPacket: invalid magic number 0x{}", header.magic);
         return std::nullopt;
     }
 
@@ -41,14 +41,14 @@ std::optional<common::protocol::Packet> PacketManager::processPacket(const commo
         }
     }
     if (!isValidType) {
-        LOG_ERROR_CAT("NetworkManager", "processPacket: unknown packet_type 0x%02hhx", header.packet_type);
+        LOG_ERROR_CAT("NetworkManager", "processPacket: unknown packet_type 0x{}", header.packet_type);
         return std::nullopt;
     }
 
     // Validate flags - only bits 0-4 are valid (reserved bits 5-7 must be 0)
     const uint8_t VALID_FLAGS_MASK = 0x1F;  // bits 0-4 valid
     if ((header.flags & ~VALID_FLAGS_MASK) != 0) {
-        LOG_ERROR_CAT("NetworkManager", "processPacket: invalid flags 0x%02hhx (reserved bits set)", header.flags);
+        LOG_ERROR_CAT("NetworkManager", "processPacket: invalid flags 0x{} (reserved bits set)", header.flags);
         return std::nullopt;
     }
 
@@ -93,7 +93,7 @@ static bool validateEntityState(const std::vector<uint8_t> &data, size_t offset,
     // Check if we have enough bytes for EntityState
     if (offset + 15 > data.size()) {
         if (entity_index >= 0) {
-            LOG_ERROR_CAT("PacketManager", "validateEntityState[%d]: not enough data, need 15 bytes", entity_index);
+            LOG_ERROR_CAT("PacketManager", "validateEntityState[{}]: not enough data, need 15 bytes", entity_index);
         } else {
             LOG_ERROR_CAT("PacketManager", "validateEntityState: not enough data, need 15 bytes");
         }
@@ -110,9 +110,9 @@ static bool validateEntityState(const std::vector<uint8_t> &data, size_t offset,
     std::memcpy(&entity_type, data.data() + offset + 4, sizeof(uint8_t));
     if (entity_type < protocol::ENTITY_TYPE_MIN || entity_type > protocol::ENTITY_TYPE_MAX) {
         if (entity_index >= 0) {
-            LOG_ERROR_CAT("PacketManager", "validateEntityState[%d]: entity_type invalid 0x%02hhx", entity_index, entity_type);
+            LOG_ERROR_CAT("PacketManager", "validateEntityState[{}]: entity_type invalid 0x{}", entity_index, entity_type);
         } else {
-            LOG_ERROR_CAT("PacketManager", "validateEntityState: entity_type invalid 0x%02hhx", entity_type);
+            LOG_ERROR_CAT("PacketManager", "validateEntityState: entity_type invalid 0x{}", entity_type);
         }
         return false;
     }
@@ -148,7 +148,7 @@ bool PacketManager::assertClientConnect(const common::protocol::Packet &packet)
 
     // Payload: 37 bytes
     if (data.size() != 37) {
-        LOG_ERROR_CAT("PacketManager", "assertClientConnect: payload size != 37, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertClientConnect: payload size != 37, got {}", data.size());
         return false;
     }
 
@@ -156,7 +156,7 @@ bool PacketManager::assertClientConnect(const common::protocol::Packet &packet)
     uint8_t protocol_version;
     std::memcpy(&protocol_version, data.data() + 0, sizeof(uint8_t));
     if (protocol_version != 1) {
-        LOG_ERROR_CAT("PacketManager", "assertClientConnect: protocol_version != 1, got %hhu", protocol_version);
+        LOG_ERROR_CAT("PacketManager", "assertClientConnect: protocol_version != 1, got {}", protocol_version);
         return false;
     }
 
@@ -192,7 +192,7 @@ bool PacketManager::assertServerAccept(const common::protocol::Packet &packet)
 
     // Payload: 11 bytes
     if (data.size() != 11) {
-        LOG_ERROR_CAT("PacketManager", "assertServerAccept: payload size != 11, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertServerAccept: payload size != 11, got {}", data.size());
         return false;
     }
 
@@ -208,7 +208,7 @@ bool PacketManager::assertServerAccept(const common::protocol::Packet &packet)
     uint8_t max_players;
     std::memcpy(&max_players, data.data() + 4, sizeof(uint8_t));
     if (max_players < 1 || max_players > 4) {
-        LOG_ERROR_CAT("PacketManager", "assertServerAccept: max_players not in [1,4], got %hhu", max_players);
+        LOG_ERROR_CAT("PacketManager", "assertServerAccept: max_players not in [1,4], got {}", max_players);
         return false;
     }
 
@@ -232,7 +232,7 @@ bool PacketManager::assertServerReject(const common::protocol::Packet &packet)
 
     // Payload: 65 bytes
     if (data.size() != 65) {
-        LOG_ERROR_CAT("PacketManager", "assertServerReject: payload size != 65, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertServerReject: payload size != 65, got {}", data.size());
         return false;
     }
 
@@ -242,7 +242,7 @@ bool PacketManager::assertServerReject(const common::protocol::Packet &packet)
     bool valid_code = (reject_code >= protocol::REJECT_CODE_MIN && reject_code <= protocol::REJECT_CODE_MAX) ||
         reject_code == protocol::REJECT_CODE_GENERIC_ERROR;
     if (!valid_code) {
-        LOG_ERROR_CAT("PacketManager", "assertServerReject: invalid reject_code 0x%02hhx", reject_code);
+        LOG_ERROR_CAT("PacketManager", "assertServerReject: invalid reject_code 0x{}", reject_code);
         return false;
     }
 
@@ -270,7 +270,7 @@ bool PacketManager::assertClientDisconnect(const common::protocol::Packet &packe
 
     // Payload: 5 bytes
     if (data.size() != 5) {
-        LOG_ERROR_CAT("PacketManager", "assertClientDisconnect: payload size != 5, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertClientDisconnect: payload size != 5, got {}", data.size());
         return false;
     }
 
@@ -288,7 +288,7 @@ bool PacketManager::assertClientDisconnect(const common::protocol::Packet &packe
     bool valid_reason = (reason >= protocol::DISCONNECT_REASON_MIN && reason <= protocol::DISCONNECT_REASON_MAX) ||
         reason == protocol::DISCONNECT_REASON_GENERIC_ERROR;
     if (!valid_reason) {
-        LOG_ERROR_CAT("PacketManager", "assertClientDisconnect: invalid reason 0x%02hhx", reason);
+        LOG_ERROR_CAT("PacketManager", "assertClientDisconnect: invalid reason 0x{}", reason);
         return false;
     }
 
@@ -308,7 +308,7 @@ bool PacketManager::assertHeartBeat(const common::protocol::Packet &packet)
 
     // Payload: 4 bytes
     if (data.size() != 4) {
-        LOG_ERROR_CAT("PacketManager", "assertHeartBeat: payload size != 4, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertHeartBeat: payload size != 4, got {}", data.size());
         return false;
     }
 
@@ -350,13 +350,57 @@ bool PacketManager::assertPlayerInput(const common::protocol::Packet &packet)
     uint16_t input_state;
     std::memcpy(&input_state, data.data() + 4, sizeof(uint16_t));
     if ((input_state & ~protocol::INPUT_FLAGS_MASK) != 0) {  // Only bits 0-8 are valid
-        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: input_state has invalid bits 0x%04hx", input_state);
+        LOG_ERROR_CAT("PacketManager", "assertPlayerInput: input_state has invalid bits 0x{}", input_state);
         return false;
     }
 
     // Offset 6-7, 8-9: aim_direction_x and aim_direction_y should form normalized vector or (0,0)
     // For now, just ensure they're reasonable values
     // TODO: Validate that sqrt(x² + y²) ≈ 1.0 (tolerance ±0.1) or (0,0)
+
+    return true;
+}
+
+bool PacketManager::assertPlayerIsReady(const common::protocol::Packet &packet)
+{
+    const auto &data = packet.data;
+    const auto &header = packet.header;
+
+    // Payload: 4 bytes (player_id=4)
+    if (data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerIsReady: payload size != {}, got {}", PLAYER_READY_PAYLOAD_SIZE, data.size());
+        return false;
+    }
+
+    // Offset 0-3: player_id (valid range: 0 to MAX_PLAYERS-1)
+    uint32_t player_id;
+    std::memcpy(&player_id, data.data() + 0, sizeof(uint32_t));
+    if (player_id >= MAX_PLAYERS) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerIsReady: player_id {} exceeds MAX_PLAYERS {}", player_id, MAX_PLAYERS);
+        return false;
+    }
+
+    return true;
+}
+
+bool PacketManager::assertPlayerNotReady(const common::protocol::Packet &packet)
+{
+    const auto &data = packet.data;
+    const auto &header = packet.header;
+
+    // Payload: 4 bytes (player_id=4)
+    if (data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerNotReady: payload size != {}, got {}", PLAYER_READY_PAYLOAD_SIZE, data.size());
+        return false;
+    }
+
+    // Offset 0-3: player_id (valid range: 0 to MAX_PLAYERS-1)
+    uint32_t player_id;
+    std::memcpy(&player_id, data.data() + 0, sizeof(uint32_t));
+    if (player_id >= MAX_PLAYERS) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerNotReady: player_id {} exceeds MAX_PLAYERS {}", player_id, MAX_PLAYERS);
+        return false;
+    }
 
     return true;
 }
@@ -449,7 +493,7 @@ bool PacketManager::assertWorldSnapshot(const common::protocol::Packet &packet)
 
     // WorldSnapshot payload: 6 bytes header + (entity_count * 15 bytes EntityState)
     if (data.size() < 6 || (data.size() - 6) % 15 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertWorldSnapshot: invalid payload size %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertWorldSnapshot: invalid payload size {}", data.size());
         return false;
     }
 
@@ -464,7 +508,7 @@ bool PacketManager::assertWorldSnapshot(const common::protocol::Packet &packet)
 
     // Validate total size matches entity count
     if (data.size() != 6 + (entity_count * 15)) {
-        LOG_ERROR_CAT("PacketManager", "assertWorldSnapshot: size mismatch, expected %zu got %zu",
+        LOG_ERROR_CAT("PacketManager", "assertWorldSnapshot: size mismatch, expected {} got {}",
                      6 + (entity_count * 15), data.size());
         return false;
     }
@@ -488,7 +532,7 @@ bool PacketManager::assertEntitySpawn(const common::protocol::Packet &packet)
 
     // Payload: 16 bytes (EntityState + is_playable)
     if (data.size() != 16) {
-        LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: payload size != 16, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertEntitySpawn: payload size != 16, got {}", data.size());
         return false;
     }
 
@@ -523,7 +567,7 @@ bool PacketManager::assertEntityDestroy(const common::protocol::Packet &packet)
 
     // Payload: 9 bytes
     if (data.size() != 9) {
-        LOG_ERROR_CAT("PacketManager", "assertEntityDestroy: payload size != 9, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertEntityDestroy: payload size != 9, got {}", data.size());
         return false;
     }
 
@@ -539,7 +583,7 @@ bool PacketManager::assertEntityDestroy(const common::protocol::Packet &packet)
     uint8_t destroy_reason;
     std::memcpy(&destroy_reason, data.data() + 4, sizeof(uint8_t));
     if (destroy_reason < protocol::ENTITY_DESTROY_REASON_MIN || destroy_reason > protocol::ENTITY_DESTROY_REASON_MAX) {
-        LOG_ERROR_CAT("PacketManager", "assertEntityDestroy: invalid destroy_reason 0x%02hhx", destroy_reason);
+        LOG_ERROR_CAT("PacketManager", "assertEntityDestroy: invalid destroy_reason 0x{}", destroy_reason);
         return false;
     }
 
@@ -562,7 +606,7 @@ bool PacketManager::assertEntityUpdate(const common::protocol::Packet &packet)
 
     // Payload: 16 bytes
     if (data.size() != 16) {
-        LOG_ERROR_CAT("PacketManager", "assertEntityUpdate: payload size != 16, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertEntityUpdate: payload size != 16, got {}", data.size());
         return false;
     }
 
@@ -578,7 +622,7 @@ bool PacketManager::assertEntityUpdate(const common::protocol::Packet &packet)
     uint8_t update_flags;
     std::memcpy(&update_flags, data.data() + 4, sizeof(uint8_t));
     if ((update_flags & ~protocol::ENTITY_UPDATE_FLAGS_MASK) != 0) {  // Only bits 0-5 are valid
-        LOG_ERROR_CAT("PacketManager", "assertEntityUpdate: update_flags has invalid bits 0x%02hhx", update_flags);
+        LOG_ERROR_CAT("PacketManager", "assertEntityUpdate: update_flags has invalid bits 0x{}", update_flags);
         return false;
     }
 
@@ -604,7 +648,7 @@ bool PacketManager::assertTransformSnapshot(const common::protocol::Packet &pack
     // TransformSnapshot payload: entity_count (2 bytes) + (entity_count × 12 bytes of data)
     // Minimum: 2 bytes for entity_count (can be 0 entities)
     if (data.size() < 2 || (data.size() - 2) % 12 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: invalid payload size %zu, expected 2 + N*12", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: invalid payload size {}", data.size());
         return false;
     }
 
@@ -614,7 +658,7 @@ bool PacketManager::assertTransformSnapshot(const common::protocol::Packet &pack
 
     // Validate size matches entity count
     if (data.size() != 2 + (entity_count * 12)) {
-        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshot: size mismatch, got {} expected {}",
                      data.size(), 2 + (entity_count * 12));
         return false;
     }
@@ -629,7 +673,7 @@ bool PacketManager::assertVelocitySnapshot(const common::protocol::Packet &packe
 
     // VelocitySnapshot: 6 + (entity_count × 12) bytes
     if (data.size() < 6 || (data.size() - 6) % 12 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertVelocitySnapshot: invalid payload size %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertVelocitySnapshot: invalid payload size {}", data.size());
         return false;
     }
 
@@ -645,7 +689,7 @@ bool PacketManager::assertVelocitySnapshot(const common::protocol::Packet &packe
 
     // Validate size matches entity count
     if (data.size() != 6 + (entity_count * 12)) {
-        LOG_ERROR_CAT("PacketManager", "assertVelocitySnapshot: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertVelocitySnapshot: size mismatch, got {} expected {}",
                      data.size(), 6 + (entity_count * 12));
         return false;
     }
@@ -658,7 +702,7 @@ bool PacketManager::assertVelocitySnapshot(const common::protocol::Packet &packe
         uint32_t entity_id;
         std::memcpy(&entity_id, data.data() + entry_offset + 0, sizeof(uint32_t));
         if (entity_id == 0) {
-            LOG_ERROR_CAT("PacketManager", "assertVelocitySnapshot: entry[%hu].entity_id == 0", i);
+            LOG_ERROR_CAT("PacketManager", "assertVelocitySnapshot: entry[{}].entity_id == 0", i);
             return false;
         }
 
@@ -683,7 +727,7 @@ bool PacketManager::assertHealthSnapshot(const common::protocol::Packet &packet)
     // HealthSnapshot payload: entity_count (2 bytes) + (entity_count × 8 bytes)
     // world_tick is in header.timestamp
     if (data.size() < 2 || (data.size() - 2) % 8 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: invalid payload size %zu, expected 2 + N*8", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: invalid payload size {}, expected 2 + N*8", data.size());
         return false;
     }
 
@@ -693,7 +737,7 @@ bool PacketManager::assertHealthSnapshot(const common::protocol::Packet &packet)
 
     // Validate size matches entity count
     if (data.size() != 2 + (entity_count * 8)) {
-        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: size mismatch, got {} expected {}",
                      data.size(), 2 + (entity_count * 8));
         return false;
     }
@@ -715,7 +759,7 @@ bool PacketManager::assertHealthSnapshot(const common::protocol::Packet &packet)
         uint8_t max_health;
         std::memcpy(&max_health, data.data() + entry_offset + 5, sizeof(uint8_t));
         if (max_health == 0) {
-            LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: entry[%hu].max_health == 0", i);
+            LOG_ERROR_CAT("PacketManager", "assertHealthSnapshot: entry[{}].max_health == 0", i);
             return false;
         }
 
@@ -737,7 +781,7 @@ bool PacketManager::assertWeaponSnapshot(const common::protocol::Packet &packet)
     // WeaponSnapshot payload: entity_count (2 bytes) + (entity_count × 9 bytes)
     // world_tick is in header.timestamp
     if (data.size() < 2 || (data.size() - 2) % 9 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertWeaponSnapshot: invalid payload size %zu, expected 2 + N*9", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertWeaponSnapshot: invalid payload size {}, expected 2 + N*9", data.size());
         return false;
     }
 
@@ -747,7 +791,7 @@ bool PacketManager::assertWeaponSnapshot(const common::protocol::Packet &packet)
 
     // Validate size matches entity count
     if (data.size() != 2 + (entity_count * 9)) {
-        LOG_ERROR_CAT("PacketManager", "assertWeaponSnapshot: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertWeaponSnapshot: size mismatch, got {} expected {}",
                      data.size(), 2 + (entity_count * 9));
         return false;
     }
@@ -762,7 +806,7 @@ bool PacketManager::assertAISnapshot(const common::protocol::Packet &packet)
 
     // AISnapshot: 6 + (entity_count × 12) bytes
     if (data.size() < 6 || (data.size() - 6) % 12 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertAISnapshot: invalid payload size %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertAISnapshot: invalid payload size {}", data.size());
         return false;
     }
 
@@ -776,7 +820,7 @@ bool PacketManager::assertAISnapshot(const common::protocol::Packet &packet)
 
     // Validate size matches entity count
     if (data.size() != 6 + (entity_count * 12)) {
-        LOG_ERROR_CAT("PacketManager", "assertAISnapshot: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertAISnapshot: size mismatch, got {} expected {}",
                      data.size(), 6 + (entity_count * 12));
         return false;
     }
@@ -791,7 +835,7 @@ bool PacketManager::assertAnimationSnapshot(const common::protocol::Packet &pack
 
     // AnimationSnapshot: 6 + (entity_count × 11) bytes
     if (data.size() < 6 || (data.size() - 6) % 11 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertAnimationSnapshot: invalid payload size %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertAnimationSnapshot: invalid payload size {}", data.size());
         return false;
     }
 
@@ -805,7 +849,7 @@ bool PacketManager::assertAnimationSnapshot(const common::protocol::Packet &pack
 
     // Validate size matches entity count
     if (data.size() != 6 + (entity_count * 11)) {
-        LOG_ERROR_CAT("PacketManager", "assertAnimationSnapshot: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertAnimationSnapshot: size mismatch, got {} expected {}",
                      data.size(), 6 + (entity_count * 11));
         return false;
     }
@@ -820,7 +864,7 @@ bool PacketManager::assertComponentAdd(const common::protocol::Packet &packet)
 
     // ComponentAdd: 6 + data_size bytes minimum
     if (data.size() < 6) {
-        LOG_ERROR_CAT("PacketManager", "assertComponentAdd: payload size < 6, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertComponentAdd: payload size < 6, got {}", data.size());
         return false;
     }
 
@@ -836,7 +880,7 @@ bool PacketManager::assertComponentAdd(const common::protocol::Packet &packet)
     uint8_t component_type;
     std::memcpy(&component_type, data.data() + 4, sizeof(uint8_t));
     if (component_type < 1 || component_type > 15) {
-        LOG_ERROR_CAT("PacketManager", "assertComponentAdd: invalid component_type 0x%02hhx", component_type);
+        LOG_ERROR_CAT("PacketManager", "assertComponentAdd: invalid component_type 0x{:02x}", component_type);
         return false;
     }
 
@@ -846,7 +890,7 @@ bool PacketManager::assertComponentAdd(const common::protocol::Packet &packet)
 
     // Validate total size
     if (data.size() != 6 + data_size) {
-        LOG_ERROR_CAT("PacketManager", "assertComponentAdd: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertComponentAdd: size mismatch, got {} expected {}",
                      data.size(), 6 + data_size);
         return false;
     }
@@ -870,7 +914,7 @@ bool PacketManager::assertComponentRemove(const common::protocol::Packet &packet
 
     // Payload: 5 bytes
     if (data.size() != 5) {
-        LOG_ERROR_CAT("PacketManager", "assertComponentRemove: payload size != 5, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertComponentRemove: payload size != 5, got {}", data.size());
         return false;
     }
 
@@ -886,7 +930,7 @@ bool PacketManager::assertComponentRemove(const common::protocol::Packet &packet
     uint8_t component_type;
     std::memcpy(&component_type, data.data() + 4, sizeof(uint8_t));
     if (component_type < 1 || component_type > 15) {
-        LOG_ERROR_CAT("PacketManager", "assertComponentRemove: invalid component_type 0x%02hhx", component_type);
+        LOG_ERROR_CAT("PacketManager", "assertComponentRemove: invalid component_type 0x{:02x}", component_type);
         return false;
     }
 
@@ -906,7 +950,7 @@ bool PacketManager::assertTransformSnapshotDelta(const common::protocol::Packet 
 
     // TransformSnapshotDelta: 10 + (entity_count × 12) bytes
     if (data.size() < 10 || (data.size() - 10) % 12 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshotDelta: invalid payload size %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshotDelta: invalid payload size {}", data.size());
         return false;
     }
 
@@ -928,7 +972,7 @@ bool PacketManager::assertTransformSnapshotDelta(const common::protocol::Packet 
 
     // Validate size matches entity count
     if (data.size() != 10 + (entity_count * 12)) {
-        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshotDelta: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertTransformSnapshotDelta: size mismatch, got {} expected {}",
                      data.size(), 10 + (entity_count * 12));
         return false;
     }
@@ -943,7 +987,7 @@ bool PacketManager::assertHealthSnapshotDelta(const common::protocol::Packet &pa
 
     // HealthSnapshotDelta: 10 + (entity_count × 8) bytes
     if (data.size() < 10 || (data.size() - 10) % 8 != 0) {
-        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshotDelta: invalid payload size %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshotDelta: invalid payload size {}", data.size());
         return false;
     }
 
@@ -965,7 +1009,7 @@ bool PacketManager::assertHealthSnapshotDelta(const common::protocol::Packet &pa
 
     // Validate size matches entity count
     if (data.size() != 10 + (entity_count * 8)) {
-        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshotDelta: size mismatch, got %zu expected %zu",
+        LOG_ERROR_CAT("PacketManager", "assertHealthSnapshotDelta: size mismatch, got {} expected {}",
                      data.size(), 10 + (entity_count * 8));
         return false;
     }
@@ -980,7 +1024,7 @@ bool PacketManager::assertEntityFullState(const common::protocol::Packet &packet
 
     // EntityFullState: 6 + variable component data
     if (data.size() < 6) {
-        LOG_ERROR_CAT("PacketManager", "assertEntityFullState: payload size < 6, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertEntityFullState: payload size < 6, got {}", data.size());
         return false;
     }
 
@@ -996,7 +1040,7 @@ bool PacketManager::assertEntityFullState(const common::protocol::Packet &packet
     uint8_t entity_type;
     std::memcpy(&entity_type, data.data() + 4, sizeof(uint8_t));
     if (entity_type < 1 || entity_type > 8) {
-        LOG_ERROR_CAT("PacketManager", "assertEntityFullState: invalid entity_type 0x%02hhx", entity_type);
+        LOG_ERROR_CAT("PacketManager", "assertEntityFullState: invalid entity_type 0x{:02x}", entity_type);
         return false;
     }
 
@@ -1004,7 +1048,7 @@ bool PacketManager::assertEntityFullState(const common::protocol::Packet &packet
     uint8_t component_count;
     std::memcpy(&component_count, data.data() + 5, sizeof(uint8_t));
     if (component_count == 0 || component_count > 15) {
-        LOG_ERROR_CAT("PacketManager", "assertEntityFullState: component_count invalid %hhu", component_count);
+        LOG_ERROR_CAT("PacketManager", "assertEntityFullState: component_count invalid {}", component_count);
         return false;
     }
 
@@ -1030,7 +1074,7 @@ bool PacketManager::assertPlayerHit(const common::protocol::Packet &packet)
 
     // Payload: 17 bytes
     if (data.size() != 17) {
-        LOG_ERROR_CAT("PacketManager", "assertPlayerHit: payload size != 17, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertPlayerHit: payload size != 17, got {}", data.size());
         return false;
     }
 
@@ -1078,7 +1122,7 @@ bool PacketManager::assertPlayerDeath(const common::protocol::Packet &packet)
 
     // Payload: 18 bytes
     if (data.size() != 18) {
-        LOG_ERROR_CAT("PacketManager", "assertPlayerDeath: payload size != 18, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertPlayerDeath: payload size != 18, got {}", data.size());
         return false;
     }
 
@@ -1118,7 +1162,7 @@ bool PacketManager::assertScoreUpdate(const common::protocol::Packet &packet)
 
     // Payload: 11 bytes
     if (data.size() != 11) {
-        LOG_ERROR_CAT("PacketManager", "assertScoreUpdate: payload size != 11, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertScoreUpdate: payload size != 11, got {}", data.size());
         return false;
     }
 
@@ -1146,7 +1190,7 @@ bool PacketManager::assertScoreUpdate(const common::protocol::Packet &packet)
     uint8_t reason;
     std::memcpy(&reason, data.data() + 10, sizeof(uint8_t));
     if (reason > 5) {
-        LOG_ERROR_CAT("PacketManager", "assertScoreUpdate: invalid reason 0x%02hhx", reason);
+        LOG_ERROR_CAT("PacketManager", "assertScoreUpdate: invalid reason 0x{:02x}", reason);
         return false;
     }
 
@@ -1164,7 +1208,7 @@ bool PacketManager::assertPowerupPickup(const common::protocol::Packet &packet)
 
     // Payload: 10 bytes
     if (data.size() != 10) {
-        LOG_ERROR_CAT("PacketManager", "assertPowerupPickup: payload size != 10, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertPowerupPickup: payload size != 10, got {}", data.size());
         return false;
     }
 
@@ -1188,7 +1232,7 @@ bool PacketManager::assertPowerupPickup(const common::protocol::Packet &packet)
     uint8_t powerup_type;
     std::memcpy(&powerup_type, data.data() + 8, sizeof(uint8_t));
     if (powerup_type > 5) {
-        LOG_ERROR_CAT("PacketManager", "assertPowerupPickup: invalid powerup_type 0x%02hhx", powerup_type);
+        LOG_ERROR_CAT("PacketManager", "assertPowerupPickup: invalid powerup_type 0x{:02x}", powerup_type);
         return false;
     }
 
@@ -1247,7 +1291,7 @@ bool PacketManager::assertVisualEffect(const common::protocol::Packet &packet)
 
     // Payload: 14 bytes (effect_type(1) + pos_x(2) + pos_y(2) + duration_ms(2) + scale(1) + color_tint_r/g/b(3))
     if (data.size() != 14) {
-        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: payload size != 14, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: payload size != 14, got {}", data.size());
         return false;
     }
 
@@ -1255,7 +1299,7 @@ bool PacketManager::assertVisualEffect(const common::protocol::Packet &packet)
     uint8_t effect_type;
     std::memcpy(&effect_type, data.data() + 0, sizeof(uint8_t));
     if (effect_type > static_cast<uint8_t>(protocol::VisualEffectType::VFX_BOSS_INTRO)) {
-        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: invalid effect_type 0x%02hhx", effect_type);
+        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: invalid effect_type 0x{:02x}", effect_type);
         return false;
     }
 
@@ -1271,7 +1315,7 @@ bool PacketManager::assertVisualEffect(const common::protocol::Packet &packet)
     uint16_t duration_ms;
     std::memcpy(&duration_ms, data.data() + 5, sizeof(uint16_t));
     if (duration_ms == 0 || duration_ms > 60000) {
-        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: invalid duration_ms %hu", duration_ms);
+        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: invalid duration_ms {}", duration_ms);
         return false;
     }
 
@@ -1279,7 +1323,7 @@ bool PacketManager::assertVisualEffect(const common::protocol::Packet &packet)
     uint8_t scale;
     std::memcpy(&scale, data.data() + 7, sizeof(uint8_t));
     if (scale == 0) {
-        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: invalid scale %hhu", scale);
+        LOG_ERROR_CAT("PacketManager", "assertVisualEffect: invalid scale {}", scale);
         return false;
     }
 
@@ -1299,7 +1343,7 @@ bool PacketManager::assertAudioEffect(const common::protocol::Packet &packet)
 
     // Payload: 7 bytes
     if (data.size() != 7) {
-        LOG_ERROR_CAT("PacketManager", "assertAudioEffect: payload size != 7, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertAudioEffect: payload size != 7, got {}", data.size());
         return false;
     }
 
@@ -1307,7 +1351,7 @@ bool PacketManager::assertAudioEffect(const common::protocol::Packet &packet)
     uint8_t effect_type;
     std::memcpy(&effect_type, data.data() + 0, sizeof(uint8_t));
     if (effect_type > 0x0C) {
-        LOG_ERROR_CAT("PacketManager", "assertAudioEffect: invalid effect_type 0x%02hhx", effect_type);
+        LOG_ERROR_CAT("PacketManager", "assertAudioEffect: invalid effect_type 0x{:02x}", effect_type);
         return false;
     }
 
@@ -1317,7 +1361,7 @@ bool PacketManager::assertAudioEffect(const common::protocol::Packet &packet)
     uint8_t pitch;
     std::memcpy(&pitch, data.data() + 6, sizeof(uint8_t));
     if (pitch < 50 || pitch > 200) {
-        LOG_ERROR_CAT("PacketManager", "assertAudioEffect: pitch not in [50,200], got %hhu", pitch);
+        LOG_ERROR_CAT("PacketManager", "assertAudioEffect: pitch not in [50,200], got {}", pitch);
         return false;
     }
 
@@ -1333,7 +1377,7 @@ bool PacketManager::assertParticleSpawn(const common::protocol::Packet &packet)
 
     // Payload: 26 bytes (particle_system_id(2) + pos_x(2) + pos_y(2) + velocity_x(2) + velocity_y(2) + particle_count(2) + lifetime_ms(2) + color_start_r/g/b(3) + color_end_r/g/b(3))
     if (data.size() != 26) {
-        LOG_ERROR_CAT("PacketManager", "assertParticleSpawn: payload size != 26, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertParticleSpawn: payload size != 26, got {}", data.size());
         return false;
     }
 
@@ -1397,7 +1441,7 @@ bool PacketManager::assertGameStart(const common::protocol::Packet &packet)
 
     // Payload: 23 bytes (game_instance_id(4) + player_count(1) + player_ids[4](16) + level_id(1) + difficulty(1))
     if (data.size() != 23) {
-        LOG_ERROR_CAT("PacketManager", "assertGameStart: payload size != 23, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertGameStart: payload size != 23, got {}", data.size());
         return false;
     }
 
@@ -1413,7 +1457,7 @@ bool PacketManager::assertGameStart(const common::protocol::Packet &packet)
     uint8_t player_count;
     std::memcpy(&player_count, data.data() + 4, sizeof(uint8_t));
     if (player_count < 1 || player_count > 4) {
-        LOG_ERROR_CAT("PacketManager", "assertGameStart: player_count out of range (1-4), got %hhu", player_count);
+        LOG_ERROR_CAT("PacketManager", "assertGameStart: player_count out of range (1-4), got {}", player_count);
         return false;
     }
 
@@ -1433,7 +1477,7 @@ bool PacketManager::assertGameEnd(const common::protocol::Packet &packet)
 
     // Payload: 22 bytes (end_reason(1) + final_scores[4](16) + winner_id(1) + play_time(4))
     if (data.size() != 22) {
-        LOG_ERROR_CAT("PacketManager", "assertGameEnd: payload size != 22, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertGameEnd: payload size != 22, got {}", data.size());
         return false;
     }
 
@@ -1441,7 +1485,7 @@ bool PacketManager::assertGameEnd(const common::protocol::Packet &packet)
     uint8_t end_reason;
     std::memcpy(&end_reason, data.data() + 0, sizeof(uint8_t));
     if (end_reason > static_cast<uint8_t>(protocol::GameEndReasons::GAME_END_SERVER_SHUTDOWN)) {
-        LOG_ERROR_CAT("PacketManager", "assertGameEnd: invalid end_reason 0x%02hhx", end_reason);
+        LOG_ERROR_CAT("PacketManager", "assertGameEnd: invalid end_reason 0x{:02x}", end_reason);
         return false;
     }
 
@@ -1461,7 +1505,7 @@ bool PacketManager::assertLevelComplete(const common::protocol::Packet &packet)
 
     // Payload: 8 bytes (completed_level(1) + next_level(1) + bonus_score(4) + completion_time(2))
     if (data.size() != 8) {
-        LOG_ERROR_CAT("PacketManager", "assertLevelComplete: payload size != 8, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertLevelComplete: payload size != 8, got {}", data.size());
         return false;
     }
 
@@ -1490,7 +1534,7 @@ bool PacketManager::assertLevelStart(const common::protocol::Packet &packet)
 
     // Payload: 35 bytes (level_id(1) + level_name[32](32) + estimated_duration(2))
     if (data.size() != 35) {
-        LOG_ERROR_CAT("PacketManager", "assertLevelStart: payload size != 35, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertLevelStart: payload size != 35, got {}", data.size());
         return false;
     }
 
@@ -1537,7 +1581,7 @@ bool PacketManager::assertForceState(const common::protocol::Packet &packet)
 
     // Payload: 12 bytes (force_entity_id(4) + parent_ship_id(4) + attachment_point(1) + power_level(1) + charge_percentage(1) + is_firing(1))
     if (data.size() != 12) {
-        LOG_ERROR_CAT("PacketManager", "assertForceState: payload size != 12, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertForceState: payload size != 12, got {}", data.size());
         return false;
     }
 
@@ -1558,7 +1602,7 @@ bool PacketManager::assertForceState(const common::protocol::Packet &packet)
     uint8_t attachment_point;
     std::memcpy(&attachment_point, data.data() + 8, sizeof(uint8_t));
     if (attachment_point > 2) {
-        LOG_ERROR_CAT("PacketManager", "assertForceState: invalid attachment_point %hhu", attachment_point);
+        LOG_ERROR_CAT("PacketManager", "assertForceState: invalid attachment_point {}", attachment_point);
         return false;
     }
 
@@ -1566,7 +1610,7 @@ bool PacketManager::assertForceState(const common::protocol::Packet &packet)
     uint8_t power_level;
     std::memcpy(&power_level, data.data() + 9, sizeof(uint8_t));
     if (power_level < 1 || power_level > 5) {
-        LOG_ERROR_CAT("PacketManager", "assertForceState: invalid power_level %hhu (1-5)", power_level);
+        LOG_ERROR_CAT("PacketManager", "assertForceState: invalid power_level {} (1-5)", power_level);
         return false;
     }
 
@@ -1574,7 +1618,7 @@ bool PacketManager::assertForceState(const common::protocol::Packet &packet)
     uint8_t charge_percentage;
     std::memcpy(&charge_percentage, data.data() + 10, sizeof(uint8_t));
     if (charge_percentage > 100) {
-        LOG_ERROR_CAT("PacketManager", "assertForceState: charge_percentage > 100, got %hhu", charge_percentage);
+        LOG_ERROR_CAT("PacketManager", "assertForceState: charge_percentage > 100, got {}", charge_percentage);
         return false;
     }
 
@@ -1595,7 +1639,7 @@ bool PacketManager::assertAIState(const common::protocol::Packet &packet)
 
     // Payload: 18 bytes (entity_id(4) + current_state(1) + behavior_type(1) + target_entity_id(4) + waypoint_x(2) + waypoint_y(2) + state_timer(2))
     if (data.size() != 18) {
-        LOG_ERROR_CAT("PacketManager", "assertAIState: payload size != 18, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertAIState: payload size != 18, got {}", data.size());
         return false;
     }
 
@@ -1611,7 +1655,7 @@ bool PacketManager::assertAIState(const common::protocol::Packet &packet)
     uint8_t current_state;
     std::memcpy(&current_state, data.data() + 4, sizeof(uint8_t));
     if (current_state > 5) {
-        LOG_ERROR_CAT("PacketManager", "assertAIState: invalid current_state %hhu", current_state);
+        LOG_ERROR_CAT("PacketManager", "assertAIState: invalid current_state {}", current_state);
         return false;
     }
 
@@ -1619,7 +1663,7 @@ bool PacketManager::assertAIState(const common::protocol::Packet &packet)
     uint8_t behavior_type;
     std::memcpy(&behavior_type, data.data() + 5, sizeof(uint8_t));
     if (behavior_type > 3) {
-        LOG_ERROR_CAT("PacketManager", "assertAIState: invalid behavior_type %hhu", behavior_type);
+        LOG_ERROR_CAT("PacketManager", "assertAIState: invalid behavior_type {}", behavior_type);
         return false;
     }
 
@@ -1659,7 +1703,7 @@ bool PacketManager::assertAcknowledgment(const common::protocol::Packet &packet)
 
     // Payload: 8 bytes (acked_sequence + received_timestamp)
     if (data.size() != 8) {
-        LOG_ERROR_CAT("PacketManager", "assertAcknowledgment: payload size != 8, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertAcknowledgment: payload size != 8, got {}", data.size());
         return false;
     }
 
@@ -1683,7 +1727,7 @@ bool PacketManager::assertPing(const common::protocol::Packet &packet)
 
     // Payload: 4 bytes (client_timestamp)
     if (data.size() != 4) {
-        LOG_ERROR_CAT("PacketManager", "assertPing: payload size != 4, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertPing: payload size != 4, got {}", data.size());
         return false;
     }
 
@@ -1702,7 +1746,7 @@ bool PacketManager::assertPong(const common::protocol::Packet &packet)
 
     // Payload: 8 bytes (client_timestamp + server_timestamp)
     if (data.size() != 8) {
-        LOG_ERROR_CAT("PacketManager", "assertPong: payload size != 8, got %zu", data.size());
+        LOG_ERROR_CAT("PacketManager", "assertPong: payload size != 8, got {}", data.size());
         return false;
     }
 
@@ -2067,6 +2111,96 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const s
 
     // aim_direction_y (2 bytes)
     std::memcpy(packet.data.data() + 8, args.data() + offset, PLAYER_INPUT_AIM_DIRECTION_Y_SIZE);
+
+    return packet;
+}
+
+std::optional<common::protocol::Packet> PacketManager::createPlayerIsReady(const std::vector<uint8_t> &args)
+{
+    common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_IS_READY));
+
+    if (args.size() < PLAYER_READY_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerIsReady: args too small, minimum {} bytes needed, got {}",
+                     PLAYER_READY_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerIsReady: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_IS_READY);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PLAYER_READY_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PLAYER_READY_PLAYER_ID_SIZE);
+
+    return packet;
+}
+
+std::optional<common::protocol::Packet> PacketManager::createPlayerNotReady(const std::vector<uint8_t> &args)
+{
+    common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_NOT_READY));
+
+    if (args.size() < PLAYER_READY_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerNotReady: args too small, minimum {} bytes needed, got {}",
+                     PLAYER_READY_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerNotReady: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_NOT_READY);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PLAYER_READY_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PLAYER_READY_PLAYER_ID_SIZE);
 
     return packet;
 }

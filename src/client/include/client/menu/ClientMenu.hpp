@@ -12,11 +12,15 @@
 #include <game/utils/ClientUtils.hpp>
 #include <game/menu/IMenu.hpp>
 #include <queue>
+#include <memory>
+
+// Forward declaration
+class Coordinator;
 
 class ClientMenu : public IMenu {
 
     public:
-        ClientMenu(std::shared_ptr<gameEngine::GameEngine> engine);
+        ClientMenu(std::shared_ptr<gameEngine::GameEngine> engine, std::shared_ptr<Coordinator> coordinator);
         ~ClientMenu();
 
         template<typename T>
@@ -62,6 +66,7 @@ class ClientMenu : public IMenu {
     private:
         bool _isConnected;
         std::shared_ptr<gameEngine::GameEngine> _engine;
+        std::shared_ptr<Coordinator> _coordinator;
         std::vector<Entity> _menuEntities;
         std::queue<std::function<void()>> _pendingActions;
 

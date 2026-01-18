@@ -29,6 +29,8 @@ namespace protocol {
 
         //INPUT               = 0x10-0x1F 
         TYPE_PLAYER_INPUT = 0x10,
+        TYPE_PLAYER_IS_READY = 0x11,
+        TYPE_PLAYER_NOT_READY = 0x12,
 
         //WORLD_STATE         = 0x20-0x3F (Reserved for future use or legacy)
         // TYPE_WORLD_SNAPSHOT      = 0x20,  // DEPRECATED: Use ECS Component Snapshots instead (0x24-0x2F)
@@ -173,6 +175,20 @@ namespace protocol {
         uint16_t               aim_direction_y;        // Optional Aim direction Y (normalized from float to uint16_t to gain speed)
     };
     // total size: 24 bytes
+
+    // Client -> Server
+    struct PlayerIsReady {
+        protocol::PacketHeader header;                 // type = 0x11 + FLAG_RELIABLE
+        uint32_t               player_id;              // Unique player identifier
+    };
+    // total size: 16 bytes
+
+    // Client -> Server
+    struct PlayerNotReady {
+        protocol::PacketHeader header;                 // type = 0x12 + FLAG_RELIABLE
+        uint32_t               player_id;              // Unique player identifier
+    };
+    // total size: 16 bytes
 
     enum class InputFlags : uint16_t {
         // Bit 0 - Bit 15

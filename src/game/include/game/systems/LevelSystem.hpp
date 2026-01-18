@@ -13,9 +13,12 @@
 #include <engine/ecs/component/Components.hpp>
 #include <vector>
 
+class Coordinator;
+
 class LevelSystem : public System{
     public:
-        LevelSystem(gameEngine::GameEngine& engine) : _engine(engine) {}
+        LevelSystem(gameEngine::GameEngine& engine, Coordinator* coordinator) 
+            : _engine(engine), _coordinator(coordinator) {}
 
         void onCreate() override {}
 
@@ -23,6 +26,7 @@ class LevelSystem : public System{
 
     private:
         gameEngine::GameEngine& _engine;
+        Coordinator* _coordinator;
 
         std::vector<std::vector<bool>> _spawnedEnemies;
 
