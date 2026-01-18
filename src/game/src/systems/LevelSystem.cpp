@@ -14,17 +14,26 @@ void LevelSystem::onUpdate(float dt)
 {
     auto& levels = this->_engine.getComponents<Level>();
 
+    LOG_DEBUG_CAT("LevelSystem", "onUpdate called with dt={}, processing {} level entities", dt, this->_entities.size());
+
     for (size_t e : this->_entities) {
-        if (!levels[e])
+        if (!levels[e]) {
+            LOG_WARN_CAT("LevelSystem", "Entity {} has no Level component", e);
             continue;
+        }
 
         auto& level = levels[e].value();
+
+        LOG_DEBUG_CAT("LevelSystem", "Level entity {}: started={}, completed={}, elapsedTime={}s", 
+            e, level.started, level.completed, level.elapsedTime);
 
         // Only process if level has started and is not completed
         if (!level.started || level.completed)
             continue;
 
         level.elapsedTime += dt;
+
+        LOG_DEBUG_CAT("LevelSystem", "Level entity {} after dt: elapsedTime={}s", e, level.elapsedTime);
 
         // Check if level duration exceeded (if duration is set and > 0)
         if (level.levelDuration > 0.f && level.elapsedTime >= level.levelDuration) {
@@ -51,13 +60,22 @@ void LevelSystem::onUpdate(float dt)
             float timeInWave = level.elapsedTime - wave.startTime;
             float cumulativeDelay = 0.f;
 
+            LOG_DEBUG_CAT("LevelSystem", "Processing wave {} with {} enemies, timeInWave={}s", 
+                waveIdx, wave.enemies.size(), timeInWave);
+
             for (size_t enemyIdx = 0; enemyIdx < wave.enemies.size(); enemyIdx++) {
                 const EnemySpawn &enemy = wave.enemies[enemyIdx];
                 cumulativeDelay += enemy.delayAfterPrevious;
 
+                LOG_DEBUG_CAT("LevelSystem", "  Enemy {}: delayAfterPrevious={}, cumulativeDelay={}, timeInWave={}, spawned={}",
+                    enemyIdx, enemy.delayAfterPrevious, cumulativeDelay, timeInWave, 
+                    this->_spawnedEnemies[waveIdx][enemyIdx]);
+
                 // check if its time to spawn the enenmy and it hasn't been spawned yet
                 if (timeInWave >= cumulativeDelay && !this->_spawnedEnemies[waveIdx][enemyIdx]) {
                     spawnEnemy(enemy);
+                    LOG_DEBUG_CAT("LevelSystem", "Spawned enemy of type {} at ({}, {}) from wave {} after {}s",
+                        static_cast<int>(enemy.type), enemy.spawnX, enemy.spawnY, waveIdx, cumulativeDelay);
                     this->_spawnedEnemies[waveIdx][enemyIdx] = true;
                 }
             }
@@ -189,7 +207,7 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
     {
     case EnemyType::BASIC:
         _engine.addComponent<Weapon>(enemy, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
-        _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
+        _engine.addComponent<AI>(enemy, AI(AiBehaviour::SHOOTER_TACTIC, 50.f, 50.f));
         break;
 
         case EnemyType::FAST:
@@ -199,7 +217,7 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
 
         case EnemyType::TANK:
         _engine.addComponent<Weapon>(enemy, Weapon(TANK_ENEMY_WEAPON_FIRE_RATE, 0, TANK_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
-        _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
+        _engine.addComponent<AI>(enemy, AI(AiBehaviour::SHOOTER_TACTIC, 50.f, 50.f));
         break;
 
     case EnemyType::BOSS: {

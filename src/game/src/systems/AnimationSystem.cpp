@@ -13,7 +13,11 @@ void AnimationSystem::onUpdate(float dt)
     auto& animations = this->_engine.getComponents<Animation>();
     auto& sprites = this->_engine.getComponents<Sprite>();
 
-    //std::cout << "[AnimationSystem] Processing " << this->_entities.size() << " entities" << std::endl;
+    static bool firstRun = true;
+    if (firstRun && this->_entities.size() > 0) {
+        LOG_INFO_CAT("AnimationSystem", "Processing {} entities", this->_entities.size());
+        firstRun = false;
+    }
 
     for (size_t e : this->_entities) {
         if (!animations[e] || !sprites[e])
@@ -27,7 +31,7 @@ void AnimationSystem::onUpdate(float dt)
         if (anim.elapsedTime > anim.frameDuration) {
             anim.currentFrame++;
             anim.elapsedTime = 0;
-            //std::cout << "[AnimationSystem] Entity " << e << " frame advanced to " << anim.currentFrame << std::endl;
+            // LOG_DEBUG_CAT("AnimationSystem", "Entity {} frame advanced to {}", e, anim.currentFrame);
         }
 
         if (anim.currentFrame > anim.endFrame) {
@@ -37,13 +41,16 @@ void AnimationSystem::onUpdate(float dt)
                 anim.currentFrame = anim.endFrame;
         }
 
-        int frameWidth = sprite.rect.width;
-        int frameHeight = sprite.rect.height;
+        int frameWidth = anim.frameWidth;
+        int frameHeight = anim.frameHeight;
 
         int newLeft = anim.currentFrame * frameWidth;
         sprite.rect.left = newLeft;
+        sprite.rect.width = frameWidth;
+        sprite.rect.height = frameHeight;
         
-        //std::cout << "[AnimationSystem] Entity " << e << " sprite rect.left=" << sprite.rect.left 
-        //          << " width=" << frameWidth << " height=" << frameHeight << std::endl;
+        // LOG_DEBUG_CAT("AnimationSystem", "Entity {} sprite rect=({},{},{}x{}) frame={}/{}",
+        //     e, sprite.rect.left, sprite.rect.top, sprite.rect.width, sprite.rect.height,
+        //     anim.currentFrame, anim.endFrame);
     }
 }

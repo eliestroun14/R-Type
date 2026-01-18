@@ -37,7 +37,7 @@ Game::Game(Type type)
                 }
             });
         }
-        
+
         // Set callback to notify Game when level starts (client-side)
         if (_type == Type::CLIENT || _type == Type::STAND_ALONE) {
             _coordinator->setLevelStartCallback([this]() {
@@ -546,10 +546,10 @@ void Game::onPlayerConnected(uint32_t playerId)
 
         // Add to connected players list
         _connectedPlayers.push_back(playerId);
-        
+
         // Initialize player as not ready
         _playerReadyStatus[playerId] = false;
-        
+
         LOG_INFO("Game: Player {} successfully spawned. Total players: {}", playerId, _connectedPlayers.size());
 
         // Check if we should start the level now
