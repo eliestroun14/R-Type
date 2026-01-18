@@ -34,6 +34,15 @@ public:
     int updateCount = 0;
 };
 
+class RunningSystem : public System {
+public:
+    void onStartRunning() override { started = true; }
+    void onStopRunning() override { stopped = true; }
+
+    bool started = false;
+    bool stopped = false;
+};
+
 TEST(SystemManagerTest, AddSystemAndHasSystem)
 {
     SystemManager manager;
@@ -80,6 +89,13 @@ TEST(SystemManagerTest, GetConstSystemReturnsSameInstance)
     EXPECT_EQ(&sys, &csys);
 }
 
+TEST(SystemManagerTest, GetConstSystemThrowsIfNotFound)
+{
+    const SystemManager manager;
+
+    EXPECT_THROW(manager.getSystem<DummySystem>(), Error);
+}
+
 TEST(SystemManagerTest, GetSystemThrowsIfNotFound)
 {
     SystemManager manager;
@@ -97,6 +113,34 @@ TEST(SystemManagerTest, DeleteSystemRemovesSystem)
     manager.deleteSystem<DummySystem>();
     EXPECT_FALSE(manager.hasSystem<DummySystem>());
     EXPECT_THROW(manager.getSystem<DummySystem>(), Error);
+}
+
+TEST(SystemManagerTest, AddSystemThrowsOnDuplicate)
+{
+    SystemManager manager;
+
+    manager.addSystem<DummySystem>();
+    EXPECT_THROW(manager.addSystem<DummySystem>(), Error);
+}
+
+TEST(SystemManagerTest, SetSignatureThrowsIfSystemMissing)
+{
+    SystemManager manager;
+
+    Signature sig;
+    sig.set(0);
+    EXPECT_THROW(manager.setSignature<DummySystem>(sig), Error);
+}
+
+TEST(SystemManagerTest, EntitySignatureChangedThrowsIfSignatureMissing)
+{
+    SystemManager manager;
+
+    manager.addSystem<DummySystem>();
+    Signature entitySig;
+    entitySig.set(0);
+
+    EXPECT_THROW(manager.entitySignatureChanged(1, entitySig), Error);
 }
 
 TEST(SystemManagerTest, OnCreateAllCallsOnCreate)
@@ -125,6 +169,22 @@ TEST(SystemManagerTest, OnDestroyAllCallsOnDestroy)
     EXPECT_TRUE(sys2.destroyed);
 }
 
+TEST(SystemManagerTest, OnStartStopRunningAllUpdatesState)
+{
+    SystemManager manager;
+
+    auto &sys = manager.addSystem<RunningSystem>();
+
+    EXPECT_FALSE(sys.isRunning());
+    manager.onStartRunningAll();
+    EXPECT_TRUE(sys.isRunning());
+    EXPECT_TRUE(sys.started);
+
+    manager.onStopRunningAll();
+    EXPECT_FALSE(sys.isRunning());
+    EXPECT_TRUE(sys.stopped);
+}
+
 TEST(SystemManagerTest, UpdateAllCallsOnUpdate)
 {
     SystemManager manager;
@@ -138,4 +198,25 @@ TEST(SystemManagerTest, UpdateAllCallsOnUpdate)
 
     EXPECT_EQ(sys.updateCount, 1);
     EXPECT_FLOAT_EQ(sys.lastDt, dt);
+}
+
+TEST(SystemManagerTest, EntitySignatureChangedAddsAndRemovesEntity)
+{
+    SystemManager manager;
+    manager.addSystem<DummySystem>();
+
+    Signature systemSig;
+    systemSig.set(1);
+    manager.setSignature<DummySystem>(systemSig);
+
+    Signature matchingSig;
+    matchingSig.set(1);
+    manager.entitySignatureChanged(42, matchingSig);
+
+    auto &sys = manager.getSystem<DummySystem>();
+    EXPECT_TRUE(sys.hasEntity(42));
+
+    Signature nonMatchingSig;
+    manager.entitySignatureChanged(42, nonMatchingSig);
+    EXPECT_FALSE(sys.hasEntity(42));
 }

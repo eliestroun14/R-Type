@@ -28,9 +28,12 @@ TEST(NetworkManagers, ServerQueueLifecycle)
     server::network::ServerNetworkManager manager(4242, 2);
     common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN));
 
+    EXPECT_FALSE(manager.isRunning());
+
     manager.queueOutgoing(packet);
     auto incoming = manager.fetchIncoming();
 
     EXPECT_TRUE(incoming.empty());
     manager.stop();
+    EXPECT_FALSE(manager.isRunning());
 }
