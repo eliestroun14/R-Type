@@ -70,6 +70,11 @@ void Coordinator::initEngine()
 
     auto rebindSystem = this->_engine->registerSystem<RebindSystem>(*this->_engine);
     this->_engine->setSystemSignature<RebindSystem, Rebind>();
+
+    // Register CollisionSystem to handle collision detection and team-based damage
+    // Must run on both client AND server for authoritative damage
+    auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
+    this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
@@ -80,10 +85,6 @@ void Coordinator::initEngineRender()  // Nouvelle méthode
     // Register BackgroundSystem to handle scrolling backgrounds
     auto backgroundSystem = this->_engine->registerSystem<BackgroundSystem>(*this->_engine,  this->_isServer);
     this->_engine->setSystemSignature<BackgroundSystem, Transform, Sprite, ScrollingBackground>();
-
-    // Register CollisionSystem to handle collision detection and team-based damage
-    auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
-    this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
 
     // Register AnimationSystem before RenderSystem (animation must update before rendering)
     auto animationSystem = this->_engine->registerSystem<AnimationSystem>(*this->_engine);
@@ -207,11 +208,10 @@ void Coordinator::setupPlayerEntity(
     // CRITICAL: Add NetworkId component so entity is included in server snapshots
     this->_engine->addComponent<NetworkId>(entity, NetworkId(playerId));
 
-    if (withRenderComponents) {
-        Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
-        this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
-        this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
-    }
+    // Always add Sprite and Animation (needed for CollisionSystem even on server)
+    Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
+    this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
+    this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
 
     this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 14.5f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
@@ -249,9 +249,8 @@ void Coordinator::setupEnemyEntity(
     // Add NetworkId so enemy is synchronized to clients
     this->_engine->addComponent<NetworkId>(entity, NetworkId{enemyId, false});
     
-    if (withRenderComponents) {
-        this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
-    }
+    // Always add Sprite (needed for CollisionSystem even on server)
+    this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
     this->_engine->addComponent<HitBox>(entity, HitBox());
     this->_engine->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
     this->_engine->addComponent<Team>(entity, TeamType::ENEMY);
@@ -1368,6 +1367,9 @@ void Coordinator::handlePacketHealthSnapshot(const common::protocol::Packet &pac
 
         std::memcpy(&max_shield, packet.data.data() + offset, sizeof(max_shield));
         offset += sizeof(max_shield);
+
+        LOG_DEBUG_CAT("Coordinator", "[CLIENT] Received health for entity {}: currentHealth={}, maxHp={}", 
+                     entity_id, static_cast<int>(current_health), static_cast<int>(max_health));
 
         // Convert uint8_t network format to int component format
         Health health(static_cast<int>(current_health), static_cast<int>(max_health));
@@ -2539,6 +2541,9 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
 
         Health& health = healthOpt.value();
         
+        LOG_DEBUG_CAT("Coordinator", "[SERVER] Entity {} Health component BEFORE conversion: currentHealth={}, maxHp={}", 
+                     entityId, health.currentHealth, health.maxHp);
+        
         // Skip entities with invalid health values
         if (health.maxHp <= 0) {
             LOG_DEBUG_CAT("Coordinator", "Skipping entity {} with invalid maxHp: {}", entityId, health.maxHp);
@@ -2557,6 +2562,9 @@ bool Coordinator::createPacketHealthSnapshot(common::protocol::Packet* packet, c
         // max_health (1 byte) - must be > 0
         uint8_t max_health = static_cast<uint8_t>(std::min(255, std::max(1, static_cast<int>(health.maxHp))));
         args.push_back(max_health);
+        
+        LOG_DEBUG_CAT("Coordinator", "[SERVER] Sending health for entity {}: currentHealth={}, maxHp={}", 
+                     entityId, static_cast<int>(current_health), static_cast<int>(max_health));
 
         // current_shield (1 byte) - 0 for now
         args.push_back(0);
