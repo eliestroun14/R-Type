@@ -63,7 +63,6 @@ void PlayerSystem::onUpdate(float dt)
             if (transforms[e].has_value()) {
                 auto& transform = transforms[e].value();
 
-                // Récupérer les dimensions du sprite si disponibles
                 float spriteWidth = 0.0f;
                 float spriteHeight = 0.0f;
 
@@ -73,13 +72,11 @@ void PlayerSystem::onUpdate(float dt)
                     spriteHeight = sprite.rect.height;
                 }
 
-                // Calculer les limites en tenant compte de la taille du sprite
                 float minX = PLAYER_MARGIN;
                 float maxX = SCREEN_WIDTH - spriteWidth - PLAYER_MARGIN;
                 float minY = PLAYER_MARGIN;
                 float maxY = SCREEN_HEIGHT - spriteHeight - PLAYER_MARGIN;
 
-                // Contraindre la position X
                 if (transform.x < minX) {
                     transform.x = minX;
                     if (velocities[e].has_value()) {
@@ -92,7 +89,6 @@ void PlayerSystem::onUpdate(float dt)
                     }
                 }
 
-                // Contraindre la position Y
                 if (transform.y < minY) {
                     transform.y = minY;
                     if (velocities[e].has_value()) {
