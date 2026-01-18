@@ -1,31 +1,48 @@
+// ScoreSystem.cpp
+
 #include <game/systems/ScoreSystem.hpp>
 #include <engine/ecs/component/Components.hpp>
 #include <cstdio>
-
-void ScoreSystem::onStartRunning()
-{
-}
+#include <common/logger/Logger.hpp>
 
 void ScoreSystem::onUpdate(float)
 {
-    auto& scores = this->_engine.getComponents<Score>();
-    auto& texts  = this->_engine.getComponents<Text>();
-    auto& events = this->_engine.scoreEvents();
+    auto& scores = _engine.getComponents<Score>();
+    auto& texts  = _engine.getComponents<Text>();
+    auto& events = _engine.scoreEvents();
+
+    const size_t hud = static_cast<size_t>(_hud);
+
+    LOG_DEBUG_CAT("ScoreSystem",
+        "tick: hud={} events={} scoresSize={} textsSize={}",
+        hud, events.size(), scores.size(), texts.size());
+
+    if (hud >= scores.size() || !scores[hud]) {
+        LOG_WARN_CAT("ScoreSystem", "HUD score component missing: hud={} hasScore={}", hud,
+            (hud < scores.size() && scores[hud].has_value()));
+        events.clear();
+        return;
+    }
+
+    uint32_t before = scores[hud].value().score;
+    uint32_t added = 0;
 
     for (const auto& ev : events) {
-        if (!this->_engine.isAlive(ev.scorer))
-            continue;
+        added += ev.amount;
+        LOG_DEBUG_CAT("ScoreSystem", "apply event: amount={} (runningAdded={})", ev.amount, added);
+    }
 
-        size_t idx = static_cast<size_t>(ev.scorer);
-        if (idx >= scores.size() || !scores[idx])
-            continue;
+    scores[hud].value().score = before + added;
 
-        scores[idx].value().score += ev.amount;
+    LOG_INFO_CAT("ScoreSystem", "score updated: {} -> {}", before, scores[hud].value().score);
 
-        if (idx < texts.size() && texts[idx]) {
-            std::snprintf(texts[idx].value().str, sizeof(texts[idx].value().str),
-                          "%u", scores[idx].value().score);
-        }
+    if (hud < texts.size() && texts[hud]) {
+        std::snprintf(texts[hud].value().str, sizeof(texts[hud].value().str),
+                      "%u", scores[hud].value().score);
+        LOG_DEBUG_CAT("ScoreSystem", "text synced: '%s'", texts[hud].value().str);
+    } else {
+        LOG_WARN_CAT("ScoreSystem", "HUD text missing: hud={} hasText={}", hud,
+            (hud < texts.size() && texts[hud].has_value()));
     }
 
     events.clear();

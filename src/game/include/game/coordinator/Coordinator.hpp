@@ -93,9 +93,7 @@ class Coordinator {
             uint32_t scoreId,
             float posX,
             float posY,
-            uint32_t initialScore,
-            bool isLocalScore,
-            bool withRenderComponents
+            uint32_t initialScore
         );
 
         Entity createEnemyEntity(
@@ -332,12 +330,10 @@ class Coordinator {
 
         void setupScoreEntity(
             Entity entity,
-            uint32_t scoreId,
+            uint32_t /*scoreId*/,
             float posX,
             float posY,
-            uint32_t initialScore,
-            bool isLocalScore,
-            bool withRenderComponents
+            uint32_t initialScore
         );
 
         void setupEnemyEntity(

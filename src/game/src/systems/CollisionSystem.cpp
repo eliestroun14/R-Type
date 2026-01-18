@@ -8,6 +8,7 @@
 #include <game/systems/CollisionSystem.hpp>
 #include <engine/ecs/component/Components.hpp>
 #include <engine/ecs/entity/Entity.hpp>
+#include <game/systems/ScoreSystem.hpp>
 #include <iostream>
 
 bool CollisionSystem::checkAABBCollision(const Sprite& s1, const Sprite& s2)
@@ -89,6 +90,7 @@ void CollisionSystem::onUpdate(float dt)
                 std::cout << "Entity " << target << " took damage! HP: "
                           << h.currentHealth << "/" << h.maxHp << std::endl;
                 if (h.currentHealth <= 0) {
+                    _engine.getSystem<ScoreSystem>().pushEvent(100);
                     std::cout << "Entity " << target << " is destroyed!" << std::endl;
                     Entity ent = Entity::fromId(target);
                     this->_engine.removeComponent<Transform>(ent);

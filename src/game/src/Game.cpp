@@ -54,9 +54,8 @@ Game::Game(Type type)
                 /*scoreId*/ 1,
                 /*posX*/ 300.f,
                 /*posY*/ 50.f,
-                /*initialScore*/ 0,
-                /*isLocalScore*/ true,
-                /*withRenderComponents*/ true);
+                /*initialScore*/ 0
+            );
         }
 
         Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");

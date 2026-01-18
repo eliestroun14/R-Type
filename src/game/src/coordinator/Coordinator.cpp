@@ -147,26 +147,27 @@ Entity Coordinator::createScoreEntity(
     uint32_t scoreId,
     float posX,
     float posY,
-    uint32_t initialScore,
-    bool isLocalScore,
-    bool withRenderComponents
+    uint32_t initialScore
 )
 {
-    Entity entity = isLocalScore
-        ? this->_engine->createEntity("Score_" + std::to_string(scoreId), EntityCategory::LOCAL)
-        : this->_engine->createEntityWithId(scoreId, "Score_" + std::to_string(scoreId), EntityCategory::NETWORKED);
-
-    this->setupScoreEntity(
-        entity,
-        scoreId,
-        posX,
-        posY,
-        initialScore,
-        isLocalScore,
-        withRenderComponents
+    Entity entity = this->_engine->createEntity(
+        "Score_" + std::to_string(scoreId),
+        EntityCategory::LOCAL
     );
+
+    LOG_INFO_CAT("UI", "Score entity created: scoreId={} entityIndex={}",
+        scoreId, static_cast<std::size_t>(entity));
+
+    this->setupScoreEntity(entity, scoreId, posX, posY, initialScore);
+
+    // Bind this entity as the HUD score target for ScoreSystem
+    this->_engine->getSystem<ScoreSystem>().setHudEntity(entity);
+    LOG_INFO_CAT("UI", "ScoreSystem HUD entity set: entityIndex={}",
+        static_cast<std::size_t>(entity));
+
     return entity;
 }
+
 
 Entity Coordinator::createEnemyEntity(
     uint32_t enemyId,
@@ -268,54 +269,34 @@ void Coordinator::setupScoreEntity(
     uint32_t /*scoreId*/,
     float posX,
     float posY,
-    uint32_t initialScore,
-    bool /*isLocalScore*/,
-    bool withRenderComponents
+    uint32_t initialScore
 )
 {
-    // Transform
     if (!_engine->hasComponent<Transform>(entity)) {
         _engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
     } else {
         _engine->updateComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
     }
 
-    // Score: struct Score{ uint32_t score; } d'apres tes erreurs
     if (!_engine->hasComponent<Score>(entity)) {
         _engine->addComponent<Score>(entity, Score{initialScore});
     } else {
         _engine->updateComponent<Score>(entity, Score{initialScore});
     }
 
-    // Render
-    if (withRenderComponents) {
-        const std::string scoreStr = std::to_string(initialScore);
+    const std::string scoreStr = std::to_string(initialScore);
 
-        if (!_engine->hasComponent<Text>(entity)) {
-            _engine->addComponent<Text>(
-                entity,
-                Text(scoreStr.c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
-            );
-        } else {
-            _engine->updateComponent<Text>(
-                entity,
-                Text(scoreStr.c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
-            );
-        }
-
-        if (!_engine->hasComponent<Drawable>(entity)) {
-            _engine->addComponent<Drawable>(entity, Drawable{});
-        }
+    if (!_engine->hasComponent<Text>(entity)) {
+        _engine->addComponent<Text>(
+            entity,
+            Text(scoreStr.c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
+        );
+    } else {
+        _engine->updateComponent<Text>(
+            entity,
+            Text(scoreStr.c_str(), sf::Color::White, 30, ZIndex::IS_UI_HUD)
+        );
     }
-
-    LOG_INFO_CAT("Coordinator",
-        "Score entity e={} comps: Transform={} Score={} Text={} Drawable={}",
-        static_cast<size_t>(entity),
-        _engine->hasComponent<Transform>(entity),
-        _engine->hasComponent<Score>(entity),
-        _engine->hasComponent<Text>(entity),
-        _engine->hasComponent<Drawable>(entity)
-    );
 }
 
 void Coordinator::setupEnemyEntity(
