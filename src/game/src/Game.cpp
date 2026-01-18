@@ -62,6 +62,14 @@ Game::Game(Type type)
         Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
         this->getCoordinator()->getEngine()->addComponent<GameConfig>(configurationEntity, GameConfig(FontAssets::DEFAULT_FONT, true, true));
 
+        if (_type == Type::CLIENT || _type == Type::STAND_ALONE) {
+            auto& gameConfig = this->getCoordinator()->getEngine()->getComponentEntity<GameConfig>(configurationEntity);
+            if (gameConfig.has_value()) {
+                this->getCoordinator()->getEngine()->getRenderManager()->updateKeyBindings(gameConfig->_keybinds);
+                LOG_INFO("Game: Keybinds synchronized with RenderManager");
+            }
+        }
+
         // Initialize timing
         _lastTickTime = std::chrono::steady_clock::now();
         _accumulatedTime = 0;
