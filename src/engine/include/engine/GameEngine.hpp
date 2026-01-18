@@ -28,7 +28,7 @@
 namespace gameEngine {
 
         struct ScoreEvent {
-        uint32_t amount;
+        int32_t amount;
     };
     /**
      * @class GameEngine

@@ -3,7 +3,6 @@
 #include <game/systems/ScoreSystem.hpp>
 #include <engine/ecs/component/Components.hpp>
 #include <cstdio>
-#include <common/logger/Logger.hpp>
 
 void ScoreSystem::onUpdate(float)
 {
@@ -13,37 +12,29 @@ void ScoreSystem::onUpdate(float)
 
     const size_t hud = static_cast<size_t>(_hud);
 
-    LOG_DEBUG_CAT("ScoreSystem",
-        "tick: hud={} events={} scoresSize={} textsSize={}",
-        hud, events.size(), scores.size(), texts.size());
-
     if (hud >= scores.size() || !scores[hud]) {
-        LOG_WARN_CAT("ScoreSystem", "HUD score component missing: hud={} hasScore={}", hud,
-            (hud < scores.size() && scores[hud].has_value()));
         events.clear();
         return;
     }
 
-    uint32_t before = scores[hud].value().score;
-    uint32_t added = 0;
+    auto& s = scores[hud].value().score; // uint32_t
 
     for (const auto& ev : events) {
-        added += ev.amount;
-        LOG_DEBUG_CAT("ScoreSystem", "apply event: amount={} (runningAdded={})", ev.amount, added);
+        const int32_t delta = ev.amount;
+
+        if (delta >= 0) {
+            s += static_cast<uint32_t>(delta);
+        } else {
+            const uint32_t dec = static_cast<uint32_t>(-delta);
+            s = (s > dec) ? (s - dec) : 0u;
+        }
     }
-
-    scores[hud].value().score = before + added;
-
-    LOG_INFO_CAT("ScoreSystem", "score updated: {} -> {}", before, scores[hud].value().score);
 
     if (hud < texts.size() && texts[hud]) {
         std::snprintf(texts[hud].value().str, sizeof(texts[hud].value().str),
-                      "%u", scores[hud].value().score);
-        LOG_DEBUG_CAT("ScoreSystem", "text synced: '%s'", texts[hud].value().str);
-    } else {
-        LOG_WARN_CAT("ScoreSystem", "HUD text missing: hud={} hasText={}", hud,
-            (hud < texts.size() && texts[hud].has_value()));
+                      "%u", s);
     }
 
     events.clear();
 }
+

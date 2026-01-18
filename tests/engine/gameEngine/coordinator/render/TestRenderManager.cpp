@@ -8,10 +8,13 @@
 #include <gtest/gtest.h>
 #include <SFML/Config.hpp>
 #include <engine/render/RenderManager.hpp>
+#include <map>
 
 // Test released input
 TEST(RenderManagerTest, ProcessInputRelease) {
     RenderManager manager;
+
+    manager.updateKeyBindings({{sf::Keyboard::Left, GameAction::MOVE_LEFT}});
 
     // simulate the pressure
     sf::Event pressEvent;

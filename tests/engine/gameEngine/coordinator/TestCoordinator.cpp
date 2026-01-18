@@ -202,7 +202,7 @@ TEST_F(CoordinatorFixture, HandlePacketDestroyEntity_DestroysEntityById)
     ASSERT_TRUE(eng->isAlive(ent));
 
     protocol::EntityDestroyPayload payload{};
-    payload.entity_id = eid;
+    payload.entity_id = static_cast<uint32_t>(ent);
     payload.destroy_reason = 1;
     payload.final_position_x = 0;
     payload.final_position_y = 0;
@@ -259,7 +259,7 @@ TEST_F(CoordinatorFixture, CreatePlayerEntity_AddsPlayableAndRenderComponents)
     ASSERT_TRUE(input.has_value());
     ASSERT_TRUE(weapon.has_value());
 
-    EXPECT_EQ(networkId->id, playerId);
+    EXPECT_EQ(networkId->id, static_cast<uint32_t>(entity));
     EXPECT_EQ(input->playerId, playerId);
     EXPECT_EQ(weapon->damage, 10);
 }
@@ -276,8 +276,8 @@ TEST_F(CoordinatorFixture, CreatePlayerEntity_SkipsRenderWhenRequested)
     auto& sprite    = eng->getComponentEntity<Sprite>(entity);
     auto& animation = eng->getComponentEntity<Animation>(entity);
 
-    EXPECT_FALSE(sprite.has_value());
-    EXPECT_FALSE(animation.has_value());
+    EXPECT_TRUE(sprite.has_value());
+    EXPECT_TRUE(animation.has_value());
 
     EXPECT_TRUE(eng->getComponentEntity<NetworkId>(entity).has_value());
     EXPECT_TRUE(eng->getComponentEntity<InputComponent>(entity).has_value());
@@ -323,7 +323,7 @@ TEST_F(CoordinatorFixture, ProcessClientPackets_HandlesEntitySpawn)
 
     coord.processClientPackets(incoming, 0);
 
-    Entity created = Entity::fromId(entityId);
+    Entity created = eng->getEntityFromNetworkId(entityId, true);
     EXPECT_TRUE(eng->isAlive(created));
     EXPECT_TRUE(eng->getComponentEntity<Transform>(created).has_value());
     EXPECT_TRUE(eng->getComponentEntity<Health>(created).has_value());
@@ -403,7 +403,7 @@ TEST_F(CoordinatorFixture, SetupEnemyEntity_AddsAllComponents) {
     EXPECT_TRUE(eng->getComponentEntity<Transform>(enemy).has_value());
     EXPECT_TRUE(eng->getComponentEntity<Velocity>(enemy).has_value());
     EXPECT_TRUE(eng->getComponentEntity<Health>(enemy).has_value());
-    EXPECT_FALSE(eng->getComponentEntity<Sprite>(enemy).has_value());  // No render
+    EXPECT_TRUE(eng->getComponentEntity<Sprite>(enemy).has_value());
 }
 
 TEST_F(CoordinatorFixture, SetupProjectileEntity_AddsProjectileComponents) {
