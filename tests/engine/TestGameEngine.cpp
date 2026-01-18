@@ -28,12 +28,13 @@ TEST(GameEngineCoverage, EntityIdUtilities)
     engine.init();
 
     Entity entity = engine.createEntityWithId(42, "fixed");
-    EXPECT_EQ(static_cast<std::size_t>(entity), 42u);
+    EXPECT_EQ(static_cast<std::size_t>(entity), NETWORKED_ID_OFFSET + 42u);
 
-    Entity fetched = engine.getEntityFromId(42);
-    EXPECT_EQ(static_cast<std::size_t>(fetched), 42u);
+    Entity fetched = engine.getEntityFromId(NETWORKED_ID_OFFSET + 42u);
+    EXPECT_EQ(static_cast<std::size_t>(fetched), NETWORKED_ID_OFFSET + 42u);
 
-    EXPECT_EQ(engine.getNextEntityId(), 43u);
+    EXPECT_EQ(engine.getNextEntityId(), 1u);
+    EXPECT_EQ(engine.getNextNetworkedEntityId(), 43u);
 }
 
 TEST(GameEngineCoverage, ComponentContainers)

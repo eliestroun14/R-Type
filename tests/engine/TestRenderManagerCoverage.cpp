@@ -8,6 +8,8 @@ TEST(RenderManagerCoverage, DefaultState)
 {
     RenderManager manager;
 
+    manager._mousePos = sf::Vector2i(0, 0);
+
     EXPECT_FALSE(manager.isOpen());
     EXPECT_FALSE(manager.isActionActive(GameAction::SHOOT));
     EXPECT_EQ(manager.getMousePosition(), sf::Vector2i(0, 0));
@@ -19,6 +21,8 @@ TEST(RenderManagerCoverage, DefaultState)
 TEST(RenderManagerCoverage, HandleKeyEventsAndJustPressed)
 {
     RenderManager manager;
+
+    manager.updateKeyBindings({{sf::Keyboard::Space, GameAction::SHOOT}});
 
     sf::Event pressed{};
     pressed.type = sf::Event::KeyPressed;

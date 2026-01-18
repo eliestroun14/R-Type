@@ -42,7 +42,7 @@ TEST(EntityManagerCoverage, SpawnEntityWithIdThrowsWhenAlive)
     Entity entity = em.spawnEntity("existing");
     std::size_t id = static_cast<std::size_t>(entity);
 
-    EXPECT_THROW(em.spawnEntityWithId(id, "duplicate"), Error);
+    EXPECT_THROW(em.spawnEntityWithId(id, "duplicate", EntityCategory::LOCAL), Error);
 }
 
 TEST(EntityManagerCoverage, SignatureSetAndGet)
