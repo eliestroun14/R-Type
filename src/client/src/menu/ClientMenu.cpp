@@ -6,9 +6,10 @@
 */
 
 #include <client/menu/ClientMenu.hpp>
+#include <game/coordinator/Coordinator.hpp>
 
-ClientMenu::ClientMenu(std::shared_ptr<gameEngine::GameEngine> engine)
-    : _engine(engine)
+ClientMenu::ClientMenu(std::shared_ptr<gameEngine::GameEngine> engine, std::shared_ptr<Coordinator> coordinator)
+    : _engine(engine), _coordinator(coordinator)
 {
     _musicOn = true;
     _soundOn = true;
@@ -71,6 +72,14 @@ void ClientMenu::createMainMenu()
             this->_pendingActions.push([this]() {
                 this->clearMenuEntities();
                 this->createPlayMenu();
+                
+                // Get the player ID and queue the ready event
+                if (this->_coordinator) {
+                    auto playerIds = this->_coordinator->getPlayablePlayerIds();
+                    if (!playerIds.empty()) {
+                        this->_coordinator->queuePlayerIsReady(playerIds[0]);
+                    }
+                }
             });
         }
     ));
@@ -562,6 +571,14 @@ void ClientMenu::createPlayMenu()
         BACK_NONE_BUTTON, BACK_HOVER_BUTTON, BACK_CLICKED_BUTTON,
         [this]() {
             this->_pendingActions.push([this]() {
+                // Queue the not ready event before going back
+                if (this->_coordinator) {
+                    auto playerIds = this->_coordinator->getPlayablePlayerIds();
+                    if (!playerIds.empty()) {
+                        this->_coordinator->queuePlayerNotReady(playerIds[0]);
+                    }
+                }
+                
                 this->clearMenuEntities();
                 this->createMainMenu();
             });

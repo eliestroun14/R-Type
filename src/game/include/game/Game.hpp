@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <chrono>
 #include <memory>
+#include <unordered_map>
 #include <common/network/NetworkManager.hpp>
 #include <common/protocol/Packet.hpp>
 #include <game/coordinator/Coordinator.hpp>
@@ -48,8 +49,19 @@ class Game {
         // Server-side: Set max players for level start condition
         void setMaxPlayers(uint32_t maxPlayers) { _maxPlayers = maxPlayers; }
 
+        // Server-side: Check if level should start
+        bool shouldStartLevel() const;
+        
+        // Server-side: Notify that a player is ready
+        void notifyPlayerReady(uint32_t playerId);
+        
+        // Server-side: Notify that a player is not ready
+        void notifyPlayerNotReady(uint32_t playerId);
 
         void setMenu(std::shared_ptr<IMenu> menu) { _menu = menu; }
+        
+        // Client-side: Clear the menu when level starts (hide all menu entities)
+        void clearMenuOnLevelStart() { if (_menu) _menu->clearMenuEntities(); }
 
     protected:
         void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);
@@ -87,6 +99,9 @@ class Game {
         
         // Track connected player IDs for spawning existing players to new clients
         std::vector<uint32_t> _connectedPlayers;
+        
+        // Track which players are ready
+        std::unordered_map<uint32_t, bool> _playerReadyStatus;
         
         // Level management (server-side)
         Entity _currentLevelEntity = Entity::fromId(0);  // Current level entity ID

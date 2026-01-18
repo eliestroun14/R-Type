@@ -10,6 +10,8 @@
 
 #include <memory>
 #include <string>
+#include <functional>
+#include <deque>
 
 #include <engine/GameEngine.hpp>
 #include <engine/ecs/component/Components.hpp>
@@ -61,6 +63,16 @@ class Coordinator {
         
         /** @brief Returns whether this coordinator is running on the server. */
         bool isServer() const { return _isServer; }
+        
+        /** @brief Set a callback to notify when players are ready/not ready. */
+        void setGameNotificationCallback(std::function<void(uint32_t, bool)> callback) {
+            _gameNotificationCallback = callback;
+        }
+        
+        /** @brief Set a callback to notify when level starts (client-side). */
+        void setLevelStartCallback(std::function<void()> callback) {
+            _levelStartCallback = callback;
+        }
 
         // ==============================================================
         //                       Entity creation helpers
@@ -193,6 +205,27 @@ class Coordinator {
         void handlePacketAudioEffect(const common::protocol::Packet& packet);
         void handlePacketParticleSpawn(const common::protocol::Packet& packet);
 
+        void handlePacketPlayerIsReady(const common::protocol::Packet& packet);
+        void handlePacketPlayerNotReady(const common::protocol::Packet& packet);
+
+        /** @brief Check if all players are ready to start the level.
+         * @param connectedPlayers List of connected player IDs
+         * @param maxPlayers Maximum number of players required
+         * @param playerReadyStatus Map of player ready status
+         * @return true if all connected players are ready and max players reached, false otherwise
+         */
+        bool areAllPlayersReady(
+            const std::vector<uint32_t>& connectedPlayers,
+            uint32_t maxPlayers,
+            const std::unordered_map<uint32_t, bool>& playerReadyStatus
+        ) const;
+        
+        /** @brief Queue a player ready event (client-side). */
+        void queuePlayerIsReady(uint32_t playerId);
+        
+        /** @brief Queue a player not ready event (client-side). */
+        void queuePlayerNotReady(uint32_t playerId);
+
         /** @brief Get the GameEngine instance for direct access. */
         std::shared_ptr<gameEngine::GameEngine> getEngine() { return _engine; }
 
@@ -258,6 +291,22 @@ class Coordinator {
 
     public:
         bool _gameRunning = false;
+        
+        // Callback to notify Game of player ready/not ready status
+        std::function<void(uint32_t, bool)> _gameNotificationCallback;
+        
+        // Callback to notify Game when level starts (client-side)
+        std::function<void()> _levelStartCallback;
+        
+    private:
+        // Event structure for player ready/not ready
+        struct PlayerReadyEvent {
+            uint32_t playerId;
+            bool isReady;
+        };
+        
+        // Queue of pending player ready/not ready events (client-side)
+        std::deque<PlayerReadyEvent> _pendingPlayerReadyEvents;
 
     private:
         void setupPlayerEntity(

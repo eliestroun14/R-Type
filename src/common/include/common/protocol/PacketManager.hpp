@@ -135,6 +135,20 @@ class PacketManager {
         static bool assertPlayerInput(const common::protocol::Packet &packet);
 
         /**
+         * @brief Validate a PLAYER_IS_READY packet
+         * @param packet The packet to validate
+         * @return true if packet data is valid, false otherwise
+         */
+        static bool assertPlayerIsReady(const common::protocol::Packet &packet);
+
+        /**
+         * @brief Validate a PLAYER_NOT_READY packet
+         * @param packet The packet to validate
+         * @return true if packet data is valid, false otherwise
+         */
+        static bool assertPlayerNotReady(const common::protocol::Packet &packet);
+
+        /**
          * @brief Parse a PLAYER_INPUT packet and extract actions
          * @param packet The packet to parse
          * @return Parsed player input with all actions mapped, or std::nullopt if invalid
@@ -504,6 +518,34 @@ class PacketManager {
          * @return The created PLAYER_INPUT packet with 12 bytes payload
          */
         static std::optional<common::protocol::Packet> createPlayerInput(const std::vector<uint8_t> &args);
+
+        /**
+         * @brief Create a PLAYER_IS_READY packet
+         *
+         * @param args Packed arguments vector with the following structure:
+         *   - [0]: flags_count (uint8_t)
+         *   - [1..flags_count]: flag values (uint8_t each)
+         *   - [flags_count+1..flags_count+4]: player_id (uint32_t, little-endian)
+         *
+         * Total minimum size: 5 bytes (when flags_count = 0)
+         *
+         * @return The created PLAYER_IS_READY packet
+         */
+        static std::optional<common::protocol::Packet> createPlayerIsReady(const std::vector<uint8_t> &args);
+
+        /**
+         * @brief Create a PLAYER_NOT_READY packet
+         *
+         * @param args Packed arguments vector with the following structure:
+         *   - [0]: flags_count (uint8_t)
+         *   - [1..flags_count]: flag values (uint8_t each)
+         *   - [flags_count+1..flags_count+4]: player_id (uint32_t, little-endian)
+         *
+         * Total minimum size: 5 bytes (when flags_count = 0)
+         *
+         * @return The created PLAYER_NOT_READY packet
+         */
+        static std::optional<common::protocol::Packet> createPlayerNotReady(const std::vector<uint8_t> &args);
 
         // ==============================================================
         //                  WORLD_STATE (0x20-0x3F)
@@ -1067,7 +1109,7 @@ class PacketManager {
          * To add new packet types, simply add a new entry to this array with
          * the corresponding assertion and creation functions.
          */
-        static constexpr std::array<PacketHandler, 38> handlers = {{
+        static constexpr std::array<PacketHandler, 40> handlers = {{
             // CONNECTION (0x01-0x0F)
             { protocol::PacketTypes::TYPE_CLIENT_CONNECT, &PacketManager::assertClientConnect, &PacketManager::createClientConnect },
             { protocol::PacketTypes::TYPE_SERVER_ACCEPT, &PacketManager::assertServerAccept, &PacketManager::createServerAccept },
@@ -1077,6 +1119,8 @@ class PacketManager {
 
             // INPUT (0x10-0x1F)
             { protocol::PacketTypes::TYPE_PLAYER_INPUT, &PacketManager::assertPlayerInput, &PacketManager::createPlayerInput },
+            { protocol::PacketTypes::TYPE_PLAYER_IS_READY, &PacketManager::assertPlayerIsReady, &PacketManager::createPlayerIsReady },
+            { protocol::PacketTypes::TYPE_PLAYER_NOT_READY, &PacketManager::assertPlayerNotReady, &PacketManager::createPlayerNotReady },
 
             // WORLD_STATE (0x20-0x3F)
             { protocol::PacketTypes::TYPE_ENTITY_SPAWN, &PacketManager::assertEntitySpawn, &PacketManager::createEntitySpawn },

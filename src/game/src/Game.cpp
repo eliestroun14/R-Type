@@ -27,6 +27,24 @@ Game::Game(Type type)
         // Set server/client mode
         _coordinator->setIsServer(_type == Type::SERVER);
 
+        // Set callback to notify Game of player ready/not ready status
+        if (_type == Type::SERVER) {
+            _coordinator->setGameNotificationCallback([this](uint32_t playerId, bool isReady) {
+                if (isReady) {
+                    this->notifyPlayerReady(playerId);
+                } else {
+                    this->notifyPlayerNotReady(playerId);
+                }
+            });
+        }
+        
+        // Set callback to notify Game when level starts (client-side)
+        if (_type == Type::CLIENT || _type == Type::STAND_ALONE) {
+            _coordinator->setLevelStartCallback([this]() {
+                this->clearMenuOnLevelStart();
+            });
+        }
+
         _coordinator->initEngine();
 
         // Initialize render only for client and standalone
@@ -34,8 +52,8 @@ Game::Game(Type type)
             _coordinator->initEngineRender();
         }
 
-        //Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
-        //this->getCoordinator()->getEngine()->addComponent<GameConfig>(configurationEntity, GameConfig(FontAssets::DEFAULT_FONT, true, true));
+        Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
+        this->getCoordinator()->getEngine()->addComponent<GameConfig>(configurationEntity, GameConfig(FontAssets::DEFAULT_FONT, true, true));
 
         // Initialize timing
         _lastTickTime = std::chrono::steady_clock::now();
@@ -111,9 +129,9 @@ bool Game::runGameLoop()
                 return _isRunning;
             }
 
-            //if (_menu) {
-            //    _menu->update();
-            //}
+            if (_menu) {
+                _menu->update();
+            }
 
             // Process window events (CRITICAL: prevents window from freezing)
             engine->processInput();
@@ -528,6 +546,10 @@ void Game::onPlayerConnected(uint32_t playerId)
 
         // Add to connected players list
         _connectedPlayers.push_back(playerId);
+        
+        // Initialize player as not ready
+        _playerReadyStatus[playerId] = false;
+        
         LOG_INFO("Game: Player {} successfully spawned. Total players: {}", playerId, _connectedPlayers.size());
 
         // Check if we should start the level now
@@ -553,15 +575,14 @@ void Game::checkAndStartLevel()
         return;
     }
 
-    // Check if we have enough players
-    if (_connectedPlayers.size() < _maxPlayers) {
-        LOG_INFO("Game: Waiting for more players ({}/{}) before starting level", 
+    // Check if all players are ready (includes checking max players reached)
+    if (!_coordinator->areAllPlayersReady(_connectedPlayers, _maxPlayers, _playerReadyStatus)) {
+        LOG_INFO("Game: Waiting for all players to be ready ({}/{} players)", 
                  _connectedPlayers.size(), _maxPlayers);
         return;
     }
 
-    LOG_INFO("Game: Max players reached ({}/{}), starting level!", 
-             _connectedPlayers.size(), _maxPlayers);
+    LOG_INFO("Game: All players ready! Starting level!");
 
     // Create the level entity
     _currentLevelEntity = _coordinator->createLevelEntity(
@@ -613,4 +634,37 @@ void Game::checkAndStartLevel()
     } else {
         LOG_ERROR("Game: Failed to start level - level component not found on entity");
     }
+}
+
+bool Game::shouldStartLevel() const
+{
+    if (_type != Type::SERVER || _levelStarted) {
+        return false;
+    }
+    return _coordinator->areAllPlayersReady(_connectedPlayers, _maxPlayers, _playerReadyStatus);
+}
+
+void Game::notifyPlayerReady(uint32_t playerId)
+{
+    if (_type != Type::SERVER) {
+        LOG_WARN("notifyPlayerReady called on non-server instance");
+        return;
+    }
+
+    _playerReadyStatus[playerId] = true;
+    LOG_INFO("Game: Player {} is now READY", playerId);
+
+    // Check if all players are now ready to start the level
+    checkAndStartLevel();
+}
+
+void Game::notifyPlayerNotReady(uint32_t playerId)
+{
+    if (_type != Type::SERVER) {
+        LOG_WARN("notifyPlayerNotReady called on non-server instance");
+        return;
+    }
+
+    _playerReadyStatus[playerId] = false;
+    LOG_INFO("Game: Player {} is now NOT READY", playerId);
 }

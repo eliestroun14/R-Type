@@ -361,7 +361,9 @@ void Coordinator::processServerPackets(const std::vector<common::protocol::Packe
     LOG_INFO_CAT("Coordinator", "processServerPackets: processing {} packets", packetsToProcess.size());
 
     for (const auto& packet : packetsToProcess) {
-        if (PacketManager::assertPlayerInput(packet)) {
+        const auto packetType = static_cast<protocol::PacketTypes>(packet.header.packet_type);
+        
+        if (packetType == protocol::PacketTypes::TYPE_PLAYER_INPUT && PacketManager::assertPlayerInput(packet)) {
             LOG_INFO_CAT("Coordinator", "Processing PLAYER_INPUT packet");
             
             // Parse to get the source player ID
@@ -377,6 +379,12 @@ void Coordinator::processServerPackets(const std::vector<common::protocol::Packe
             } else {
                 LOG_ERROR_CAT("Coordinator", "Failed to parse PLAYER_INPUT packet");
             }
+        } else if (packetType == protocol::PacketTypes::TYPE_PLAYER_IS_READY && PacketManager::assertPlayerIsReady(packet)) {
+            LOG_INFO_CAT("Coordinator", "Processing PLAYER_IS_READY packet");
+            handlePacketPlayerIsReady(packet);
+        } else if (packetType == protocol::PacketTypes::TYPE_PLAYER_NOT_READY && PacketManager::assertPlayerNotReady(packet)) {
+            LOG_INFO_CAT("Coordinator", "Processing PLAYER_NOT_READY packet");
+            handlePacketPlayerNotReady(packet);
         } else {
             LOG_WARN_CAT("Coordinator", "Received non-input packet type {} on server", static_cast<int>(packet.header.packet_type));
         }
@@ -929,6 +937,60 @@ std::vector<uint32_t> Coordinator::getAllConnectedPlayerIds() const
 // Should only be called on client side to send input packets to server
 void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::Packet> &outgoingPackets, uint64_t elapsedMs)
 {
+    // ============================================================================
+    // HANDLE PLAYER READY/NOT READY EVENTS
+    // ============================================================================
+    // Create PLAYER_IS_READY and PLAYER_NOT_READY packets from pending events
+    for (const auto& event : _pendingPlayerReadyEvents) {
+        std::vector<uint8_t> args;
+
+        // flags_count (1 byte)
+        args.push_back(1);
+
+        // flags (FLAG_RELIABLE)
+        args.push_back(static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE));
+
+        // sequence_number (4 bytes)
+        uint32_t sequence = static_cast<uint32_t>(std::time(nullptr));
+        args.push_back(static_cast<uint8_t>(sequence & 0xFF));
+        args.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
+        args.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
+        args.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
+
+        // timestamp (4 bytes)
+        uint32_t timestamp = static_cast<uint32_t>(std::time(nullptr));
+        args.push_back(static_cast<uint8_t>(timestamp & 0xFF));
+        args.push_back(static_cast<uint8_t>((timestamp >> 8) & 0xFF));
+        args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
+        args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
+
+        // player_id (4 bytes)
+        args.push_back(static_cast<uint8_t>(event.playerId & 0xFF));
+        args.push_back(static_cast<uint8_t>((event.playerId >> 8) & 0xFF));
+        args.push_back(static_cast<uint8_t>((event.playerId >> 16) & 0xFF));
+        args.push_back(static_cast<uint8_t>((event.playerId >> 24) & 0xFF));
+
+        // Create the appropriate packet type
+        std::optional<common::protocol::Packet> packet;
+        if (event.isReady) {
+            packet = PacketManager::createPlayerIsReady(args);
+            LOG_INFO_CAT("Coordinator", "buildClientPacketBasedOnStatus: created PLAYER_IS_READY packet for player {}", event.playerId);
+        } else {
+            packet = PacketManager::createPlayerNotReady(args);
+            LOG_INFO_CAT("Coordinator", "buildClientPacketBasedOnStatus: created PLAYER_NOT_READY packet for player {}", event.playerId);
+        }
+
+        if (packet.has_value()) {
+            outgoingPackets.push_back(packet.value());
+        } else {
+            LOG_ERROR_CAT("Coordinator", "buildClientPacketBasedOnStatus: failed to create player ready/not ready packet");
+        }
+    }
+    _pendingPlayerReadyEvents.clear();
+
+    // ============================================================================
+    // THROTTLE INPUT PACKET SENDING
+    // ============================================================================
     // Throttle input packet sending using INPUT_SEND_TICK_INTERVAL
     static uint64_t tickCounter = 0;
     tickCounter++;
@@ -940,6 +1002,7 @@ void Coordinator::buildClientPacketBasedOnStatus(std::vector<common::protocol::P
     // Only send input every INPUT_SEND_TICK_INTERVAL ticks (defined in defines.hpp as 2)
     // This limits input packets to ~30 Hz instead of 60 Hz
     if (tickCounter % INPUT_SEND_TICK_INTERVAL != 0) {
+        LOG_DEBUG_CAT("Coordinator", "buildClientPacketBasedOnStatus: created {} packets", outgoingPackets.size());
         return;
     }
 
@@ -1933,6 +1996,93 @@ void Coordinator::handlePacketParticleSpawn(const common::protocol::Packet &pack
                  payload.particle_system_id, payload.particle_count, pos_x, pos_y);
 }
 
+void Coordinator::handlePacketPlayerIsReady(const common::protocol::Packet& packet)
+{
+    // Validate payload size
+    if (packet.data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerIsReady: invalid packet size %zu, expected %d", 
+                     packet.data.size(), PLAYER_READY_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse player_id
+    uint32_t playerId;
+    std::memcpy(&playerId, packet.data.data(), sizeof(uint32_t));
+
+    LOG_INFO_CAT("Coordinator", "Player %u is READY", playerId);
+    
+    // Notify Game if callback is set
+    if (_gameNotificationCallback) {
+        _gameNotificationCallback(playerId, true);
+    }
+}
+
+void Coordinator::handlePacketPlayerNotReady(const common::protocol::Packet& packet)
+{
+    // Validate payload size
+    if (packet.data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketPlayerNotReady: invalid packet size %zu, expected %d", 
+                     packet.data.size(), PLAYER_READY_PAYLOAD_SIZE);
+        return;
+    }
+
+    // Parse player_id
+    uint32_t playerId;
+    std::memcpy(&playerId, packet.data.data(), sizeof(uint32_t));
+
+    LOG_INFO_CAT("Coordinator", "Player %u is NOT READY", playerId);
+    
+    // Notify Game if callback is set
+    if (_gameNotificationCallback) {
+        _gameNotificationCallback(playerId, false);
+    }
+}
+
+bool Coordinator::areAllPlayersReady(
+    const std::vector<uint32_t>& connectedPlayers,
+    uint32_t maxPlayers,
+    const std::unordered_map<uint32_t, bool>& playerReadyStatus
+) const
+{
+    // If no players are connected, not all players are ready
+    if (connectedPlayers.empty()) {
+        return false;
+    }
+
+    // Check if we have the right number of players
+    if (connectedPlayers.size() < maxPlayers) {
+        return false;
+    }
+
+    // Check if all connected players are ready
+    for (uint32_t playerId : connectedPlayers) {
+        auto it = playerReadyStatus.find(playerId);
+        if (it == playerReadyStatus.end() || !it->second) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void Coordinator::queuePlayerIsReady(uint32_t playerId)
+{
+    PlayerReadyEvent event;
+    event.playerId = playerId;
+    event.isReady = true;
+    _pendingPlayerReadyEvents.push_back(event);
+    LOG_INFO_CAT("Coordinator", "Queued PLAYER_IS_READY event for player {}", playerId);
+}
+
+void Coordinator::queuePlayerNotReady(uint32_t playerId)
+{
+    PlayerReadyEvent event;
+    event.playerId = playerId;
+    event.isReady = false;
+    _pendingPlayerReadyEvents.push_back(event);
+    LOG_INFO_CAT("Coordinator", "Queued PLAYER_NOT_READY event for player {}", playerId);
+}
+
 void Coordinator::handleGameStart(const common::protocol::Packet& packet)
 {
     if (packet.data.size() != GAME_START_PAYLOAD_SIZE) {
@@ -2059,6 +2209,11 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
 
     // Set game to running state
     _gameRunning = true;
+    
+    // Notify Game to clear the menu (client-side)
+    if (_levelStartCallback) {
+        _levelStartCallback();
+    }
 
     // Create scrolling background for the level (client-side rendering)
     Entity backgroundEntity = this->_engine->createEntity("LevelBackground");

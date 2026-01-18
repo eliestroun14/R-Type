@@ -168,6 +168,11 @@ enum NetworkType {
 #define PLAYER_INPUT_PAYLOAD_SIZE               (PLAYER_INPUT_PLAYER_ID_SIZE + PLAYER_INPUT_INPUT_STATE_SIZE + PLAYER_INPUT_AIM_DIRECTION_X_SIZE + PLAYER_INPUT_AIM_DIRECTION_Y_SIZE)  // 12 bytes
 #define PLAYER_INPUT_MIN_ARGS_SIZE              (HEADER_FIELD_FLAGS_COUNT_SIZE + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_INPUT_PAYLOAD_SIZE)  // 32 bytes
 
+// PLAYER_IS_READY packet (0x11)
+#define PLAYER_READY_PLAYER_ID_SIZE             4   // uint32_t
+#define PLAYER_READY_PAYLOAD_SIZE               PLAYER_READY_PLAYER_ID_SIZE  // 4 bytes
+#define PLAYER_READY_MIN_ARGS_SIZE              (HEADER_FIELD_FLAGS_COUNT_SIZE + HEADER_FIELD_SEQUENCE_NUMBER_SIZE + HEADER_FIELD_TIMESTAMP_SIZE + PLAYER_READY_PAYLOAD_SIZE)  // 24 bytes
+
 // ==============================================================
 //                    WORLD_STATE (0x20-0x3F)
 // ==============================================================

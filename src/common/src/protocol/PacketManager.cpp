@@ -361,6 +361,50 @@ bool PacketManager::assertPlayerInput(const common::protocol::Packet &packet)
     return true;
 }
 
+bool PacketManager::assertPlayerIsReady(const common::protocol::Packet &packet)
+{
+    const auto &data = packet.data;
+    const auto &header = packet.header;
+
+    // Payload: 4 bytes (player_id=4)
+    if (data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerIsReady: payload size != {}, got {}", PLAYER_READY_PAYLOAD_SIZE, data.size());
+        return false;
+    }
+
+    // Offset 0-3: player_id (valid range: 0 to MAX_PLAYERS-1)
+    uint32_t player_id;
+    std::memcpy(&player_id, data.data() + 0, sizeof(uint32_t));
+    if (player_id >= MAX_PLAYERS) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerIsReady: player_id {} exceeds MAX_PLAYERS {}", player_id, MAX_PLAYERS);
+        return false;
+    }
+
+    return true;
+}
+
+bool PacketManager::assertPlayerNotReady(const common::protocol::Packet &packet)
+{
+    const auto &data = packet.data;
+    const auto &header = packet.header;
+
+    // Payload: 4 bytes (player_id=4)
+    if (data.size() != PLAYER_READY_PAYLOAD_SIZE) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerNotReady: payload size != {}, got {}", PLAYER_READY_PAYLOAD_SIZE, data.size());
+        return false;
+    }
+
+    // Offset 0-3: player_id (valid range: 0 to MAX_PLAYERS-1)
+    uint32_t player_id;
+    std::memcpy(&player_id, data.data() + 0, sizeof(uint32_t));
+    if (player_id >= MAX_PLAYERS) {
+        LOG_ERROR_CAT("PacketManager", "assertPlayerNotReady: player_id {} exceeds MAX_PLAYERS {}", player_id, MAX_PLAYERS);
+        return false;
+    }
+
+    return true;
+}
+
 std::optional<ParsedPlayerInput> PacketManager::parsePlayerInput(const common::protocol::Packet &packet)
 {
     // Validate packet first
@@ -2067,6 +2111,96 @@ std::optional<common::protocol::Packet> PacketManager::createPlayerInput(const s
 
     // aim_direction_y (2 bytes)
     std::memcpy(packet.data.data() + 8, args.data() + offset, PLAYER_INPUT_AIM_DIRECTION_Y_SIZE);
+
+    return packet;
+}
+
+std::optional<common::protocol::Packet> PacketManager::createPlayerIsReady(const std::vector<uint8_t> &args)
+{
+    common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_IS_READY));
+
+    if (args.size() < PLAYER_READY_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerIsReady: args too small, minimum {} bytes needed, got {}",
+                     PLAYER_READY_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerIsReady: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_IS_READY);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PLAYER_READY_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PLAYER_READY_PLAYER_ID_SIZE);
+
+    return packet;
+}
+
+std::optional<common::protocol::Packet> PacketManager::createPlayerNotReady(const std::vector<uint8_t> &args)
+{
+    common::protocol::Packet packet(static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_NOT_READY));
+
+    if (args.size() < PLAYER_READY_MIN_ARGS_SIZE) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerNotReady: args too small, minimum {} bytes needed, got {}",
+                     PLAYER_READY_MIN_ARGS_SIZE, args.size());
+        return std::nullopt;
+    }
+
+    size_t offset = 0;
+    uint8_t flags_count = args[offset++];
+
+    if (args.size() < offset + flags_count) {
+        LOG_ERROR_CAT("NetworkManager", "createPlayerNotReady: not enough data for flags, expected {} got {}", offset + flags_count, args.size());
+        return std::nullopt;
+    }
+
+    uint8_t combined_flags = 0x00;
+    for (uint8_t i = 0; i < flags_count; ++i) {
+        combined_flags |= args[offset++];
+    }
+
+    uint32_t sequence_number;
+    std::memcpy(&sequence_number, args.data() + offset, HEADER_FIELD_SEQUENCE_NUMBER_SIZE);
+    offset += HEADER_FIELD_SEQUENCE_NUMBER_SIZE;
+
+    uint32_t timestamp;
+    std::memcpy(&timestamp, args.data() + offset, HEADER_FIELD_TIMESTAMP_SIZE);
+    offset += HEADER_FIELD_TIMESTAMP_SIZE;
+
+    packet.header.magic = 0x5254;
+    packet.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_NOT_READY);
+    packet.header.flags = combined_flags;
+    packet.header.sequence_number = sequence_number;
+    packet.header.timestamp = timestamp;
+
+    packet.data.resize(PLAYER_READY_PAYLOAD_SIZE);
+
+    // player_id (4 bytes)
+    std::memcpy(packet.data.data() + 0, args.data() + offset, PLAYER_READY_PLAYER_ID_SIZE);
 
     return packet;
 }
