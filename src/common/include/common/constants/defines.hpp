@@ -64,7 +64,7 @@ enum NetworkType {
 
 // base weapon for enemies
 #define BASE_ENEMY_WEAPON_DAMAGE 8
-#define BASE_ENEMY_WEAPON_FIRE_RATE 300
+#define BASE_ENEMY_WEAPON_FIRE_RATE 1300
 
 // ==============================================================
 //              ENEMY TYPE DEFINITIONS
@@ -74,7 +74,7 @@ enum NetworkType {
 #define FAST_ENEMY_HEALTH 30
 #define FAST_ENEMY_VELOCITY_X -30.0f
 #define FAST_ENEMY_VELOCITY_Y 0.0f
-#define FAST_ENEMY_WEAPON_FIRE_RATE 800
+#define FAST_ENEMY_WEAPON_FIRE_RATE 100
 #define FAST_ENEMY_WEAPON_DAMAGE 5
 #define FAST_ENEMY_SCALE 0.5f
 

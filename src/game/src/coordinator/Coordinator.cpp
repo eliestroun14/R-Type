@@ -439,12 +439,12 @@ Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std
         wave1.enemies.push_back({EnemyType::BASIC, 800.f, 300.f, 1.5f});
 
         // Wave 2: Mix of basic and fast enemies
-        //Wave wave2;
-        //wave2.startTime = LEVEL_1_WAVE_2_START_TIME;
-        //wave2.enemies.push_back({EnemyType::FAST, 800.f, 150.f, 0.f});
-        //wave2.enemies.push_back({EnemyType::BASIC, 800.f, 250.f, 1.0f});
-        //wave2.enemies.push_back({EnemyType::FAST, 800.f, 350.f, 1.0f});
-        //wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
+        Wave wave2;
+        wave2.startTime = LEVEL_1_WAVE_2_START_TIME;
+        wave2.enemies.push_back({EnemyType::FAST, 800.f, 150.f, 0.f});
+        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 250.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 800.f, 350.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
 
         // Wave 3: Tank wave
         //Wave wave3;
@@ -463,7 +463,7 @@ Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std
         //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
 
         level.waves.push_back(wave1);
-        //level.waves.push_back(wave2);
+        level.waves.push_back(wave2);
         //level.waves.push_back(wave3);
         //level.waves.push_back(wave4);
     }
@@ -664,10 +664,14 @@ void Coordinator::queueWeaponFire(uint32_t shooterId, float originX, float origi
     Entity shooterEntity = _engine->getEntityFromId(shooterId);
     Entity projectile = spawnProjectile(shooterEntity, projectileId, weaponType, originX, originY, directionX, directionY);
     
-    // Queue the weapon fire event with the already-created projectile
+    // Get the actual entity ID (with NETWORKED_ID_OFFSET) to send to clients
+    // spawnProjectile creates the entity with the full ID, so we use the entity's actual ID
+    uint32_t actualProjectileId = static_cast<uint32_t>(projectile);
+    
+    // Queue the weapon fire event with the actual projectile ID (including offset)
     WeaponFireEvent event;
     event.shooterId = shooterId;
-    event.projectileId = projectileId;
+    event.projectileId = actualProjectileId;  // Use the actual entity ID, not the relative ID
     event.originX = originX;
     event.originY = originY;
     event.directionX = directionX;
