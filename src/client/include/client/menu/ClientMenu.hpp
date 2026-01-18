@@ -64,9 +64,10 @@ class ClientMenu : public IMenu {
         void clearMenuEntities(bool keepBackground = false);
 
         /**
-         * @brief Method that create every entity for the accessibility menu.
+         * @brief Method that create every entity for the score menu.
+         * @param score The final score to display
          */
-        void createScoreMenu();
+        void createScoreMenu(uint32_t score = 0);
 
         /**
          * @brief Method that create every entity for the accessibility menu.

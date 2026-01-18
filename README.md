@@ -14,12 +14,12 @@ Multiple players can battle the evil Bydos across the network in real-time with 
 
 ## Features
 
-- **Multiplayer Gameplay**: Up to 4 players can join the same game instance
+- **Multiplayer Gameplay**: Up to 5 players can join the same game instance
 - **Networked Architecture**: Client-server model with UDP-based communication
 - **Custom Game Engine**: Built from scratch with modular subsystems
 - **Cross-platform Support**: Runs on both Linux and Windows
 - **Entity-Component-System**: Decoupled architecture for extensibility
-- **Classic R-TYPE Elements**: Enemies, missiles, power-ups, and scrolling starfield
+- **Classic R-TYPE Elements**: Enemies, missiles and scrolling starfield
 
 ## Gameplay
 
@@ -27,7 +27,7 @@ Multiple players can battle the evil Bydos across the network in real-time with 
 - Shoot missiles to destroy enemy Bydos
 - Survive waves of enemies with varying patterns
 - Cooperate with other players across the network
-- Four players are visually distinct with different colors/sprites
+- Five players are visually distinct with different colors/sprites
 
 ## Technical Stack
 
@@ -67,7 +67,7 @@ mkdir build && cd build
 cmake ..
 
 # Build
-cmake --build .
+make
 
 # You can execute the binarie using these 2 command
 ./src/server/r-type-server
@@ -103,6 +103,9 @@ start .\src\client\Release\r-type-client.exe
 ### Starting the Server
 
 ```bash
+# To be sure you can use the -h to get all the flags available
+./r-type_server -h
+
 ./r-type_server [port]
 ```
 
@@ -120,7 +123,6 @@ Connect to localhost:4242 by default if parameters are omitted.
 
 - **Arrow Keys**: Move spaceship (Up/Down/Left/Right)
 - **Space**: Shoot missile
-- **ESC**: Exit game
 
 ## Architecture
 
@@ -158,7 +160,7 @@ The game uses a custom binary UDP protocol (version 1.0) for real-time communica
 - **Event Notifications**: Spawns, deaths, scores
 - **Reliability Mechanisms**: Optional reliability features over UDP
 
-For detailed protocol specification, see [Network Protocol Documentation](docs/Network/network.tex)
+For detailed protocol specification, see [Network Protocol Documentation](docs/networkv2/network_advanced.pdf)
 
 ## Documentation
 

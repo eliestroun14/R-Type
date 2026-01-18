@@ -14,6 +14,7 @@
 #include <common/logger/Logger.hpp>
 #include <common/error/Error.hpp>
 #include <engine/ecs/entity/EntityManager.hpp>
+#include <game/systems/ScoreSystem.hpp>
 
 Game::Game(Type type)
     : _type(type), _isRunning(true), _isConnected(false)
@@ -51,12 +52,7 @@ Game::Game(Type type)
         // Initialize render only for client and standalone
         if (_type == Type::CLIENT || _type == Type::STAND_ALONE) {
             _coordinator->initEngineRender();
-            _coordinator->createScoreEntity(
-                /*scoreId*/ 1,
-                /*posX*/ 300.f,
-                /*posY*/ 50.f,
-                /*initialScore*/ 0
-            );
+            // Score and timer HUD entities will be created after LEVEL_START
         }
 
         Entity configurationEntity = this->getCoordinator()->getEngine()->createEntity("Configuration Game Entity");
@@ -90,6 +86,64 @@ Game::~Game()
 {
     _isRunning = false;
     LOG_INFO("Game destroyed");
+}
+
+void Game::hideGameEntities()
+{
+    if (!_coordinator) return;
+    
+    auto engine = _coordinator->getEngine();
+    if (!engine) return;
+    
+    LOG_INFO("Hiding all game entities");
+    
+    // Destroy the score HUD entity
+    try {
+        auto scoreSystem = engine->getSystem<ScoreSystem>();
+        Entity hudEntity = scoreSystem.getHudEntity();
+        if (hudEntity != Entity::fromId(0)) {
+            engine->destroyEntity(hudEntity);
+            LOG_DEBUG("Destroyed score HUD entity");
+        }
+    } catch (const std::exception& e) {
+        LOG_WARN("Failed to destroy score HUD entity: {}", e.what());
+    }
+
+    // Destroy timer UI entities (if any)
+    try {
+        auto& timers = engine->getComponents<TimerUI>();
+        for (size_t i = 0; i < timers.size(); ++i) {
+            if (timers[i]) {
+                try {
+                    engine->destroyEntity(static_cast<uint32_t>(i));
+                    LOG_DEBUG("Destroyed timer entity {}", i);
+                } catch (const std::exception &e) {
+                    // ignore if entity cannot be destroyed
+                }
+            }
+        }
+    } catch (const std::exception &e) {
+        LOG_WARN("Failed to query/destroy timer entities: {}", e.what());
+    }
+    
+    // Destroy all networked entities by iterating through a reasonable range
+    // Networked entities are typically in the 10000+ range
+    for (uint32_t entityId = 10000; entityId < 20000; entityId++) {
+        try {
+            engine->destroyEntity(entityId);
+            LOG_DEBUG("Destroyed networked entity {}", entityId);
+        } catch (const std::exception& e) {
+            // Entity doesn't exist or error destroying, continue
+        }
+    }
+}
+
+void Game::showScoreMenu(uint32_t score)
+{
+    hideGameEntities();
+    if (_menu) {
+        _menu->createScoreMenu(score);
+    }
 }
 
 bool Game::runGameLoop()
@@ -234,15 +288,25 @@ void Game::serverTick(uint64_t elapsedMs)
                 levelCompletePacket.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE);
                 levelCompletePacket.header.sequence_number = 0;
                 levelCompletePacket.header.timestamp = 0;
+                levelCompletePacket.header.flags = static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE);
 
                 protocol::LevelComplete levelCompletePayload;
                 levelCompletePayload.completed_level = LEVEL_1_NUMBER;
                 levelCompletePayload.next_level = 0xFF;  // 0xFF = game end
                 levelCompletePayload.bonus_score = 0;
-                levelCompletePayload.completion_time = 0;
+                levelCompletePayload.completion_time = static_cast<uint16_t>(levels[_currentLevelEntity]->elapsedTime);
 
-                levelCompletePacket.data.resize(sizeof(protocol::LevelComplete));
-                std::memcpy(levelCompletePacket.data.data(), &levelCompletePayload, sizeof(protocol::LevelComplete));
+                levelCompletePacket.data.resize(LEVEL_COMPLETE_PAYLOAD_SIZE);
+                
+                // Manually serialize to avoid padding issues
+                uint8_t* ptr = levelCompletePacket.data.data();
+                std::memcpy(ptr, &levelCompletePayload.completed_level, LEVEL_COMPLETE_COMPLETED_LEVEL_SIZE);
+                ptr += LEVEL_COMPLETE_COMPLETED_LEVEL_SIZE;
+                std::memcpy(ptr, &levelCompletePayload.next_level, LEVEL_COMPLETE_NEXT_LEVEL_SIZE);
+                ptr += LEVEL_COMPLETE_NEXT_LEVEL_SIZE;
+                std::memcpy(ptr, &levelCompletePayload.bonus_score, LEVEL_COMPLETE_BONUS_SCORE_SIZE);
+                ptr += LEVEL_COMPLETE_BONUS_SCORE_SIZE;
+                std::memcpy(ptr, &levelCompletePayload.completion_time, LEVEL_COMPLETE_COMPLETION_TIME_SIZE);
 
                 // Send to all connected clients
                 for (uint32_t playerId : _connectedPlayers) {

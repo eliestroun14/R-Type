@@ -42,6 +42,11 @@ void LevelSystem::onUpdate(float dt)
             continue;
         }
 
+        // Skip wave processing if no waves defined (client-side Level only has timer)
+        if (level.waves.empty()) {
+            continue;
+        }
+
         // init spawn tracking
         if (this->_spawnedEnemies.size() != level.waves.size()) {
             this->_spawnedEnemies.resize(level.waves.size());

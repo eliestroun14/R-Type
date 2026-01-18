@@ -40,6 +40,12 @@ void RTypeClient::init(const char* serverIp, uint16_t port, std::string playerNa
 
     // set menu in the game
     _game->setMenu(menu);
+    
+    // Set up callback for level complete (client-side) - display score menu
+    coordinator->_levelCompleteCallback = [this](uint32_t finalScore) {
+        LOG_INFO("Level complete! Final score: {} - Showing score menu", finalScore);
+        _game->showScoreMenu(finalScore);
+    };
 
     // 4. init main menu content
     menu->createMainMenu();

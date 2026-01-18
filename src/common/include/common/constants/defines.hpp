@@ -92,7 +92,7 @@ enum NetworkType {
 
 // Level 1 Configuration
 #define LEVEL_1_NUMBER 1
-#define LEVEL_1_DURATION 60.0f  // seconds (0 = infinite/until all waves complete)
+#define LEVEL_1_DURATION 120.0f  // seconds (0 = infinite/until all waves complete)
 #define LEVEL_1_BACKGROUND_ASSET "background_level1"
 #define LEVEL_1_MUSIC_ASSET "music_level1"
 

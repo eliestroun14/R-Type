@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Option to enable code coverage
 option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+option(RTYPE_TESTS_NO_AUDIO "Disable audio in tests to avoid external audio deps" ON)
 
 if(ENABLE_COVERAGE)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
