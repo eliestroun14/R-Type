@@ -69,9 +69,9 @@ cmake ..
 # Build
 cmake --build .
 
-# Binaries will be in build/
-./r-type_server
-./r-type_client
+# You can execute the binarie using these 2 command
+./src/server/r-type-server
+./src/client/r-type-client
 ```
 
 ### Windows
@@ -91,7 +91,7 @@ cmake .. -G "Visual Studio 18 2026" -A x64
 # Build
 cmake --build . --config Release
 
-# You can execute the binarie using these 2 command 
+# You can execute the binarie using these 2 command
 start .\src\server\Release\r-type-server.exe
 start .\src\client\Release\r-type-client.exe
 ```

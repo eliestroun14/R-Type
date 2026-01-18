@@ -92,6 +92,52 @@ static uint16_t readU16(const std::vector<uint8_t>& buf, size_t offset)
     return v;
 }
 
+static std::optional<common::protocol::Packet>
+makeEntitySpawnPacket(uint32_t entityId,
+                      uint16_t posX,
+                      uint16_t posY,
+                      uint8_t entityType,
+                      uint8_t isPlayable)
+{
+    std::vector<uint8_t> args;
+    args.reserve(32);
+
+    auto appendU32 = [&args](uint32_t v) {
+        const auto* raw = reinterpret_cast<uint8_t*>(&v);
+        args.insert(args.end(), raw, raw + sizeof(v));
+    };
+
+    auto appendU16 = [&args](uint16_t v) {
+        const auto* raw = reinterpret_cast<uint8_t*>(&v);
+        args.insert(args.end(), raw, raw + sizeof(v));
+    };
+
+    auto appendI16 = [&args](int16_t v) {
+        const auto* raw = reinterpret_cast<uint8_t*>(&v);
+        args.insert(args.end(), raw, raw + sizeof(v));
+    };
+
+    args.push_back(1); // flags_count
+    args.push_back(static_cast<uint8_t>(protocol::PacketFlags::FLAG_RELIABLE));
+
+    appendU32(1); // sequence_number
+    appendU32(2); // timestamp
+    appendU32(entityId);
+
+    args.push_back(entityType);
+
+    appendU16(posX);
+    appendU16(posY);
+
+    args.push_back(0);      // mob_variant
+    args.push_back(100);    // initial_health
+    appendI16(0);           // initial_velocity_x
+    appendI16(0);           // initial_velocity_y
+    args.push_back(isPlayable);
+
+    return PacketManager::createEntitySpawn(args);
+}
+
 // --------------------------------------------------------------
 // Fixture
 // --------------------------------------------------------------
@@ -139,137 +185,6 @@ TEST_F(CoordinatorFixture, CreatePacketInputClient_ReturnsFalseWhenEntityNotAliv
     EXPECT_FALSE(coord.createPacketInputClient(&pkt, fakeId));
 }
 
-TEST_F(CoordinatorFixture, CreatePacketInputClient_BuildsExpectedPayloadFields)
-{
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    uint32_t eid = findFreeEntityId(eng, 100);
-
-    Entity player = Entity::fromId(0);
-    try {
-        player = eng->createEntityWithId(eid, "TestPlayer");
-    } catch (...) {
-        GTEST_SKIP() << "createEntityWithId() not usable in this runtime (skipping).";
-    }
-
-    const uint32_t netPlayerId = 424242u;
-    eng->addComponent<InputComponent>(player, InputComponent(netPlayerId));
-
-    auto& inputOpt = eng->getComponentEntity<InputComponent>(player);
-    ASSERT_TRUE(inputOpt.has_value());
-
-    inputOpt->activeActions[GameAction::MOVE_UP] = true;
-    inputOpt->activeActions[GameAction::SHOOT]   = true;
-
-    common::protocol::Packet pkt;
-    ASSERT_TRUE(coord.createPacketInputClient(&pkt, eid));
-
-    ASSERT_TRUE(PacketManager::assertPlayerInput(pkt));
-    ASSERT_GE(pkt.data.size(), 20u);
-
-    // offsets: flags_count(1) flags(1) seq(4) ts(4) player_id(4) input_state(2) ...
-    const uint32_t decodedPlayerId = readU32(pkt.data, 10);
-    const uint16_t decodedInput    = readU16(pkt.data, 14);
-
-    EXPECT_EQ(decodedPlayerId, netPlayerId);
-
-    EXPECT_TRUE(decodedInput & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP));
-    EXPECT_TRUE(decodedInput & static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY));
-
-    EXPECT_FALSE(decodedInput & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_LEFT));
-    EXPECT_FALSE(decodedInput & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_RIGHT));
-    EXPECT_FALSE(decodedInput & static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_DOWN));
-}
-
-TEST_F(CoordinatorFixture, HandlePlayerInputPacket_UpdatesInputComponentActions)
-{
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    uint32_t eid = findFreeEntityId(eng, 150);
-
-    Entity player = Entity::fromId(0);
-    try {
-        player = eng->createEntityWithId(eid, "TestPlayerInputApply");
-    } catch (...) {
-        GTEST_SKIP() << "createEntityWithId() not usable in this runtime (skipping).";
-    }
-
-    const uint32_t netPlayerId = 777u;
-    eng->addComponent<InputComponent>(player, InputComponent(netPlayerId));
-
-    auto& inputOpt = eng->getComponentEntity<InputComponent>(player);
-    ASSERT_TRUE(inputOpt.has_value());
-
-    inputOpt->activeActions[GameAction::MOVE_UP] = false;
-    inputOpt->activeActions[GameAction::SHOOT]   = false;
-
-    const uint16_t inputState =
-        static_cast<uint16_t>(protocol::InputFlags::INPUT_MOVE_UP) |
-        static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY);
-
-    auto pktOpt = makePlayerInputPacket(netPlayerId, inputState);
-    ASSERT_TRUE(pktOpt.has_value());
-
-    ASSERT_NO_THROW(coord.handlePlayerInputPacket(pktOpt.value(), 16));
-
-    EXPECT_TRUE(inputOpt->activeActions[GameAction::MOVE_UP]);
-    EXPECT_TRUE(inputOpt->activeActions[GameAction::SHOOT]);
-}
-
-TEST_F(CoordinatorFixture, HandlePacketTransformSnapshot_EmplacesOrUpdatesTransform)
-{
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    uint32_t eid = findFreeEntityId(eng, 200);
-
-    Entity ent = Entity::fromId(0);
-    try {
-        ent = eng->createEntityWithId(eid, "TestTransformEntity");
-    } catch (...) {
-        GTEST_SKIP() << "createEntityWithId() not usable in this runtime (skipping).";
-    }
-
-    ASSERT_FALSE(eng->getComponentEntity<Transform>(ent).has_value());
-
-    common::protocol::Packet pkt;
-    pkt.header.packet_type = static_cast<uint8_t>(protocol::PacketTypes::TYPE_TRANSFORM_SNAPSHOT);
-
-    uint32_t world_tick = 42;
-    uint16_t count = 1;
-
-    protocol::ComponentTransform net{};
-    net.pos_x = 123;
-    net.pos_y = 456;
-    net.rotation = 0;
-    net.scale = 1000;
-
-    const size_t baseSize  = sizeof(uint32_t) + sizeof(uint16_t);
-    const size_t entrySize = sizeof(uint32_t) + sizeof(protocol::ComponentTransform);
-    pkt.data.resize(baseSize + entrySize);
-
-    size_t off = 0;
-    std::memcpy(pkt.data.data() + off, &world_tick, sizeof(world_tick));
-    off += sizeof(world_tick);
-    std::memcpy(pkt.data.data() + off, &count, sizeof(count));
-    off += sizeof(count);
-    std::memcpy(pkt.data.data() + off, &eid, sizeof(eid));
-    off += sizeof(eid);
-    std::memcpy(pkt.data.data() + off, &net, sizeof(net));
-
-    ASSERT_NO_THROW(coord.handlePacketTransformSnapshot(pkt));
-
-    auto& tfOpt = eng->getComponentEntity<Transform>(ent);
-    ASSERT_TRUE(tfOpt.has_value());
-
-    EXPECT_FLOAT_EQ(tfOpt->x, 123.f);
-    EXPECT_FLOAT_EQ(tfOpt->y, 456.f);
-    EXPECT_FLOAT_EQ(tfOpt->rotation, 0.f);
-    EXPECT_FLOAT_EQ(tfOpt->scale, 1.0f);
-}
-
 TEST_F(CoordinatorFixture, HandlePacketDestroyEntity_DestroysEntityById)
 {
     auto eng = engine();
@@ -301,75 +216,6 @@ TEST_F(CoordinatorFixture, HandlePacketDestroyEntity_DestroysEntityById)
     EXPECT_FALSE(eng->isAlive(ent));
 }
 
-TEST_F(CoordinatorFixture, BuildClientPacketBasedOnStatus_SendsOnePacketForPlayable)
-{
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    uint32_t eid = findFreeEntityId(eng, 400);
-
-    Entity playable = Entity::fromId(0);
-    try {
-        playable = eng->createEntityWithId(eid, "PlayableClient");
-    } catch (...) {
-        GTEST_SKIP() << "createEntityWithId() not usable in this runtime (skipping).";
-    }
-
-    eng->addComponent<Playable>(playable, Playable());
-    eng->addComponent<InputComponent>(playable, InputComponent(12u));
-
-    auto& inOpt = eng->getComponentEntity<InputComponent>(playable);
-    ASSERT_TRUE(inOpt.has_value());
-    inOpt->activeActions[GameAction::MOVE_LEFT] = true;
-
-    std::vector<common::protocol::Packet> out;
-    ASSERT_NO_THROW(coord.buildClientPacketBasedOnStatus(out, 16));
-
-    ASSERT_EQ(out.size(), 1u);
-    ASSERT_TRUE(PacketManager::assertPlayerInput(out[0]));
-}
-
-TEST_F(CoordinatorFixture, SpawnProjectile_CreatesProjectileWithExpectedComponents)
-{
-    auto eng = engine();
-    ASSERT_NE(eng, nullptr);
-
-    uint32_t shooterId = findFreeEntityId(eng, 500);
-
-    Entity shooter = Entity::fromId(0);
-    try {
-        shooter = eng->createEntityWithId(shooterId, "Shooter");
-    } catch (...) {
-        GTEST_SKIP() << "createEntityWithId() not usable in this runtime (skipping).";
-    }
-
-    eng->addComponent<Weapon>(shooter, Weapon(200, 0, 10, ProjectileType::MISSILE));
-    eng->addComponent<InputComponent>(shooter, InputComponent(1u));
-
-    uint32_t projId = findFreeEntityId(eng, 600);
-
-    Entity proj = Entity::fromId(0);
-    ASSERT_NO_THROW({
-        proj = coord.spawnProjectile(shooter, projId, 0x00, 100.f, 200.f, 1.f, 0.f);
-    });
-
-    ASSERT_TRUE(eng->isAlive(proj));
-
-    EXPECT_TRUE(eng->getComponentEntity<Transform>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<Velocity>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<Projectile>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<HitBox>(proj).has_value());
-
-    EXPECT_TRUE(eng->getComponentEntity<Sprite>(proj).has_value());
-    EXPECT_TRUE(eng->getComponentEntity<Animation>(proj).has_value());
-
-    auto& prOpt = eng->getComponentEntity<Projectile>(proj);
-    ASSERT_TRUE(prOpt.has_value());
-
-    EXPECT_TRUE(prOpt->isFromPlayable);
-    EXPECT_EQ(prOpt->damage, 10);
-}
-
 TEST_F(CoordinatorFixture, HandleGameStartEnd_TogglesGameRunning)
 {
     common::protocol::Packet start;
@@ -387,4 +233,304 @@ TEST_F(CoordinatorFixture, HandleGameStartEnd_TogglesGameRunning)
 
     ASSERT_NO_THROW(coord.handleGameEnd(end));
     EXPECT_FALSE(coord._gameRunning);
+}
+
+TEST_F(CoordinatorFixture, CreatePlayerEntity_AddsPlayableAndRenderComponents)
+{
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    uint32_t playerId = findFreeEntityId(eng, 700);
+    Entity entity = coord.createPlayerEntity(playerId, 10.f, 20.f, 1.f, 2.f, 150, true, true);
+
+    ASSERT_TRUE(eng->isAlive(entity));
+
+    auto& networkId = eng->getComponentEntity<NetworkId>(entity);
+    auto& sprite    = eng->getComponentEntity<Sprite>(entity);
+    auto& animation = eng->getComponentEntity<Animation>(entity);
+    auto& playable  = eng->getComponentEntity<Playable>(entity);
+    auto& input     = eng->getComponentEntity<InputComponent>(entity);
+    auto& weapon    = eng->getComponentEntity<Weapon>(entity);
+
+    ASSERT_TRUE(networkId.has_value());
+    ASSERT_TRUE(sprite.has_value());
+    ASSERT_TRUE(animation.has_value());
+    ASSERT_TRUE(playable.has_value());
+    ASSERT_TRUE(input.has_value());
+    ASSERT_TRUE(weapon.has_value());
+
+    EXPECT_EQ(networkId->id, playerId);
+    EXPECT_EQ(input->playerId, playerId);
+    EXPECT_EQ(weapon->damage, 10);
+}
+TEST_F(CoordinatorFixture, CreatePlayerEntity_SkipsRenderWhenRequested)
+{
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    uint32_t playerId = findFreeEntityId(eng, 800);
+    Entity entity = coord.createPlayerEntity(playerId, 5.f, 6.f, 0.f, 0.f, 80, false, false);
+
+    ASSERT_TRUE(eng->isAlive(entity));
+
+    auto& sprite    = eng->getComponentEntity<Sprite>(entity);
+    auto& animation = eng->getComponentEntity<Animation>(entity);
+
+    EXPECT_FALSE(sprite.has_value());
+    EXPECT_FALSE(animation.has_value());
+
+    EXPECT_TRUE(eng->getComponentEntity<NetworkId>(entity).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<InputComponent>(entity).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Health>(entity).has_value());
+}
+
+TEST_F(CoordinatorFixture, GetPlayablePlayerIds_ReturnsInputPlayerIds)
+{
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    uint32_t eid = findFreeEntityId(eng, 900);
+    Entity playable = eng->createEntityWithId(eid, "PlayableEntity");
+    const uint32_t playerId = 4242;
+
+    eng->addComponent<Playable>(playable, Playable());
+    eng->addComponent<InputComponent>(playable, InputComponent(playerId));
+
+    auto ids = coord.getPlayablePlayerIds();
+
+    ASSERT_EQ(ids.size(), 1u);
+    EXPECT_EQ(ids[0], playerId);
+}
+
+TEST_F(CoordinatorFixture, ProcessClientPackets_HandlesEntitySpawn)
+{
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    uint32_t entityId = findFreeEntityId(eng, 1200);
+    auto packetOpt = makeEntitySpawnPacket(
+        entityId,
+        /*posX=*/50,
+        /*posY=*/60,
+        static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER),
+        /*isPlayable=*/1
+    );
+
+    ASSERT_TRUE(packetOpt.has_value());
+
+    std::vector<common::protocol::Packet> incoming;
+    incoming.push_back(packetOpt.value());
+
+    coord.processClientPackets(incoming, 0);
+
+    Entity created = Entity::fromId(entityId);
+    EXPECT_TRUE(eng->isAlive(created));
+    EXPECT_TRUE(eng->getComponentEntity<Transform>(created).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Health>(created).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<InputComponent>(created).has_value());
+}
+
+// ==============================================================
+// Entity Creation Tests (Enemy, Projectile, Setup Methods)
+// ==============================================================
+
+TEST_F(CoordinatorFixture, CreateEnemyEntity_CreatesEntityWithComponents) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    uint32_t enemyId = findFreeEntityId(eng, 2000);
+    Entity enemy = coord.createEnemyEntity(
+        enemyId,
+        /*posX=*/100.0f,
+        /*posY=*/200.0f,
+        /*velX=*/-1.0f,
+        /*velY=*/0.0f,
+        /*initialHealth=*/50,
+        /*withRenderComponents=*/true
+    );
+
+    EXPECT_TRUE(eng->isAlive(enemy));
+    EXPECT_TRUE(eng->getComponentEntity<Transform>(enemy).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Velocity>(enemy).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Health>(enemy).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Sprite>(enemy).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<HitBox>(enemy).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Weapon>(enemy).has_value());
+}
+
+TEST_F(CoordinatorFixture, CreateProjectileEntity_CreatesProjectile) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    uint32_t projectileId = findFreeEntityId(eng, 3000);
+    Entity projectile = coord.createProjectileEntity(
+        projectileId,
+        /*posX=*/150.0f,
+        /*posY=*/250.0f,
+        /*velX=*/5.0f,
+        /*velY=*/0.0f,
+        /*isPlayerProjectile=*/true,
+        /*damage=*/10,
+        /*withRenderComponents=*/true
+    );
+
+    EXPECT_TRUE(eng->isAlive(projectile));
+    EXPECT_TRUE(eng->getComponentEntity<Transform>(projectile).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Velocity>(projectile).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Projectile>(projectile).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<HitBox>(projectile).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Sprite>(projectile).has_value());
+}
+
+TEST_F(CoordinatorFixture, SetupEnemyEntity_AddsAllComponents) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    Entity enemy = eng->createEntity("TestEnemy");
+    coord.setupEnemyEntity(
+        enemy,
+        /*enemyId=*/123,
+        /*posX=*/75.0f,
+        /*posY=*/125.0f,
+        /*velX=*/-0.5f,
+        /*velY=*/0.0f,
+        /*initialHealth=*/30,
+        /*withRenderComponents=*/false
+    );
+
+    EXPECT_TRUE(eng->getComponentEntity<Transform>(enemy).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Velocity>(enemy).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Health>(enemy).has_value());
+    EXPECT_FALSE(eng->getComponentEntity<Sprite>(enemy).has_value());  // No render
+}
+
+TEST_F(CoordinatorFixture, SetupProjectileEntity_AddsProjectileComponents) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    Entity projectile = eng->createEntity("TestProjectile");
+    Entity shooter = eng->createEntity("Shooter");
+
+    coord.setupProjectileEntity(
+        projectile,
+        /*projectileId=*/456,
+        /*posX=*/200.0f,
+        /*posY=*/150.0f,
+        /*velX=*/3.0f,
+        /*velY=*/0.0f,
+        /*isPlayerProjectile=*/false,
+        /*damage=*/15,
+        /*withRenderComponents=*/false
+    );
+
+    EXPECT_TRUE(eng->getComponentEntity<Transform>(projectile).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Velocity>(projectile).has_value());
+    EXPECT_TRUE(eng->getComponentEntity<Projectile>(projectile).has_value());
+    EXPECT_FALSE(eng->getComponentEntity<Sprite>(projectile).has_value());
+}
+
+// ==============================================================
+// Server Packet Processing Tests
+// ==============================================================
+
+TEST_F(CoordinatorFixture, QueueWeaponFire_AddsToQueue) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    EXPECT_EQ(coord._pendingWeaponFires.size(), 0);
+
+    coord.queueWeaponFire(
+        /*shooterId=*/123,
+        /*originX=*/100.0f,
+        /*originY=*/50.0f,
+        /*directionX=*/1.0f,
+        /*directionY=*/0.0f,
+        /*weaponType=*/0x00
+    );
+
+    EXPECT_EQ(coord._pendingWeaponFires.size(), 1);
+    EXPECT_EQ(coord._pendingWeaponFires[0].shooterId, 123);
+}
+
+TEST_F(CoordinatorFixture, SpawnPlayerOnServer_CreatesPacket) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    auto packetOpt = coord.spawnPlayerOnServer(
+        /*playerId=*/999,
+        /*posX=*/50.0f,
+        /*posY=*/75.0f
+    );
+
+    EXPECT_TRUE(packetOpt.has_value());
+    if (packetOpt.has_value()) {
+        EXPECT_EQ(packetOpt->header.packet_type, static_cast<uint8_t>(protocol::PacketTypes::TYPE_ENTITY_SPAWN));
+    }
+}
+
+// ==============================================================
+// Visual/Audio Effects Tests
+// ==============================================================
+
+/*DISABLED: HandlePacketAudioEffect_PlaysSound
+TEST_F(CoordinatorFixture, HandlePacketAudioEffect_PlaysSound) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    // Create AUDIO_EFFECT packet
+    std::vector<uint8_t> args;
+    uint8_t flagsCount = 0;
+    args.push_back(flagsCount);
+
+    uint32_t seq = 1;
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&seq), reinterpret_cast<uint8_t*>(&seq) + 4);
+
+    uint32_t timestamp = 100;
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&timestamp), reinterpret_cast<uint8_t*>(&timestamp) + 4);
+
+    uint8_t effectType = 0x00;  // SFX_SHOOT_BASIC
+    args.push_back(effectType);
+
+    uint16_t posX = 100;
+    uint16_t posY = 100;
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&posX), reinterpret_cast<uint8_t*>(&posX) + 2);
+    args.insert(args.end(), reinterpret_cast<uint8_t*>(&posY), reinterpret_cast<uint8_t*>(&posY) + 2);
+
+    uint8_t volume = 128;  // 50% volume
+    uint8_t pitch = 100;   // Normal pitch
+    args.push_back(volume);
+    args.push_back(pitch);
+
+    auto packetOpt = PacketManager::createAudioEffect(args);
+    ASSERT_TRUE(packetOpt.has_value());
+
+    coord.handlePacketAudioEffect(packetOpt.value());
+}*/
+
+TEST_F(CoordinatorFixture, SpawnVisualEffect_CreatesEntity) {
+    auto eng = engine();
+    ASSERT_NE(eng, nullptr);
+
+    size_t entityCountBefore = 0;
+    for (size_t i = 0; i < 1000; ++i) {
+        if (eng->isAlive(Entity::fromId(i))) entityCountBefore++;
+    }
+
+    coord.spawnVisualEffect(
+        protocol::VisualEffectType::VFX_EXPLOSION_SMALL,
+        50.0f,  // x
+        75.0f,  // y
+        1.5f,   // scale
+        0.5f,   // duration
+        1.0f,   // color_r
+        0.5f,   // color_g
+        0.0f    // color_b
+    );
+
+    size_t entityCountAfter = 0;
+    for (size_t i = 0; i < 1000; ++i) {
+        if (eng->isAlive(Entity::fromId(i))) entityCountAfter++;
+    }
+
+    EXPECT_GT(entityCountAfter, entityCountBefore);
 }

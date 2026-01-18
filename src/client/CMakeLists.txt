@@ -32,6 +32,11 @@ target_link_libraries(client_lib PUBLIC
     ${COMMON_LIBS}
 )
 
+# Link platform-specific network libraries
+if(WIN32)
+    target_link_libraries(client_lib PUBLIC ws2_32 wsock32)
+endif()
+
 # Create client executable (with main.cpp)
 add_executable(r-type-client 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp

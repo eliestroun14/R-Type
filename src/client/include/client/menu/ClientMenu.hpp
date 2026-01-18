@@ -63,6 +63,16 @@ class ClientMenu : public IMenu {
          */
         void clearMenuEntities(bool keepBackground = false);
 
+        /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void createScoreMenu();
+
+        /**
+         * @brief Method that create every entity for the accessibility menu.
+         */
+        void createCreditsMenu();
+
     private:
         bool _isConnected;
         std::shared_ptr<gameEngine::GameEngine> _engine;

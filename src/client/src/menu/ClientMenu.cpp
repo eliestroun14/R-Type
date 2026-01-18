@@ -105,6 +105,17 @@ void ClientMenu::createMainMenu()
             });
         }
     ));
+
+    addMenuEntity(createButton(*_engine, "CREDITS", 30, sf::Color::White, {350, 900}, DEFAULT_BUTTON_MID_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                this->clearMenuEntities();
+                this->createCreditsMenu();
+            });
+        }
+    ));
 }
 
 void ClientMenu::createOptionMenu()
@@ -278,10 +289,10 @@ void ClientMenu::createKeybindsMenu()
     // TEXTS ACTIONS
     addMenuEntity(createText(*this->_engine, "ACTIONS:", 35, sf::Color::White, {650, 350}, 0, 1.5f));
 
-    addMenuEntity(createText(*this->_engine, "SHOOT", 25, sf::Color::White, {650, 420}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "SWITCH WEAPON", 25, sf::Color::White, {650, 570}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "USE POWERUP", 25, sf::Color::White, {650, 720}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "SPECIAL", 25, sf::Color::White, {650, 870}, 0, 1.5f));
+    // addMenuEntity(createText(*this->_engine, "SHOOT", 25, sf::Color::White, {650, 420}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "SWITCH WEAPON", 25, sf::Color::White, {650, 490}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "USE POWERUP", 25, sf::Color::White, {650, 640}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "SPECIAL", 25, sf::Color::White, {650, 790}, 0, 1.5f));
 
 
     // ANIMATED IMAGES
@@ -392,10 +403,10 @@ void ClientMenu::createKeybindsMenu()
     //     }
     // ));
 
-    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SHOOT), GameAction::SHOOT, 30, {510, 450}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SWITCH_WEAPON), GameAction::SWITCH_WEAPON, 30, {510, 600}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::USE_POWERUP), GameAction::USE_POWERUP, 30, {510, 750}, DEFAULT_BUTTON_MID_SCALE));
-    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SPECIAL), GameAction::SPECIAL, 30, {510, 900}, DEFAULT_BUTTON_MID_SCALE));
+    // addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SHOOT), GameAction::SHOOT, 30, {510, 450}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SWITCH_WEAPON), GameAction::SWITCH_WEAPON, 30, {510, 520}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::USE_POWERUP), GameAction::USE_POWERUP, 30, {510, 670}, DEFAULT_BUTTON_MID_SCALE));
+    addMenuEntity(createRebindButton(*_engine, getKeybordKeyFromGameConfig(*this->_engine, GameAction::SPECIAL), GameAction::SPECIAL, 30, {510, 820}, DEFAULT_BUTTON_MID_SCALE));
 
 
 }
@@ -626,4 +637,89 @@ void ClientMenu::clearMenuEntities(bool keepBackground)
     if (!keepBackground) {
         _currentBackgroundAsset = Assets::MAIN_MENU_BG;
     }
+}
+
+void ClientMenu::createScoreMenu()
+{
+    // TEXTS
+    addMenuEntity(createText(*this->_engine, "CONGRATULATIONS", 80, sf::Color::White, {1000, 210}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "You survived to the first level", 50, sf::Color::White, {1000, 320}, 0, 1.5f));
+
+    addMenuEntity(createText(*this->_engine, "SCORE :", 40, sf::Color::White, {800, 550}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "100 000", 40, sf::Color::White, {1100, 550}, 0, 1.5f));
+
+    addMenuEntity(createButton(*_engine, "EXIT", 40, sf::Color::White, {750, 750}, DEFAULT_BUTTON_SCALE,
+        sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
+        DEFAULT_NONE_BUTTON, DEFAULT_HOVER_BUTTON, DEFAULT_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                if (this->_engine)
+                    this->_engine->closeWindow();
+            });
+        }
+    ));
+}
+
+void ClientMenu::createCreditsMenu()
+{
+    // BACKGROUND
+    addMenuEntity(createMovingBackground(*this->_engine, Assets::EPIPECH_SMILE, {0, 0},
+        0, 12.0f,
+        sf::IntRect(0, 0, 218, 164),
+        35.0, true, true));
+
+    // TEXTS
+    addMenuEntity(createText(*this->_engine, "OUR TEAM", 80, sf::Color::Magenta, {1000, 100}, 0, 1.5f));
+
+    addMenuEntity(createText(*this->_engine, "Manech (nitrached)", 20, sf::Color::Magenta, {250, 750}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "The king of Cleunay", 15, sf::Color::Magenta, {250, 800}, 0, 1.5f));
+
+    addMenuEntity(createText(*this->_engine, "Elie (TTV_Fr3nchFri3s)", 20, sf::Color::Magenta, {650, 750}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "The future chinese", 15, sf::Color::Magenta, {650, 800}, 0, 1.5f));
+
+    addMenuEntity(createText(*this->_engine, "Timeo (Pyro)", 20, sf::Color::Magenta, {1000, 750}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "The marmoset", 15, sf::Color::Magenta, {1000, 800}, 0, 1.5f));
+
+    addMenuEntity(createText(*this->_engine, "Pablo (Smoulmouc)", 20, sf::Color::Magenta, {1350, 750}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "The Goblin", 15, sf::Color::Magenta, {1350, 800}, 0, 1.5f));
+
+    addMenuEntity(createText(*this->_engine, "Aymeric (Mic)", 20, sf::Color::Magenta, {1700, 750}, 0, 1.5f));
+    addMenuEntity(createText(*this->_engine, "The temple enjoyer", 15, sf::Color::Magenta, {1700, 800}, 0, 1.5f));
+
+    // IMAGES
+    addMenuEntity(createImage(*this->_engine, Assets::PANECH, {100, 250},
+        0, 4.0f, sf::IntRect(0, 0, 76, 101), ZIndex::IS_UI_HUD));
+
+    addMenuEntity(createImage(*this->_engine, Assets::PELIE, {500, 250},
+        0, 4.0f, sf::IntRect(0, 10, 76, 101), ZIndex::IS_UI_HUD));
+
+    addMenuEntity(createImage(*this->_engine, Assets::PIMEO, {850, 250},
+        0, 4.0f, sf::IntRect(0, 10, 76, 101), ZIndex::IS_UI_HUD));
+
+    addMenuEntity(createImage(*this->_engine, Assets::TABLO, {1200, 250},
+        0, 4.0f, sf::IntRect(0, 10, 76, 101), ZIndex::IS_UI_HUD));
+
+    addMenuEntity(createImage(*this->_engine, Assets::PAYMERIC, {1550, 250},
+        0, 4.0f, sf::IntRect(0, 10, 76, 101), ZIndex::IS_UI_HUD));
+
+
+    // BUTTON
+    addMenuEntity(createButton(*_engine, "back", 0, sf::Color::White, {30, 30}, BACK_BUTTON_SCALE,
+        sf::IntRect(0, 0, BACK_BUTTON_SPRITE_WIDTH, BACK_BUTTON_SPRITE_HEIGHT),
+        BACK_NONE_BUTTON, BACK_HOVER_BUTTON, BACK_CLICKED_BUTTON,
+        [this]() {
+            this->_pendingActions.push([this]() {
+                // Queue the not ready event before going back
+                if (this->_coordinator) {
+                    auto playerIds = this->_coordinator->getPlayablePlayerIds();
+                    if (!playerIds.empty()) {
+                        this->_coordinator->queuePlayerNotReady(playerIds[0]);
+                    }
+                }
+                
+                this->clearMenuEntities();
+                this->createMainMenu();
+            });
+        }
+    ));
 }

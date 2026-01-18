@@ -8,7 +8,7 @@
 #ifndef ASSETS_HPP_
 #define ASSETS_HPP_
 
-#define NUMBER_ASSETS 51
+#define NUMBER_ASSETS 57
 #define NUMBER_FONT_ASSETS 5
 #define NUMBER_AUDIO_ASSETS 25
 
@@ -111,6 +111,14 @@ enum Assets {
     SOUND_OFF_NONE_BUTTON,
     SOUND_OFF_HOVER_BUTTON,
     SOUND_OFF_CLICKED_BUTTON,
+
+    // CREDITS
+    PANECH,
+    PELIE,
+    PIMEO,
+    TABLO,
+    PAYMERIC,
+    EPIPECH_SMILE,
 };
 
 static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
@@ -204,6 +212,14 @@ static const std::array<std::string, NUMBER_ASSETS> pathAssets = {
     "../assets/button/options/sound/soundOffNoneButton.png",
     "../assets/button/options/sound/soundOffHoverButton.png",
     "../assets/button/options/sound/soundOffClickedButton.png",
+
+    // CREDITS
+    "../assets/credits/panech.png",
+    "../assets/credits/pelie.png",
+    "../assets/credits/pimeo.png",
+    "../assets/credits/tablo.png",
+    "../assets/credits/paymeric.png",
+    "../assets/credits/epipechSmile.png",
 };
 
 
