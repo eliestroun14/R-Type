@@ -11,6 +11,7 @@
 #include <engine/ecs/system/System.hpp>
 #include <engine/ecs/Signature.hpp>
 #include <common/error/Error.hpp>
+#include <common/logger/Logger.hpp>
 
 #include <unordered_map>
 #include <typeindex>
@@ -144,8 +145,12 @@ public:
                 throw Error(ErrorType::EcsMissingSignature, ErrorMessages::ECS_MISSING_SIGNATURE);
 
             const Signature& systemSig = it->second;
+            bool matches = (entitySig & systemSig) == systemSig;
+            
+            LOG_DEBUG("entitySignatureChanged: entity={} system={} entitySig={} systemSig={} matches={}",
+                      entity, type.name(), entitySig.to_string(), systemSig.to_string(), matches);
 
-            if ((entitySig & systemSig) == systemSig)
+            if (matches)
                 addEntityToSystem(system.get(), entity);
             else
                 removeEntityFromSystem(system.get(), entity);

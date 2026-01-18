@@ -112,13 +112,26 @@ namespace gameEngine {
             }
 
             /**
-             * @brief Spawns a new entity in the engine.
-             * @param entityName A debug name for the entity.
-             * @return Entity The ID/Handle of the created entity.
+             * @brief Gets an entity from a direct internal ID.
+             * Use this when you have an ID that's already properly offset (from entity iteration).
+             * @param entityId The direct internal entity ID.
+             * @return Entity The entity handle.
              */
             Entity getEntityFromId(std::uint32_t entityId)
             {
-                return this->_entityManager->getEntityFromID(entityId);
+                return this->_entityManager->getEntityFromDirectID(entityId);
+            }
+
+            /**
+             * @brief Gets an entity from a network-relative ID.
+             * For networked entities, the provided ID should be without the NETWORKED_ID_OFFSET.
+             * @param entityId The network-relative entity ID (or local ID for local entities).
+             * @param isNetworked Whether this is a networked entity ID.
+             * @return Entity The entity handle.
+             */
+            Entity getEntityFromNetworkId(std::uint32_t entityId, bool isNetworked = true)
+            {
+                return this->_entityManager->getEntityFromID(entityId, isNetworked);
             }
 
             /**
@@ -366,6 +379,7 @@ namespace gameEngine {
             {
                 Signature sig{};
                 (sig.set(_entityManager->template getComponentTypeId<Components>()), ...);
+                LOG_DEBUG("setSystemSignature: system={} signature={}", typeid(S).name(), sig.to_string());
                 _systemManager->setSignature<S>(sig);
             }
 

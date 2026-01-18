@@ -13,6 +13,7 @@
 #include <common/protocol/PacketManager.hpp>
 #include <common/logger/Logger.hpp>
 #include <common/error/Error.hpp>
+#include <engine/ecs/entity/EntityManager.hpp>
 
 Game::Game(Type type)
     : _type(type), _isRunning(true), _isConnected(false)
@@ -419,13 +420,17 @@ void Game::sendExistingPlayersToNewClient(uint32_t newPlayerId)
         }
 
         try {
-            Entity existingEntity = engine->getEntityFromId(existingPlayerId);
+            // Calculate the internal entity ID from playerId
+            // Entity was created with createEntityWithId(playerId, ..., NETWORKED)
+            // which adds NETWORKED_ID_OFFSET to the playerId
+            uint32_t internalEntityId = NETWORKED_ID_OFFSET + existingPlayerId;
+            Entity existingEntity = engine->getEntityFromId(internalEntityId);
             auto& transforms = engine->getComponents<Transform>();
 
             // Use implicit conversion from Entity to size_t
             std::size_t entityId = existingEntity;
             if (entityId >= transforms.size() || !transforms[entityId].has_value()) {
-                LOG_WARN("Game: No transform found for existing player {}", existingPlayerId);
+                LOG_WARN("Game: No transform found for existing player {} (entity {})", existingPlayerId, entityId);
                 continue;
             }
 
@@ -454,11 +459,11 @@ void Game::sendExistingPlayersToNewClient(uint32_t newPlayerId)
             args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
             args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
 
-            // entity_id (4 bytes)
-            args.push_back(static_cast<uint8_t>(existingPlayerId & 0xFF));
-            args.push_back(static_cast<uint8_t>((existingPlayerId >> 8) & 0xFF));
-            args.push_back(static_cast<uint8_t>((existingPlayerId >> 16) & 0xFF));
-            args.push_back(static_cast<uint8_t>((existingPlayerId >> 24) & 0xFF));
+            // entity_id (4 bytes) - use internal entity ID
+            args.push_back(static_cast<uint8_t>(internalEntityId & 0xFF));
+            args.push_back(static_cast<uint8_t>((internalEntityId >> 8) & 0xFF));
+            args.push_back(static_cast<uint8_t>((internalEntityId >> 16) & 0xFF));
+            args.push_back(static_cast<uint8_t>((internalEntityId >> 24) & 0xFF));
 
             // entity_type (1 byte)
             args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
@@ -494,9 +499,10 @@ void Game::sendExistingPlayersToNewClient(uint32_t newPlayerId)
             if (existingPlayerPacket.has_value()) {
                 addOutgoingPacket(existingPlayerPacket.value(), newPlayerId);
                 // Mark this entity as broadcasted to prevent duplicate ENTITY_SPAWN from Coordinator
-                _coordinator->markEntityAsBroadcasted(existingPlayerId);
-                LOG_INFO("Game: Sent existing player {} info to new client {}", 
-                         existingPlayerId, newPlayerId);
+                // Use internal entity ID
+                _coordinator->markEntityAsBroadcasted(internalEntityId);
+                LOG_INFO("Game: Sent existing player {} (entity {}) info to new client {}", 
+                         existingPlayerId, internalEntityId, newPlayerId);
             } else {
                 LOG_ERROR("Game: Failed to create entity spawn packet for existing player {}", 
                          existingPlayerId);

@@ -239,7 +239,8 @@ void Coordinator::setupPlayerEntity(
 {
     // Common gameplay components (server + client)
     // CRITICAL: Add NetworkId component so entity is included in server snapshots
-    this->_engine->addComponent<NetworkId>(entity, NetworkId(playerId));
+    // Use the entity's actual internal ID (which includes NETWORKED_ID_OFFSET)
+    this->_engine->addComponent<NetworkId>(entity, NetworkId(static_cast<uint32_t>(entity)));
 
     // Always add Sprite and Animation (needed for CollisionSystem even on server)
     Assets spriteAsset = _playerSpriteAllocator.allocate(playerId);
@@ -315,7 +316,8 @@ void Coordinator::setupEnemyEntity(
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
     
     // Add NetworkId so enemy is synchronized to clients
-    this->_engine->addComponent<NetworkId>(entity, NetworkId{enemyId, false});
+    // Use the entity's actual internal ID (which includes NETWORKED_ID_OFFSET)
+    this->_engine->addComponent<NetworkId>(entity, NetworkId{static_cast<uint32_t>(entity), false});
     
     // Always add Sprite (needed for CollisionSystem even on server)
     // IntRect: (left, top, width, height) - defines which part of the texture to display
@@ -378,9 +380,9 @@ void Coordinator::setupProjectileEntity(
 
 Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std::string& backgroundAsset, const std::string& soundTheme)
 {
-    // Create level entity with a very high ID to avoid collision with networked entities
-    // Use a reserved range starting from 1,000,000 for special server-only entities
-    constexpr uint32_t LEVEL_ENTITY_ID_BASE = 1000000;
+    // Create level entity with LOCAL category - use IDs in the LOCAL range (0 to 999,999)
+    // Use a reserved range starting from 900,000 for special server-only level entities
+    constexpr uint32_t LEVEL_ENTITY_ID_BASE = 900000;
     uint32_t levelEntityId = LEVEL_ENTITY_ID_BASE + static_cast<uint32_t>(levelNumber);
     Entity levelEntity = this->_engine->createEntityWithId(levelEntityId, "Level_" + std::to_string(levelNumber), EntityCategory::LOCAL);
 
@@ -668,12 +670,13 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     // This ensures clients know about new enemies, powerups, etc. created server-side
     // ============================================================================
     auto& networkIdComponents = this->_engine->getComponents<NetworkId>();
+    const auto& networkedEntities = this->_engine->getNetworkedEntities();
     static uint32_t entitySpawnSequence = 0;
     
-    for (size_t i = 0; i < networkIdComponents.size(); ++i) {
-        if (networkIdComponents[i].has_value()) {
-            uint32_t networkId = networkIdComponents[i].value().id;
-            Entity entity = Entity::fromId(static_cast<uint32_t>(i));
+    for (size_t entityId : networkedEntities) {
+        if (entityId < networkIdComponents.size() && networkIdComponents[entityId].has_value()) {
+            uint32_t networkId = networkIdComponents[entityId].value().id;
+            Entity entity = Entity::fromId(static_cast<uint32_t>(entityId));
             
             // Check if this entity has been broadcast yet
             if (this->_engine->isAlive(entity) && _broadcastedEntityIds.find(networkId) == _broadcastedEntityIds.end()) {
@@ -700,7 +703,7 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     
     // Get all networked entities (entities with NetworkId component)
 
-    if (networkIdComponents.size() == 0) {
+    if (networkedEntities.size() == 0) {
         // No entities to sync
         return;
     }
@@ -708,11 +711,11 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
     // Collect all entity IDs that need to be synchronized
     // (Players, enemies, powerups - but NOT projectiles)
     std::vector<uint32_t> entityIds;
-    for (size_t i = 0; i < networkIdComponents.size(); ++i) {
-        if (networkIdComponents[i].has_value()) {
-            Entity entity = Entity::fromId(static_cast<uint32_t>(i));
+    for (size_t entityId : networkedEntities) {
+        if (entityId < networkIdComponents.size() && networkIdComponents[entityId].has_value()) {
+            Entity entity = Entity::fromId(static_cast<uint32_t>(entityId));
             if (this->_engine->isAlive(entity)) {
-                entityIds.push_back(networkIdComponents[i].value().id);
+                entityIds.push_back(networkIdComponents[entityId].value().id);
             }
         }
     }
@@ -879,7 +882,10 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
         false  // no render components on server
     );
 
-    LOG_INFO_CAT("Coordinator", "Spawned player entity for client ID {}", playerId);
+    // Get the actual internal entity ID (with offset)
+    uint32_t entityId = static_cast<uint32_t>(playerEntity);
+
+    LOG_INFO_CAT("Coordinator", "Spawned player entity for client ID {} with internal entity ID {}", playerId, entityId);
 
     // Create ENTITY_SPAWN packet to broadcast to all clients
     std::vector<uint8_t> args;
@@ -907,11 +913,11 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     args.push_back(static_cast<uint8_t>((timestamp >> 16) & 0xFF));
     args.push_back(static_cast<uint8_t>((timestamp >> 24) & 0xFF));
 
-    // entity_id (4 bytes)
-    args.push_back(static_cast<uint8_t>(playerId & 0xFF));
-    args.push_back(static_cast<uint8_t>((playerId >> 8) & 0xFF));
-    args.push_back(static_cast<uint8_t>((playerId >> 16) & 0xFF));
-    args.push_back(static_cast<uint8_t>((playerId >> 24) & 0xFF));
+    // entity_id (4 bytes) - use the actual internal entity ID
+    args.push_back(static_cast<uint8_t>(entityId & 0xFF));
+    args.push_back(static_cast<uint8_t>((entityId >> 8) & 0xFF));
+    args.push_back(static_cast<uint8_t>((entityId >> 16) & 0xFF));
+    args.push_back(static_cast<uint8_t>((entityId >> 24) & 0xFF));
 
     // entity_type (1 byte) - ENTITY_TYPE_PLAYER
     args.push_back(static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER));
@@ -944,9 +950,10 @@ std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_
     // Note: The network manager should handle setting this to 1 for the owning client
     args.push_back(0);
 
-    // Mark this player as already broadcasted to prevent duplicate ENTITY_SPAWN from auto-broadcast system
+    // Mark this entity as already broadcasted to prevent duplicate ENTITY_SPAWN from auto-broadcast system
     // This must be done BEFORE returning so the next buildServerPacketBasedOnStatus() tick won't resend it
-    this->markEntityAsBroadcasted(playerId);
+    // Use the actual internal entity ID (with offset)
+    this->markEntityAsBroadcasted(entityId);
 
     return PacketManager::createEntitySpawn(args);
 }
@@ -986,20 +993,22 @@ bool Coordinator::shouldSendPacketToPlayer(const common::protocol::Packet& packe
 std::vector<uint32_t> Coordinator::getPlayablePlayerIds()
 {
     std::vector<uint32_t> playerIds;
-    auto playableEntities = this->_engine->getComponents<Playable>();
+    auto& playableComponents = this->_engine->getComponents<Playable>();
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
 
-    LOG_DEBUG_CAT("Coordinator", "getPlayablePlayerIds: checking {} entities for Playable component", playableEntities.size());
+    // Iterate over networked entities only (not the entire vector)
+    const auto& networkedEntities = this->_engine->getNetworkedEntities();
+    LOG_DEBUG_CAT("Coordinator", "getPlayablePlayerIds: checking {} networked entities", networkedEntities.size());
 
-    for (size_t i = 0; i < playableEntities.size(); ++i) {
-        if (playableEntities[i].has_value()) {
+    for (size_t entityId : networkedEntities) {
+        if (entityId < playableComponents.size() && playableComponents[entityId].has_value()) {
             // Get the InputComponent to retrieve the actual player ID
-            if (i < inputComponents.size() && inputComponents[i].has_value()) {
-                uint32_t playerId = inputComponents[i].value().playerId;
+            if (entityId < inputComponents.size() && inputComponents[entityId].has_value()) {
+                uint32_t playerId = inputComponents[entityId].value().playerId;
                 playerIds.push_back(playerId);
-                LOG_DEBUG_CAT("Coordinator", "  Found playable entity at index {} with playerId {}", i, playerId);
+                LOG_DEBUG_CAT("Coordinator", "  Found playable entity {} with playerId {}", entityId, playerId);
             } else {
-                LOG_WARN_CAT("Coordinator", "  Playable entity at index {} has no InputComponent", i);
+                LOG_WARN_CAT("Coordinator", "  Playable entity {} has no InputComponent", entityId);
             }
         }
     }
@@ -1013,13 +1022,15 @@ std::vector<uint32_t> Coordinator::getAllConnectedPlayerIds() const
     std::vector<uint32_t> playerIds;
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
 
-    LOG_DEBUG_CAT("Coordinator", "getAllConnectedPlayerIds: checking {} input components", inputComponents.size());
+    // Iterate over networked entities only (not the entire vector)
+    const auto& networkedEntities = this->_engine->getNetworkedEntities();
+    LOG_DEBUG_CAT("Coordinator", "getAllConnectedPlayerIds: checking {} networked entities", networkedEntities.size());
 
-    for (size_t i = 0; i < inputComponents.size(); ++i) {
-        if (inputComponents[i].has_value()) {
-            uint32_t playerId = inputComponents[i].value().playerId;
+    for (size_t entityId : networkedEntities) {
+        if (entityId < inputComponents.size() && inputComponents[entityId].has_value()) {
+            uint32_t playerId = inputComponents[entityId].value().playerId;
             playerIds.push_back(playerId);
-            LOG_DEBUG_CAT("Coordinator", "  Found player entity at index {} with playerId {}", i, playerId);
+            LOG_DEBUG_CAT("Coordinator", "  Found player entity {} with playerId {}", entityId, playerId);
         }
     }
 
@@ -1125,8 +1136,8 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
 
     LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: called with playerId={}", playerId);
 
-    // Get the entity for the player ID
-    Entity playerEntity = this->_engine->getEntityFromId(playerId);
+    // Get the entity for the player ID (convert network-relative ID to internal ID)
+    Entity playerEntity = this->_engine->getEntityFromNetworkId(playerId, true);
     if (!this->_engine->isAlive(playerEntity)) {
         LOG_WARN_CAT("Coordinator", "createPacketInputClient: player entity {} is not alive", playerId);
         return false;
@@ -1232,23 +1243,26 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
     LOG_INFO_CAT("Coordinator", "handlePlayerInputPacket: playerId={} actionCount={}",
                   parsed->playerId, parsed->actions.size());
 
-    // Find the entity for this player by iterating over all InputComponents
+    // Find the entity for this player by iterating over networked entities only
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
-    LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: checking {} input components", inputComponents.size());
+    const auto& networkedEntities = this->_engine->getNetworkedEntities();
+    LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: checking {} networked entities", networkedEntities.size());
 
     bool foundPlayer = false;
-    for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
-        auto& input = inputComponents[entityId];
-        if (input.has_value() && input->playerId == parsed->playerId) {
-            LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
-            Entity entity = Entity::fromId(entityId);
-            // Update all input actions
-            for (const auto& [action, isPressed] : parsed->actions) {
-                this->_engine->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
-                LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
+    for (size_t entityId : networkedEntities) {
+        if (entityId < inputComponents.size()) {
+            auto& input = inputComponents[entityId];
+            if (input.has_value() && input->playerId == parsed->playerId) {
+                LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
+                Entity entity = Entity::fromId(entityId);
+                // Update all input actions
+                for (const auto& [action, isPressed] : parsed->actions) {
+                    this->_engine->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
+                    LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
+                }
+                foundPlayer = true;
+                break;
             }
-            foundPlayer = true;
-            break;
         }
     }
 
@@ -1269,19 +1283,22 @@ void Coordinator::handleRelayedPlayerInputPacket(const common::protocol::Packet&
                   parsed->playerId, parsed->actions.size());
 
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
+    const auto& networkedEntities = this->_engine->getNetworkedEntities();
 
-    for (size_t entityId = 0; entityId < inputComponents.size(); ++entityId) {
-        auto& input = inputComponents[entityId];
-        if (input.has_value() && input->playerId == parsed->playerId) {
-            LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
-            Entity entity = Entity::fromId(entityId);
+    for (size_t entityId : networkedEntities) {
+        if (entityId < inputComponents.size()) {
+            auto& input = inputComponents[entityId];
+            if (input.has_value() && input->playerId == parsed->playerId) {
+                LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: found player {} at entity {}", parsed->playerId, entityId);
+                Entity entity = Entity::fromId(entityId);
 
-            for (const auto& [action, isPressed] : parsed->actions) {
-                input->activeActions[action] = isPressed;
-                LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: Directly updated Player {} action {} to {}",
-                             parsed->playerId, static_cast<int>(action), isPressed);
+                for (const auto& [action, isPressed] : parsed->actions) {
+                    input->activeActions[action] = isPressed;
+                    LOG_DEBUG_CAT("Coordinator", "handleRelayedPlayerInputPacket: Directly updated Player {} action {} to {}",
+                                 parsed->playerId, static_cast<int>(action), isPressed);
+                }
+                break;
             }
-            break;
         }
     }
 }
@@ -1315,9 +1332,11 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     // Add type-specific components
     switch (payload.entity_type) {
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER): {
+            // Convert entity_id to player_id (network-relative ID without offset)
+            uint32_t playerId = EntityManager::toNetworkRelativeId(payload.entity_id);
             this->setupPlayerEntity(
                 newEntity,
-                payload.entity_id,
+                playerId,
                 static_cast<float>(payload.position_x),
                 static_cast<float>(payload.position_y),
                 static_cast<float>(payload.initial_velocity_x),
