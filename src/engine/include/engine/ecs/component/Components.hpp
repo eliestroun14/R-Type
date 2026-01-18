@@ -853,13 +853,13 @@ struct GameConfig {
             _keybinds[sf::Keyboard::Right] = GameAction::MOVE_RIGHT;
 
             // ACTIONS
-            _keybinds[sf::Keyboard::S] = GameAction::SHOOT;
+            _keybinds[sf::Keyboard::Space] = GameAction::SHOOT;
             _keybinds[sf::Keyboard::D] = GameAction::SWITCH_WEAPON;
-            _keybinds[sf::Keyboard::Space] = GameAction::USE_POWERUP;
+            _keybinds[sf::Keyboard::P] = GameAction::USE_POWERUP;
             _keybinds[sf::Keyboard::F] = GameAction::SPECIAL;
 
             // OTHER
-            _keybinds[sf::Keyboard::P] = GameAction::OPTIONS;
+            _keybinds[sf::Keyboard::O] = GameAction::OPTIONS;
             _keybinds[sf::Keyboard::Escape] = GameAction::EXIT;
         }
 };
