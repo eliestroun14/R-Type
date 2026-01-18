@@ -156,7 +156,7 @@ public:
      * @param pos Entity ID.
      */
     void erase(sizeType pos) {
-        if (_data[pos])
+        if (pos < _data.size() && _data[pos])
             _data[pos].reset();
     }
 

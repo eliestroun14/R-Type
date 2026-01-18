@@ -11,12 +11,18 @@
 #include <common/logger/Logger.hpp>
 #include <common/error/Error.hpp>
 
+constexpr float SCREEN_WIDTH = 1920.0f;
+constexpr float SCREEN_HEIGHT = 1080.0f;
+constexpr float PLAYER_MARGIN = 0.0f;
+
 void PlayerSystem::onUpdate(float dt)
 {
     try {
         auto& velocities = this->_engine.getComponents<Velocity>();
         auto& animations = this->_engine.getComponents<Animation>();
         auto& inputs = this->_engine.getComponents<InputComponent>();
+        auto& transforms = this->_engine.getComponents<Transform>();
+        auto& sprites = this->_engine.getComponents<Sprite>();
 
         LOG_DEBUG_CAT("PlayerSystem", "onUpdate: processing {} entities", this->_entities.size());
 
@@ -53,6 +59,51 @@ void PlayerSystem::onUpdate(float dt)
                 vel.vx = vx;
                 vel.vy = vy;
             }
+
+            if (transforms[e].has_value()) {
+                auto& transform = transforms[e].value();
+
+                float spriteWidth = 0.0f;
+                float spriteHeight = 0.0f;
+
+                if (sprites[e].has_value()) {
+                    auto& sprite = sprites[e].value();
+                    spriteWidth = sprite.rect.width;
+                    spriteHeight = sprite.rect.height;
+                }
+
+                float minX = PLAYER_MARGIN;
+                float maxX = SCREEN_WIDTH - spriteWidth - PLAYER_MARGIN;
+                float minY = PLAYER_MARGIN;
+                float maxY = SCREEN_HEIGHT - spriteHeight - PLAYER_MARGIN;
+
+                if (transform.x < minX) {
+                    transform.x = minX;
+                    if (velocities[e].has_value()) {
+                        velocities[e].value().vx = 0.0f;
+                    }
+                } else if (transform.x > maxX) {
+                    transform.x = maxX;
+                    if (velocities[e].has_value()) {
+                        velocities[e].value().vx = 0.0f;
+                    }
+                }
+
+                if (transform.y < minY) {
+                    transform.y = minY;
+                    if (velocities[e].has_value()) {
+                        velocities[e].value().vy = 0.0f;
+                    }
+                } else if (transform.y > maxY) {
+                    transform.y = maxY;
+                    if (velocities[e].has_value()) {
+                        velocities[e].value().vy = 0.0f;
+                    }
+                }
+
+                LOG_DEBUG_CAT("PlayerSystem", "Player position clamped: x={}, y={}", transform.x, transform.y);
+            }
+
 
             // Update animation based on movement direction (on both server and client)
             if (animations[e].has_value()) {

@@ -17,6 +17,7 @@ class IMenu {
         virtual void createMainMenu() = 0;
         virtual void createOptionMenu() = 0;
         virtual void clearMenuEntities(bool keepBackground = false) = 0;
+        virtual void createScoreMenu(uint32_t score = 0) = 0;
 };
 
 #endif /* !IMENU_HPP_ */

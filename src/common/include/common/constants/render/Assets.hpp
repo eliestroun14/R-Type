@@ -319,7 +319,7 @@ static const std::array<std::string, NUMBER_AUDIO_ASSETS> pathAudioAssets = {
 
     // MUSIC
     "../assets/audio/music/mainMenuMusic.ogg",
-    "../assets/audio/music/firstLevelMusic.ogg",
+    "../assets/audio/music/03.-Start-_-Battle-Theme-_1st-Stage_.ogg",
     "../assets/audio/music/secondLevelMusic.ogg",
     "../assets/audio/music/thirdLevelMusic.ogg",
     "../assets/audio/music/fourthLevelMusic.ogg",

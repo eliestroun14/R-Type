@@ -62,7 +62,7 @@ void RenderManager::init()
     }
 
     // Create window and set icon BEFORE positioning
-    this->_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "R-Type", sf::Style::Close);
+    this->_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "R-Type", sf::Style::Fullscreen);
     this->_window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
     std::cout << "[RenderManager] Icon set to window" << std::endl;
     

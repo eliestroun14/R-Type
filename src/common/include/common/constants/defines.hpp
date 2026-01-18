@@ -64,7 +64,7 @@ enum NetworkType {
 
 // base weapon for enemies
 #define BASE_ENEMY_WEAPON_DAMAGE 8
-#define BASE_ENEMY_WEAPON_FIRE_RATE 1300
+#define BASE_ENEMY_WEAPON_FIRE_RATE 800
 
 // ==============================================================
 //              ENEMY TYPE DEFINITIONS
@@ -74,15 +74,15 @@ enum NetworkType {
 #define FAST_ENEMY_HEALTH 30
 #define FAST_ENEMY_VELOCITY_X -30.0f
 #define FAST_ENEMY_VELOCITY_Y 0.0f
-#define FAST_ENEMY_WEAPON_FIRE_RATE 100
+#define FAST_ENEMY_WEAPON_FIRE_RATE 500
 #define FAST_ENEMY_WEAPON_DAMAGE 5
 #define FAST_ENEMY_SCALE 0.5f
 
 // TANK ENEMY
 #define TANK_ENEMY_HEALTH 150
 #define TANK_ENEMY_VELOCITY_X -5.0f
-#define TANK_ENEMY_VELOCITY_Y -5.0f
-#define TANK_ENEMY_WEAPON_FIRE_RATE 500
+#define TANK_ENEMY_VELOCITY_Y 0.0f
+#define TANK_ENEMY_WEAPON_FIRE_RATE 1500
 #define TANK_ENEMY_WEAPON_DAMAGE 15
 #define TANK_ENEMY_SCALE 2.0f
 
@@ -92,7 +92,7 @@ enum NetworkType {
 
 // Level 1 Configuration
 #define LEVEL_1_NUMBER 1
-#define LEVEL_1_DURATION 60.0f  // seconds (0 = infinite/until all waves complete)
+#define LEVEL_1_DURATION 120.0f  // seconds (0 = infinite/until all waves complete)
 #define LEVEL_1_BACKGROUND_ASSET "background_level1"
 #define LEVEL_1_MUSIC_ASSET "music_level1"
 

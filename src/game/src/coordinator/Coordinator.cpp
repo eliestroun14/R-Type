@@ -13,6 +13,7 @@
 #include "game/systems/ScoreSystem.hpp"
 #include "game/systems/LevelSystem.hpp"
 #include "game/systems/LevelTimerSystem.hpp"
+#include <game/systems/DestroySystem.hpp>
 
 void Coordinator::initEngine()
 {
@@ -81,6 +82,9 @@ void Coordinator::initEngine()
     // Must run on both client AND server for authoritative damage
     auto collisionSystem = this->_engine->registerSystem<CollisionSystem>(*this->_engine);
     this->_engine->setSystemSignature<CollisionSystem, Transform, Sprite, HitBox>();
+
+    auto destroySystem = this->_engine->registerSystem<DestroySystem>(*this->_engine);
+    this->_engine->setSystemSignature<DestroySystem, Transform>();
 }
 
 void Coordinator::initEngineRender()  // Nouvelle méthode
@@ -163,6 +167,37 @@ Entity Coordinator::createScoreEntity(
     // Bind this entity as the HUD score target for ScoreSystem
     this->_engine->getSystem<ScoreSystem>().setHudEntity(entity);
     LOG_INFO_CAT("UI", "ScoreSystem HUD entity set: entityIndex={}",
+        static_cast<std::size_t>(entity));
+
+    return entity;
+}
+
+Entity Coordinator::createTimerEntity(
+    float posX,
+    float posY
+)
+{
+    Entity entity = this->_engine->createEntity(
+        "Timer",
+        EntityCategory::LOCAL
+    );
+
+    LOG_INFO_CAT("UI", "Timer entity created: entityIndex={}",
+        static_cast<std::size_t>(entity));
+
+    // Add Transform component
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
+
+    // Add Text component
+    this->_engine->addComponent<Text>(
+        entity,
+        Text("Time: 00:00", sf::Color::White, 30, ZIndex::IS_UI_HUD)
+    );
+
+    // Add TimerUI component so LevelTimerSystem will update this entity
+    this->_engine->addComponent<TimerUI>(entity, TimerUI());
+
+    LOG_INFO_CAT("UI", "Timer HUD entity configured: entityIndex={}",
         static_cast<std::size_t>(entity));
 
     return entity;
@@ -434,38 +469,53 @@ Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std
         // Wave 1: Basic enemies
         Wave wave1;
         wave1.startTime = LEVEL_1_WAVE_1_START_TIME;
-        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 100.f, 0.f});
-        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 1.5f});
-        wave1.enemies.push_back({EnemyType::BASIC, 800.f, 300.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 200.f, 0.f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 300.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 400.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 500.f, 1.5f});
+        wave1.enemies.push_back({EnemyType::BASIC, 1940.f, 600.f, 1.5f});
 
         // Wave 2: Mix of basic and fast enemies
         Wave wave2;
         wave2.startTime = LEVEL_1_WAVE_2_START_TIME;
-        wave2.enemies.push_back({EnemyType::FAST, 800.f, 150.f, 0.f});
-        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 250.f, 1.0f});
-        wave2.enemies.push_back({EnemyType::FAST, 800.f, 350.f, 1.0f});
-        wave2.enemies.push_back({EnemyType::BASIC, 800.f, 450.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 1940.f, 250.f, 0.f});
+        wave2.enemies.push_back({EnemyType::BASIC, 1960.f, 300.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 1940.f, 450.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::BASIC, 1960.f, 500.f, 1.0f});
+        wave2.enemies.push_back({EnemyType::FAST, 1940.f, 600.f, 1.0f});
 
         // Wave 3: Tank wave
-        //Wave wave3;
-        //wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
-        //wave3.enemies.push_back({EnemyType::TANK, 800.f, 200.f, 0.f});
-        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 2.0f});
-        //wave3.enemies.push_back({EnemyType::FAST, 800.f, 300.f, 0.5f});
+        Wave wave3;
+        wave3.startTime = LEVEL_1_WAVE_3_START_TIME;
+        wave3.enemies.push_back({EnemyType::TANK, 1940.f, 300.f, 0.f});
+        wave3.enemies.push_back({EnemyType::FAST, 1940.f, 200.f, 0.5f});
+        wave3.enemies.push_back({EnemyType::FAST, 1960.f, 250.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1940.f, 300.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1960.f, 350.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1940.f, 400.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::FAST, 1960.f, 450.f, 2.0f});
+        wave3.enemies.push_back({EnemyType::TANK, 1940.f, 600.f, 0.f});
+
 
         // Wave 4: Final assault
-        //Wave wave4;
-        //wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
-        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 100.f, 0.f});
-        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 200.f, 0.5f});
-        //wave4.enemies.push_back({EnemyType::TANK, 800.f, 300.f, 0.5f});
-        //wave4.enemies.push_back({EnemyType::FAST, 800.f, 400.f, 0.5f});
-        //wave4.enemies.push_back({EnemyType::BASIC, 800.f, 500.f, 0.5f});
+        Wave wave4;
+        wave4.startTime = LEVEL_1_WAVE_4_START_TIME;
+        wave4.enemies.push_back({EnemyType::TANK, 2000.f, 100.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1940.f, 100.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1970.f, 100.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::FAST, 1970.f, 200.f, 0.f});
+        wave4.enemies.push_back({EnemyType::BASIC, 1970.f, 300.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::FAST, 1970.f, 400.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::BASIC, 1970.f, 500.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1970.f, 600.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 1970.f, 600.f, 0.5f});
+        wave4.enemies.push_back({EnemyType::TANK, 2000.f, 600.f, 0.5f});
+
 
         level.waves.push_back(wave1);
         level.waves.push_back(wave2);
-        //level.waves.push_back(wave3);
-        //level.waves.push_back(wave4);
+        level.waves.push_back(wave3);
+        level.waves.push_back(wave4);
     }
     // Can add more levels later
     else {
@@ -524,6 +574,9 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
     for (const auto& packet : packetsToProcess) {
         // Check packet type first, then validate
         uint8_t packetType = packet.header.packet_type;
+        
+        LOG_DEBUG_CAT("Coordinator", "Client processing packet type=0x{:02x} ({}) dataSize={}",
+            packetType, static_cast<int>(packetType), packet.data.size());
 
         switch (packetType) {
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT):
@@ -628,8 +681,12 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE):
+                LOG_DEBUG_CAT("Coordinator", "Received LEVEL_COMPLETE packet, validating...");
                 if (PacketManager::assertLevelComplete(packet)) {
+                    LOG_DEBUG_CAT("Coordinator", "LEVEL_COMPLETE packet validation passed, handling...");
                     handlePacketLevelComplete(packet);
+                } else {
+                    LOG_WARN_CAT("Coordinator", "LEVEL_COMPLETE packet validation FAILED");
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START):
@@ -907,6 +964,18 @@ void Coordinator::buildServerPacketBasedOnStatus(std::vector<common::protocol::P
 
 std::optional<common::protocol::Packet> Coordinator::spawnPlayerOnServer(uint32_t playerId, float posX, float posY)
 {
+    // Calculate the actual entity ID that will be used (playerId + NETWORKED_ID_OFFSET)
+    uint32_t expectedEntityId = NETWORKED_ID_OFFSET + playerId;
+    
+    // Check if an entity already exists with this ID (e.g., a projectile took this ID)
+    // If so, destroy it first - players have priority
+    Entity existingEntity = this->_engine->getEntityFromId(expectedEntityId);
+    if (this->_engine->isAlive(existingEntity)) {
+        LOG_WARN_CAT("Coordinator", "Entity {} already exists when spawning player {} - destroying existing entity (likely a projectile)", 
+                     expectedEntityId, playerId);
+        this->_engine->destroyEntity(expectedEntityId);
+    }
+    
     // Create the player entity on the server
     Entity playerEntity = this->createPlayerEntity(
         playerId,
@@ -1375,16 +1444,35 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
     LOG_INFO_CAT("Coordinator", "Entity created: id={} type={} pos=({}, {}) health={} is_playable={}",
         payload.entity_id, payload.entity_type, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), payload.initial_health, payload.is_playable);
 
-    // Check if entity already exists in NETWORKED list (to avoid duplicate spawning)
-    // Only check NETWORKED entities, not LOCAL entities (which can have the same IDs)
+    // Check if entity already exists in NETWORKED list
     const auto& networkedEntities = this->_engine->getNetworkedEntities();
     if (networkedEntities.find(payload.entity_id) != networkedEntities.end()) {
-        LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists in NETWORKED list, skipping spawn", payload.entity_id);
-        return;
+        // If incoming entity is a PLAYER, destroy the existing entity (likely a projectile)
+        // and create the player instead - players have priority over projectiles
+        if (payload.entity_type == static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_PLAYER)) {
+            LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists but incoming is PLAYER - destroying existing entity to make room", payload.entity_id);
+            Entity existingEntity = this->_engine->getEntityFromId(payload.entity_id);
+            if (this->_engine->isAlive(existingEntity)) {
+                this->_engine->destroyEntity(existingEntity);
+            }
+        } else {
+            LOG_WARN_CAT("Coordinator", "Entity with ID {} already exists in NETWORKED list, skipping spawn", payload.entity_id);
+            return;
+        }
     }
 
     // Create the entity with the specific ID from the server
-    Entity newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
+    Entity newEntity = Entity::fromId(0);  // Placeholder, will be replaced
+    try {
+        newEntity = this->_engine->createEntityWithId(payload.entity_id, "Entity_" + std::to_string(payload.entity_id));
+        LOG_DEBUG_CAT("Coordinator", "handlePacketCreateEntity: Successfully created entity {}", payload.entity_id);
+    } catch (const Error& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: Failed to create entity {}: {}", payload.entity_id, e.what());
+        return;
+    } catch (const std::exception& e) {
+        LOG_ERROR_CAT("Coordinator", "handlePacketCreateEntity: Unexpected error creating entity {}: {}", payload.entity_id, e.what());
+        return;
+    }
 
     // Add type-specific components
     switch (payload.entity_type) {
@@ -2322,11 +2410,20 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         LOG_INFO_CAT("Coordinator", "Level {} completed, preparing level {}", completed_level, next_level);
     }
 
-    // Create a UI text entity to display the completion message
-    Entity messageEntity = this->_engine->createEntity("LevelCompleteMessage");
-    this->_engine->addComponent<Transform>(messageEntity, Transform(400.f, 300.f, 0.f, 1.5f));
-    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage.c_str()));
-    this->_engine->addComponent<Sprite>(messageEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    // Get the current player's score to display in the menu
+    uint32_t finalScore = 0;
+    auto& scores = this->_engine->getComponents<Score>();
+    for (auto& scoreOpt : scores) {
+        if (scoreOpt.has_value()) {
+            finalScore = scoreOpt->score;
+            break;  // Get first player's score
+        }
+    }
+    
+    // Add bonus score to final score
+    finalScore += bonus_score;
+    
+    LOG_INFO_CAT("Coordinator", "Final score: {} (bonus: {})", finalScore, bonus_score);
 
     // Update game state based on completion
     if (next_level == 0xFF) {
@@ -2334,23 +2431,14 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         _gameRunning = false;
         stopMusic();  // Stop level music
         LOG_INFO_CAT("Coordinator", "Game ended - all levels completed, music stopped");
-
-        // Display final game stats
-        std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
-        Entity timeEntity = this->_engine->createEntity("CompletionTime");
-        this->_engine->addComponent<Transform>(timeEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage.c_str()));
-        this->_engine->addComponent<Sprite>(timeEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+        
+        // Notify Game to display the score menu with the final score
+        if (_levelCompleteCallback) {
+            _levelCompleteCallback(finalScore);
+        }
     } else {
         // More levels to play - keep game running
         LOG_INFO_CAT("Coordinator", "Waiting for server to start level {}", next_level);
-
-        // Display "Next Level" message
-        std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
-        Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
-        this->_engine->addComponent<Transform>(nextEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage.c_str()));
-        this->_engine->addComponent<Sprite>(nextEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     }
 }
 
@@ -2386,6 +2474,35 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
 
     // Set game to running state
     _gameRunning = true;
+    
+    // Create or update Level component on client side (for timer display)
+    try {
+        Entity levelEntity = this->_engine->createEntity("Level_" + std::to_string(level_id), EntityCategory::LOCAL);
+        Level levelComponent;
+        levelComponent.levelDuration = static_cast<float>(estimated_duration);
+        levelComponent.elapsedTime = 0.f;
+        levelComponent.started = true;
+        levelComponent.completed = false;
+        levelComponent.currentWaveIndex = 0;
+        this->_engine->addComponent<Level>(levelEntity, levelComponent);
+        LOG_INFO_CAT("Coordinator", "Created Level component on client: entity={} duration={} seconds", 
+            static_cast<std::size_t>(levelEntity), estimated_duration);
+
+        // Create HUD score and timer entities only after LEVEL_START
+        this->createScoreEntity(
+            /*scoreId*/ 1,
+            /*posX*/ 300.f,
+            /*posY*/ 50.f,
+            /*initialScore*/ 0
+        );
+        this->createTimerEntity(
+            /*posX*/ 1500.f,
+            /*posY*/ 50.f
+        );
+        LOG_INFO_CAT("Coordinator", "Created HUD score and timer entities after LEVEL_START");
+    } catch (const std::exception& e) {
+        LOG_ERROR_CAT("Coordinator", "Failed to create Level component or HUD entities: {}", e.what());
+    }
     
     // Notify Game to clear the menu (client-side)
     if (_levelStartCallback) {
@@ -3431,7 +3548,7 @@ void Coordinator::playMusic(protocol::AudioEffectType musicType)
             return;
     }
 
-    this->_engine->getAudioManager()->playMusic(musicPath, 0.5f); // 50% volume
+    this->_engine->getAudioManager()->playMusic(musicPath, 0.1f); // 100% volume
 
     LOG_INFO_CAT("Coordinator", "Playing music: %s", musicPath.c_str());
 }

@@ -96,6 +96,11 @@ class Coordinator {
             uint32_t initialScore
         );
 
+        Entity createTimerEntity(
+            float posX,
+            float posY
+        );
+
         Entity createEnemyEntity(
             uint32_t enemyId,
             float posX,
@@ -305,6 +310,9 @@ class Coordinator {
         
         // Callback to notify Game when level starts (client-side)
         std::function<void()> _levelStartCallback;
+        
+        // Callback to notify Game when level is complete (client-side) - receives final score
+        std::function<void(uint32_t)> _levelCompleteCallback;
         
     private:
         // Event structure for player ready/not ready

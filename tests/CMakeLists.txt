@@ -17,8 +17,8 @@ add_executable(ecs_tests
    engine/gameEngine/coordinator/TestCoordinator.cpp
 
    engine/LoggerTest.cpp
-    engine/audio/TestAudioManager.cpp
-    engine/audio/TestAudioStorage.cpp
+    $<$<NOT:$<BOOL:${RTYPE_TESTS_NO_AUDIO}>>:engine/audio/TestAudioManager.cpp>
+     $<$<NOT:$<BOOL:${RTYPE_TESTS_NO_AUDIO}>>:engine/audio/TestAudioStorage.cpp>
    engine/coordinator/network/TestPacketManagerAssert.cpp
    engine/coordinator/network/TestProcessPacket.cpp
    engine/coordinator/network/TestNetworkManagerCreate.cpp
@@ -34,15 +34,17 @@ add_executable(ecs_tests
     engine/TestFontStorage.cpp
     engine/TestTextureStorage.cpp
     engine/TestAnimationSystem.cpp
-    engine/TestAudioSystem.cpp
+    $<$<NOT:$<BOOL:${RTYPE_TESTS_NO_AUDIO}>>:engine/TestAudioSystem.cpp>
     engine/TestBackgroundSystem.cpp
     engine/TestCollisionSystem.cpp
     engine/TestLevelTimerSystem.cpp
     engine/TestRenderSystemCoverage.cpp
     engine/TestPlayerSystemCoverage.cpp
     engine/TestLevelSystemCoverage.cpp
+    engine/TestShootSystemCoverage.cpp
 
    client/TestRTypeClient.cpp
+    client/TestClientUtils.cpp
    client/TestClientNetworkManager.cpp
    client/TestClientNetworkManagerImpl.cpp
    client/TestRTypeClientImpl.cpp
