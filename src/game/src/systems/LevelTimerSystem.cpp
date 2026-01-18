@@ -37,6 +37,9 @@ void LevelTimerSystem::onUpdate(float dt)
     if (remainingTime < 0.0f) {
         remainingTime = 0.0f;
     }
+    
+    LOG_DEBUG_CAT("LevelTimerSystem", "Active level found: duration={}, elapsed={}, remaining={}",
+        activeLevel->levelDuration, activeLevel->elapsedTime, remainingTime);
 
     // Update all timer UI entities
     for (size_t entity : this->_entities) {
@@ -44,7 +47,7 @@ void LevelTimerSystem::onUpdate(float dt)
             continue;
         }
 
-        auto text = texts[entity].value();
+        auto &text = texts[entity].value();
 
         // Format time as MM:SS
         int minutes = static_cast<int>(remainingTime) / 60;

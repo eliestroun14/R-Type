@@ -62,6 +62,12 @@ class Game {
         
         // Client-side: Clear the menu when level starts (hide all menu entities)
         void clearMenuOnLevelStart() { if (_menu) _menu->clearMenuEntities(); }
+        
+        // Client-side: Hide game entities (destroy networked entities)
+        void hideGameEntities();
+        
+        // Client-side: Show score menu when level is complete
+        void showScoreMenu(uint32_t score);
 
     protected:
         void addOutgoingPacket(const common::protocol::Packet& packet, std::optional<uint32_t> target = std::nullopt);

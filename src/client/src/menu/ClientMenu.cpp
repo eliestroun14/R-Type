@@ -639,14 +639,26 @@ void ClientMenu::clearMenuEntities(bool keepBackground)
     }
 }
 
-void ClientMenu::createScoreMenu()
+void ClientMenu::createScoreMenu(uint32_t score)
 {
+    // Clear any existing menu entities first
+    clearMenuEntities();
+    
+    // BACKGROUND
+    addMenuEntity(createMovingBackground(*this->_engine, Assets::GAME_BG, {0, 0},
+        GAME_BG_ROTATION, GAME_BG_SCALE,
+        sf::IntRect(0, 0, GAME_BG_SPRITE_WIDTH, GAME_BG_SPRITE_HEIGHT),
+        35.0, true, true));
+    
     // TEXTS
     addMenuEntity(createText(*this->_engine, "CONGRATULATIONS", 80, sf::Color::White, {1000, 210}, 0, 1.5f));
     addMenuEntity(createText(*this->_engine, "You survived to the first level", 50, sf::Color::White, {1000, 320}, 0, 1.5f));
 
     addMenuEntity(createText(*this->_engine, "SCORE :", 40, sf::Color::White, {800, 550}, 0, 1.5f));
-    addMenuEntity(createText(*this->_engine, "100 000", 40, sf::Color::White, {1100, 550}, 0, 1.5f));
+    
+    // Format score with spaces for readability
+    std::string scoreStr = std::to_string(score);
+    addMenuEntity(createText(*this->_engine, scoreStr, 40, sf::Color::White, {1100, 550}, 0, 1.5f));
 
     addMenuEntity(createButton(*_engine, "EXIT", 40, sf::Color::White, {750, 750}, DEFAULT_BUTTON_SCALE,
         sf::IntRect(0, 0, DEFAULT_BUTTON_SPRITE_WIDTH, DEFAULT_BUTTON_SPRITE_HEIGHT),
