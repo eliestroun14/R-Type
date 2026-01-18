@@ -67,7 +67,7 @@ mkdir build && cd build
 cmake ..
 
 # Build
-cmake --build .
+make
 
 # You can execute the binarie using these 2 command
 ./src/server/r-type-server

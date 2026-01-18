@@ -309,6 +309,11 @@ set(COVERAGE_EXCLUDES
 ### Complete Coverage Workflow
 
 ```bash
+# Before you need to install the flac lib
+Debian/Ubuntu : sudo apt-get update && sudo apt-get install libflac12
+Fedora : sudo dnf install flac-libs
+Arch : sudo pacman -S flac
+
 cd build
 
 # One-time setup
