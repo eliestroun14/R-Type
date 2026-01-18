@@ -434,6 +434,18 @@ std::optional<ParsedPlayerInput> PacketManager::parsePlayerInput(const common::p
     result.actions[GameAction::SHOOT] = 
         (input_state & static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY)) != 0;
 
+    // Extract client position (offset 10-11 for X, 12-13 for Y)
+    // aim_direction_x is at offset 6, aim_direction_y at offset 8
+    // client_pos_x is at offset 10, client_pos_y at offset 12
+    if (data.size() >= 14) {
+        std::memcpy(&result.clientPosX, data.data() + 10, sizeof(int16_t));
+        std::memcpy(&result.clientPosY, data.data() + 12, sizeof(int16_t));
+    } else {
+        // Fallback for old packets without position
+        result.clientPosX = 0;
+        result.clientPosY = 0;
+    }
+
     return result;
 }
 

@@ -21,7 +21,7 @@ void ShootSystem::onUpdate(float dt)
     // Get current time in milliseconds for fire rate calculation
     auto now = std::chrono::steady_clock::now();
     auto duration = now.time_since_epoch();
-    uint32_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    uint64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
     auto& weapons = this->_engine.getComponents<Weapon>();
     auto& transforms = this->_engine.getComponents<Transform>();
@@ -49,10 +49,10 @@ void ShootSystem::onUpdate(float dt)
                 std::cout << "[ShootSystem] SHOOT detected for player " << input.playerId << std::endl;
             }
         } else {
-            // Non-player entities (enemies) decide to shoot based on AI
-            // For now, we'll use a simple pattern: shoot periodically
-            // TODO: Integrate with AISystem for smarter shooting patterns
-            shouldShoot = (currentTime % 2000) < 100;  // Shoot for 100ms every 2 seconds
+            // Non-player entities (enemies) always want to shoot
+            // The fire rate is controlled by canShoot() which checks weapon.fireRateMs
+            // This ensures enemies fire at their configured rate (e.g., every 300ms for BASIC enemies)
+            shouldShoot = true;
         }
 
         // Verify fire rate and spawn projectile
@@ -80,8 +80,23 @@ void ShootSystem::onUpdate(float dt)
             // Determine weapon type (for now use basic)
             uint8_t weaponType = static_cast<uint8_t>(protocol::WeaponTypes::WEAPON_TYPE_BASIC);
             
+            // For players, use client-reported position to fix desync between client and server
+            // For enemies, use server's transform position
+            float shootPosX = transform.x;
+            float shootPosY = transform.y;
+            if (isPlayer) {
+                auto& input = inputs[e].value();
+                // Use client position if valid (non-zero), otherwise fallback to server position
+                if (input.clientPosX != 0.0f || input.clientPosY != 0.0f) {
+                    shootPosX = input.clientPosX;
+                    shootPosY = input.clientPosY;
+                    std::cout << "[ShootSystem] Using client position (" << shootPosX << ", " << shootPosY 
+                              << ") instead of server position (" << transform.x << ", " << transform.y << ")" << std::endl;
+                }
+            }
+            
             // Queue the weapon fire event to be processed by Coordinator
-            _coordinator.queueWeaponFire(shooterId, transform.x, transform.y, dirX, dirY, weaponType);
+            _coordinator.queueWeaponFire(shooterId, shootPosX, shootPosY, dirX, dirY, weaponType);
             
             if (isPlayer) {
                 std::cout << "[ShootSystem] Weapon fire queued from player " << shooterId 
@@ -103,7 +118,7 @@ void ShootSystem::spawnProjectile(Entity shooterId, float originX, float originY
     // Note: Client-side sound playing is handled in Coordinator when receiving weapon fire packet
 }
 
-bool ShootSystem::canShoot(const Weapon& weapon, uint32_t currentTime) const
+bool ShootSystem::canShoot(const Weapon& weapon, uint64_t currentTime) const
 {
     return (currentTime - weapon.lastShotTime) >= weapon.fireRateMs;
 }

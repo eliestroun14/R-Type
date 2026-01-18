@@ -103,6 +103,7 @@ class Coordinator {
             float velX,
             float velY,
             uint16_t initialHealth,
+            EnemyType enemyType = EnemyType::BASIC,
             bool withRenderComponents = true
         );
 
@@ -344,12 +345,13 @@ class Coordinator {
             float velX,
             float velY,
             uint16_t initialHealth,
+            EnemyType enemyType,
             bool withRenderComponents
         );
 
         void setupProjectileEntity(
             Entity entity,
-            uint32_t projectileId,
+            Entity shooterId,
             float posX,
             float posY,
             float velX,

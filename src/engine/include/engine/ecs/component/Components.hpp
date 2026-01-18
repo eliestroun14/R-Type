@@ -280,10 +280,10 @@ enum ProjectileType {
 struct Weapon
 {
     uint32_t fireRateMs;
-    uint32_t lastShotTime; // in milliseconds
+    uint64_t lastShotTime; // in milliseconds (uint64_t to avoid overflow with epoch timestamps)
     int damage;
     ProjectileType projectileType;
-    Weapon(uint32_t fireRate, uint32_t lastShot, int damages, ProjectileType type)
+    Weapon(uint32_t fireRate, uint64_t lastShot, int damages, ProjectileType type)
         : fireRateMs(fireRate), lastShotTime(lastShot), damage(damages), projectileType(type) {}
 };
 
@@ -361,15 +361,30 @@ struct InputComponent
 {
     uint32_t playerId;                           ///< ID of the player this input belongs to
     std::map<GameAction, bool> activeActions;    ///< Current active actions for this player
+    float clientPosX = 0.0f;                     ///< Client's reported position X (for shoot sync)
+    float clientPosY = 0.0f;                     ///< Client's reported position Y (for shoot sync)
 
     InputComponent(uint32_t id) : playerId(id), activeActions() {}
+};
+
+/**
+ * @enum EnemyType
+ * @brief Defines the type of enemy entity.
+ */
+enum EnemyType {
+    BASIC = 0,
+    FAST = 1,
+    TANK = 2,
+    BOSS = 3,
 };
 
 /**
  * @brief Tag component. Marks the entity as an enemy.
  *
  */
-struct Enemy {};
+struct Enemy {
+    EnemyType type = EnemyType::BASIC;
+};
 
 /*
  * @brief Represents a projectile fired by an entity.
@@ -453,13 +468,6 @@ struct AI
 // ############################################################################
 // ################################# LEVEL ####################################
 // ############################################################################
-
-enum EnemyType {
-    BASIC,
-    FAST,
-    TANK,
-    BOSS,
-};
 
 struct EnemySpawn
 {

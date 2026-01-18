@@ -172,64 +172,16 @@ Entity LevelSystem::createEnemyByType(EnemyType type, float x, float y)
         break;
     }
 
-    // Determine scale based on enemy type
-    float enemyScale = 10.0f;  // Default scale
-    switch (type)
-    {
-    case EnemyType::FAST:
-        enemyScale = FAST_ENEMY_SCALE;
-        break;
-    case EnemyType::TANK:
-        enemyScale = TANK_ENEMY_SCALE;
-        break;
-    default:
-        enemyScale = 10.0f;
-        break;
-    }
-
     // Use Coordinator to create enemy with proper network ID
+    // All enemy-specific components (scale, Weapon, AI) are now set in setupEnemyEntity based on type
     Entity enemy = this->_coordinator->createEnemyEntity(
         enemyId,
         x, y,
         velX, velY,
         health,
-        true  // withRenderComponents - assume server has render for now
+        type,  // Pass enemy type for proper configuration
+        true   // withRenderComponents - assume server has render for now
     );
-
-    // Update enemy scale after creation
-    auto& transforms = _engine.getComponents<Transform>();
-    if (transforms[enemy]) {
-        transforms[enemy]->scale = enemyScale;
-    }
-
-    // Add enemy-specific components based on type
-    switch (type)
-    {
-    case EnemyType::BASIC:
-        _engine.addComponent<Weapon>(enemy, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
-        _engine.addComponent<AI>(enemy, AI(AiBehaviour::SHOOTER_TACTIC, 50.f, 50.f));
-        break;
-
-        case EnemyType::FAST:
-        _engine.addComponent<Weapon>(enemy, Weapon(FAST_ENEMY_WEAPON_FIRE_RATE, 0, FAST_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
-        _engine.addComponent<AI>(enemy, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
-        break;
-
-        case EnemyType::TANK:
-        _engine.addComponent<Weapon>(enemy, Weapon(TANK_ENEMY_WEAPON_FIRE_RATE, 0, TANK_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
-        _engine.addComponent<AI>(enemy, AI(AiBehaviour::SHOOTER_TACTIC, 50.f, 50.f));
-        break;
-
-    case EnemyType::BOSS: {
-        // TODO: Implement boss
-        break;
-    }
-
-    default:
-        break;
-    }
 
     return enemy;
 }
-
-

@@ -176,6 +176,7 @@ Entity Coordinator::createEnemyEntity(
     float velX,
     float velY,
     uint16_t initialHealth,
+    EnemyType enemyType,
     bool withRenderComponents
 )
 {
@@ -189,6 +190,7 @@ Entity Coordinator::createEnemyEntity(
         velX,
         velY,
         initialHealth,
+        enemyType,
         withRenderComponents
     );
     return entity;
@@ -207,9 +209,10 @@ Entity Coordinator::createProjectileEntity(
 {
     // Use createEntityWithId to ensure the entity ID matches the projectile ID
     Entity entity = this->_engine->createEntityWithId(projectileId, "Projectile_" + std::to_string(projectileId));
+    // Note: shooterId is unknown here, using invalid entity. This function is legacy.
     this->setupProjectileEntity(
         entity,
-        projectileId,
+        Entity::fromId(0),  // Unknown shooter - this function should be deprecated
         posX,
         posY,
         velX,
@@ -247,7 +250,7 @@ void Coordinator::setupPlayerEntity(
     this->_engine->addComponent<Sprite>(entity, Sprite(spriteAsset, ZIndex::IS_GAME, sf::IntRect(0, 0, 33, 15)));
     this->_engine->addComponent<Animation>(entity, Animation(33, 15, 2, 0.f, 0.1f, 2, 2, true));
 
-    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 14.5f));
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.5f));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
     this->_engine->addComponent<HitBox>(entity, HitBox());
@@ -308,10 +311,28 @@ void Coordinator::setupEnemyEntity(
     float velX,
     float velY,
     uint16_t initialHealth,
+    EnemyType enemyType,
     bool withRenderComponents
 )
 {
-    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 4.0f));
+    // Determine scale based on enemy type
+    float enemyScale = BASE_ENEMY_SCALE;
+    switch (enemyType) {
+        case EnemyType::BASIC:
+            enemyScale = BASE_ENEMY_SCALE;
+            break;
+        case EnemyType::FAST:
+            enemyScale = FAST_ENEMY_SCALE;
+            break;
+        case EnemyType::TANK:
+            enemyScale = TANK_ENEMY_SCALE;
+            break;
+        default:
+            enemyScale = BASE_ENEMY_SCALE;
+            break;
+    }
+
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, enemyScale));
     this->_engine->addComponent<Velocity>(entity, Velocity(velX, velY));
     this->_engine->addComponent<Health>(entity, Health(initialHealth, initialHealth));
     
@@ -324,24 +345,36 @@ void Coordinator::setupEnemyEntity(
     this->_engine->addComponent<Sprite>(entity, Sprite(BASE_ENEMY, ZIndex::IS_GAME, sf::IntRect(0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT)));
     this->_engine->addComponent<HitBox>(entity, HitBox());
     
-    // Add Animation component for proper sprite animation
-    this->_engine->addComponent<Animation>(entity, Animation(
-        BASE_ENEMY_SPRITE_WIDTH,  // frameWidth
-        BASE_ENEMY_SPRITE_HEIGHT, // frameHeight
-        0,     // currentFrame
-        0.f,   // elapsedTime
-        0.1f,  // frameDuration
-        0,     // startFrame
-        7,     // endFrame (8 frames total: 0-7)
-        true   // loop
-    ));
+    // Note: No Animation component - enemies are static sprites (no animation/rotation)
+    // If animation is needed later, configure startFrame == endFrame for static display
+    // or set proper animation frames for actual sprite animation
     
-    LOG_DEBUG_CAT("Coordinator", "setupEnemyEntity: entity={} enemyId={} sprite.rect=({},{},{}x{})",
-        static_cast<size_t>(entity), enemyId, 0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT);
+    LOG_DEBUG_CAT("Coordinator", "setupEnemyEntity: entity={} enemyId={} type={} scale={} sprite.rect=({},{},{}x{})",
+        static_cast<size_t>(entity), enemyId, static_cast<int>(enemyType), enemyScale, 0, 0, BASE_ENEMY_SPRITE_WIDTH, BASE_ENEMY_SPRITE_HEIGHT);
     
-    // Note: Weapon component is added in LevelSystem based on enemy type
+    // Add Weapon and AI components based on enemy type
+    switch (enemyType) {
+        case EnemyType::BASIC:
+            this->_engine->addComponent<Weapon>(entity, Weapon(BASE_ENEMY_WEAPON_FIRE_RATE, 0, BASE_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+            this->_engine->addComponent<AI>(entity, AI(AiBehaviour::SHOOTER_TACTIC, 50.f, 50.f));
+            break;
+        case EnemyType::FAST:
+            this->_engine->addComponent<Weapon>(entity, Weapon(FAST_ENEMY_WEAPON_FIRE_RATE, 0, FAST_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+            this->_engine->addComponent<AI>(entity, AI(AiBehaviour::KAMIKAZE, 50.f, 50.f));
+            break;
+        case EnemyType::TANK:
+            this->_engine->addComponent<Weapon>(entity, Weapon(TANK_ENEMY_WEAPON_FIRE_RATE, 0, TANK_ENEMY_WEAPON_DAMAGE, ProjectileType::MISSILE));
+            this->_engine->addComponent<AI>(entity, AI(AiBehaviour::SHOOTER_TACTIC, 50.f, 50.f));
+            break;
+        case EnemyType::BOSS:
+            // TODO: Implement boss weapons/AI
+            break;
+        default:
+            break;
+    }
+
     this->_engine->addComponent<Team>(entity, TeamType::ENEMY);
-    this->_engine->addComponent<Enemy>(entity, Enemy{});
+    this->_engine->addComponent<Enemy>(entity, Enemy{enemyType});
     
     if (withRenderComponents) {
         this->_engine->addComponent<Drawable>(entity, Drawable{});
@@ -350,7 +383,7 @@ void Coordinator::setupEnemyEntity(
 
 void Coordinator::setupProjectileEntity(
     Entity entity,
-    uint32_t projectileId,
+    Entity shooterId,
     float posX,
     float posY,
     float velX,
@@ -373,16 +406,16 @@ void Coordinator::setupProjectileEntity(
         this->_engine->addComponent<Sprite>(entity, Sprite(DEFAULT_BULLET, ZIndex::IS_GAME, sf::IntRect(0, 0, 16, 16)));
     }
     this->_engine->addComponent<HitBox>(entity, HitBox());
-    this->_engine->addComponent<Projectile>(entity, Projectile(Entity::fromId(projectileId), isPlayerProjectile, damage));
+    this->_engine->addComponent<Projectile>(entity, Projectile(shooterId, isPlayerProjectile, damage));
     // Projectiles inherit team from their shooter
     this->_engine->addComponent<Team>(entity, isPlayerProjectile ? TeamType::PLAYER : TeamType::ENEMY);
 }
 
 Entity Coordinator::createLevelEntity(int levelNumber, float duration, const std::string& backgroundAsset, const std::string& soundTheme)
 {
-    // Create level entity with LOCAL category - use IDs in the LOCAL range (0 to 999,999)
-    // Use a reserved range starting from 900,000 for special server-only level entities
-    constexpr uint32_t LEVEL_ENTITY_ID_BASE = 900000;
+    // Create level entity with LOCAL category - use IDs in the LOCAL range (0 to 9,999)
+    // Use a reserved range starting from 5,000 for special server-only level entities
+    constexpr uint32_t LEVEL_ENTITY_ID_BASE = 5000;
     uint32_t levelEntityId = LEVEL_ENTITY_ID_BASE + static_cast<uint32_t>(levelNumber);
     Entity levelEntity = this->_engine->createEntityWithId(levelEntityId, "Level_" + std::to_string(levelNumber), EntityCategory::LOCAL);
 
@@ -1177,9 +1210,18 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
         inputState |= static_cast<uint16_t>(protocol::InputFlags::INPUT_FIRE_PRIMARY);
     }
 
-    // Format: [flags_count(1) + flags(1) + sequence_number(4) + timestamp(4) + player_id(4) + input_state(2) + aim_dir_x(2) + aim_dir_y(2)]
+    // Get client's current position from Transform component
+    int16_t clientPosX = 0;
+    int16_t clientPosY = 0;
+    auto& transformOpt = this->_engine->getComponentEntity<Transform>(playerEntity);
+    if (transformOpt.has_value()) {
+        clientPosX = static_cast<int16_t>(transformOpt->x);
+        clientPosY = static_cast<int16_t>(transformOpt->y);
+    }
+
+    // Format: [flags_count(1) + flags(1) + sequence_number(4) + timestamp(4) + player_id(4) + input_state(2) + aim_dir_x(2) + aim_dir_y(2) + client_pos_x(2) + client_pos_y(2)]
     std::vector<uint8_t> inputArgs;
-    inputArgs.resize(20);  // 1 + 1 + 4 + 4 + 4 + 2 + 2 + 2
+    inputArgs.resize(24);  // 1 + 1 + 4 + 4 + 4 + 2 + 2 + 2 + 2 + 2
     uint8_t* ptr = inputArgs.data();
 
     // flags_count (1 byte) - 1 flag (RELIABLE)
@@ -1219,6 +1261,14 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
     // aim_direction_y (2 bytes) - hardcoded to 0 for now
     int16_t aimY = 0;
     std::memcpy(ptr, &aimY, sizeof(int16_t));
+    ptr += sizeof(int16_t);
+
+    // client_pos_x (2 bytes) - client's current X position for shoot sync
+    std::memcpy(ptr, &clientPosX, sizeof(int16_t));
+    ptr += sizeof(int16_t);
+
+    // client_pos_y (2 bytes) - client's current Y position for shoot sync
+    std::memcpy(ptr, &clientPosY, sizeof(int16_t));
 
     auto playerInputPacket = PacketManager::createPlayerInput(inputArgs);
     if (!playerInputPacket.has_value()) {
@@ -1227,7 +1277,7 @@ bool Coordinator::createPacketInputClient(common::protocol::Packet* packet, uint
     }
 
     *packet = playerInputPacket.value();
-    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: packet created for player {}", actualPlayerId);
+    LOG_DEBUG_CAT("Coordinator", "createPacketInputClient: packet created for player {} at pos ({}, {})", actualPlayerId, clientPosX, clientPosY);
     return true;
 }
 
@@ -1240,8 +1290,8 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
         return;  // Invalid packet, ignore
     }
 
-    LOG_INFO_CAT("Coordinator", "handlePlayerInputPacket: playerId={} actionCount={}",
-                  parsed->playerId, parsed->actions.size());
+    LOG_INFO_CAT("Coordinator", "handlePlayerInputPacket: playerId={} actionCount={} clientPos=({}, {})",
+                  parsed->playerId, parsed->actions.size(), parsed->clientPosX, parsed->clientPosY);
 
     // Find the entity for this player by iterating over networked entities only
     auto& inputComponents = this->_engine->getComponents<InputComponent>();
@@ -1260,6 +1310,9 @@ void Coordinator::handlePlayerInputPacket(const common::protocol::Packet& packet
                     this->_engine->setPlayerInputAction(entity, parsed->playerId, action, isPressed);
                     LOG_DEBUG_CAT("Coordinator", "handlePlayerInputPacket: Player {} action {} set to {}", parsed->playerId, static_cast<int>(action), isPressed);
                 }
+                // Store client's reported position for shoot synchronization
+                input->clientPosX = static_cast<float>(parsed->clientPosX);
+                input->clientPosY = static_cast<float>(parsed->clientPosY);
                 foundPlayer = true;
                 break;
             }
@@ -1352,6 +1405,12 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
             float velX = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_x)) / 1000.0f;
             float velY = static_cast<float>(static_cast<int16_t>(payload.initial_velocity_y)) / 1000.0f;
             
+            // Decode enemy type from mob_variant (BASIC=0, FAST=1, TANK=2, BOSS=3)
+            EnemyType enemyType = EnemyType::BASIC;  // default
+            if (payload.mob_variant < 4) {
+                enemyType = static_cast<EnemyType>(payload.mob_variant);
+            }
+            
             this->setupEnemyEntity(
                 newEntity,
                 payload.entity_id,
@@ -1360,10 +1419,11 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
                 velX,
                 velY,
                 payload.initial_health,
+                enemyType,  // Use the enemy type from server
                 /*withRenderComponents=*/true
             );
-            LOG_INFO_CAT("Coordinator", "Enemy created with ID {} at ({}, {}) with velocity ({}, {})", 
-                        payload.entity_id, static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), velX, velY);
+            LOG_INFO_CAT("Coordinator", "Enemy created with ID {} (type={}) at ({}, {}) with velocity ({}, {})", 
+                        payload.entity_id, static_cast<int>(enemyType), static_cast<float>(payload.position_x), static_cast<float>(payload.position_y), velX, velY);
             break;
         }
         case static_cast<uint8_t>(protocol::EntityTypes::ENTITY_TYPE_ENEMY_BOSS):
@@ -1376,9 +1436,10 @@ void Coordinator::handlePacketCreateEntity(const common::protocol::Packet& packe
                     protocol::EntityTypes::ENTITY_TYPE_PROJECTILE_PLAYER
                 );
 
+            // Note: shooterId is unknown from ENTITY_SPAWN - projectiles should be created via WEAPON_FIRE
             this->setupProjectileEntity(
                 newEntity,
-                payload.entity_id,
+                Entity::fromId(0),  // Unknown shooter from ENTITY_SPAWN
                 static_cast<float>(payload.position_x),
                 static_cast<float>(payload.position_y),
                 static_cast<float>(payload.initial_velocity_x),
@@ -2640,8 +2701,13 @@ bool Coordinator::createPacketEntitySpawn(common::protocol::Packet* packet, uint
     args.insert(args.end(), reinterpret_cast<uint8_t*>(&position_y), 
                 reinterpret_cast<uint8_t*>(&position_y) + sizeof(position_y));
 
-                // mob_variant (0 for default)
-    uint8_t mob_variant = 0;
+                // mob_variant: encode the enemy type if this is an enemy entity
+    uint8_t mob_variant = 0;  // default for non-enemy entities
+    auto enemyOpt = this->_engine->getComponentEntity<Enemy>(entity);
+    if (enemyOpt.has_value()) {
+        // For enemy entities, encode the type (BASIC=0, FAST=1, TANK=2, BOSS=3)
+        mob_variant = static_cast<uint8_t>(enemyOpt.value().type);
+    }
     args.push_back(mob_variant);
 
     // initial_health
@@ -2744,7 +2810,7 @@ bool Coordinator::createPacketTransformSnapshot(common::protocol::Packet* packet
                     reinterpret_cast<uint8_t*>(&rotation) + sizeof(rotation));
 
                     // scale (2 bytes, scaled to uint16_t)
-        uint16_t scale = static_cast<uint16_t>(transform.scale * 100.0f);
+        uint16_t scale = static_cast<uint16_t>(transform.scale * 1000.0f);
         args.insert(args.end(), reinterpret_cast<uint8_t*>(&scale), 
                     reinterpret_cast<uint8_t*>(&scale) + sizeof(scale));
     }

@@ -40,7 +40,7 @@ enum class EntityCategory : uint8_t {
  * Local entities use IDs 1 to NETWORKED_ID_OFFSET-1.
  * Networked entities use IDs NETWORKED_ID_OFFSET and above.
  */
-static constexpr size_t NETWORKED_ID_OFFSET = 1000000;
+static constexpr size_t NETWORKED_ID_OFFSET = 10000;
 
 /**
  * @class EntityManager

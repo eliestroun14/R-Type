@@ -76,10 +76,12 @@ struct HeartbeatPayload {
 struct PlayerInputPayload {
     uint32_t player_id;             // Player identifier
     uint16_t input_state;           // Input state flags
-    uint16_t aim_direction_x;       // Aim direction X
-    uint16_t aim_direction_y;       // Aim direction Y
+    int16_t  aim_direction_x;       // Aim direction X
+    int16_t  aim_direction_y;       // Aim direction Y
+    int16_t  client_pos_x;          // Client's current position X (for shoot sync)
+    int16_t  client_pos_y;          // Client's current position Y (for shoot sync)
 };
-// Size: 12 bytes
+// Size: 16 bytes
 
 /**
  * @brief Entity spawn payload

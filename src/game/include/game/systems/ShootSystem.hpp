@@ -74,7 +74,7 @@ private:
      * @param currentTime Current game time in milliseconds.
      * @return True if enough time has passed since last shot.
      */
-    bool canShoot(const Weapon& weapon, uint32_t currentTime) const;
+    bool canShoot(const Weapon& weapon, uint64_t currentTime) const;
 
     /**
      * @brief Calculates direction vector from entity position to target.

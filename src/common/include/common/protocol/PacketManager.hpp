@@ -24,6 +24,8 @@
 struct ParsedPlayerInput {
     uint32_t playerId;
     std::map<GameAction, bool> actions;
+    int16_t clientPosX;  // Client's position X for shoot sync
+    int16_t clientPosY;  // Client's position Y for shoot sync
 };
 
 /**
