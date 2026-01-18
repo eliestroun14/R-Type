@@ -13,6 +13,7 @@ public:
     explicit ScoreSystem(gameEngine::GameEngine& e) : _engine(e) {}
 
     void setHudEntity(Entity e) { _hud = e; }
+    Entity getHudEntity() const { return _hud; }
     void pushEvent(int32_t amount) { _engine.scoreEvents().push_back({amount}); }
 
     void onUpdate(float) override;

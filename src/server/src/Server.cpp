@@ -67,6 +67,20 @@ void Server::run() {
 
         if (_game) {
             if (!_game->runGameLoop()) {
+                LOG_INFO("Game loop ended, flushing outgoing packets before shutdown...");
+                // Flush all remaining outgoing packets before stopping
+                while (true) {
+                    auto maybeOut = _game->popOutgoingPacket();
+                    if (!maybeOut.has_value())
+                        break;
+                    auto &out = maybeOut.value();
+                    _networkManager->queueOutgoing(out.first, out.second);
+                }
+                
+                // Give network thread time to send queued packets (500ms should be enough for UDP)
+                LOG_INFO("Waiting for network thread to send queued packets...");
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                
                 stop();
                 break;
             }
@@ -117,7 +131,7 @@ static void printHelp(const char* programName) {
     std::cout << "OPTIONS:\n";
     std::cout << "  -h, --help              Display this help message\n";
     std::cout << "  -p, --port <value>      Set server port (default: 4242)\n";
-    std::cout << "  -mp, --maxplayer <value> Set maximum number of players (default: 16)\n";
+    std::cout << "  -mp, --maxplayer <value> Set maximum number of players (default: 2, max: 5)\n";
     std::cout << "  -tr, --tickrate <value>  Set server tick rate in Hz (default: 60)\n\n";
     std::cout << "EXAMPLES:\n";
     std::cout << "  " << programName << " -p 8080\n";
@@ -182,9 +196,13 @@ static bool parseArguments(int argc, char const *argv[], server::ServerConfig& c
 
         if (args.find("maxplayer") != args.end()) {
             int maxPlayers = std::stoi(args["maxplayer"]);
-            if (maxPlayers < 1 || maxPlayers > 1000) {
-                throw Error(ErrorType::ConfigurationError, 
-                    "Max players must be between 1 and 1000");
+            if (maxPlayers < 1) {
+                std::cerr << "[error] Max players must be at least 1" << std::endl;
+                throw Error(ErrorType::ConfigurationError, "Max players must be at least 1");
+            }
+            if (maxPlayers > 5) {
+                std::cerr << "[error] Max players must not exceed 5 (requested " << maxPlayers << ")" << std::endl;
+                throw Error(ErrorType::ConfigurationError, "Max players must not exceed 5 (requested " + std::to_string(maxPlayers) + ")");
             }
             config.maxPlayers = static_cast<uint32_t>(maxPlayers);
         }

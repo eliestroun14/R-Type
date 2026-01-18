@@ -172,6 +172,37 @@ Entity Coordinator::createScoreEntity(
     return entity;
 }
 
+Entity Coordinator::createTimerEntity(
+    float posX,
+    float posY
+)
+{
+    Entity entity = this->_engine->createEntity(
+        "Timer",
+        EntityCategory::LOCAL
+    );
+
+    LOG_INFO_CAT("UI", "Timer entity created: entityIndex={}",
+        static_cast<std::size_t>(entity));
+
+    // Add Transform component
+    this->_engine->addComponent<Transform>(entity, Transform(posX, posY, 0.f, 1.f));
+
+    // Add Text component
+    this->_engine->addComponent<Text>(
+        entity,
+        Text("Time: 00:00", sf::Color::White, 30, ZIndex::IS_UI_HUD)
+    );
+
+    // Add TimerUI component so LevelTimerSystem will update this entity
+    this->_engine->addComponent<TimerUI>(entity, TimerUI());
+
+    LOG_INFO_CAT("UI", "Timer HUD entity configured: entityIndex={}",
+        static_cast<std::size_t>(entity));
+
+    return entity;
+}
+
 
 Entity Coordinator::createEnemyEntity(
     uint32_t enemyId,
@@ -528,6 +559,9 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
     for (const auto& packet : packetsToProcess) {
         // Check packet type first, then validate
         uint8_t packetType = packet.header.packet_type;
+        
+        LOG_DEBUG_CAT("Coordinator", "Client processing packet type=0x{:02x} ({}) dataSize={}",
+            packetType, static_cast<int>(packetType), packet.data.size());
 
         switch (packetType) {
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_PLAYER_INPUT):
@@ -632,8 +666,12 @@ void Coordinator::processClientPackets(const std::vector<common::protocol::Packe
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_COMPLETE):
+                LOG_DEBUG_CAT("Coordinator", "Received LEVEL_COMPLETE packet, validating...");
                 if (PacketManager::assertLevelComplete(packet)) {
+                    LOG_DEBUG_CAT("Coordinator", "LEVEL_COMPLETE packet validation passed, handling...");
                     handlePacketLevelComplete(packet);
+                } else {
+                    LOG_WARN_CAT("Coordinator", "LEVEL_COMPLETE packet validation FAILED");
                 }
                 break;
             case static_cast<uint8_t>(protocol::PacketTypes::TYPE_LEVEL_START):
@@ -2357,11 +2395,20 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         LOG_INFO_CAT("Coordinator", "Level {} completed, preparing level {}", completed_level, next_level);
     }
 
-    // Create a UI text entity to display the completion message
-    Entity messageEntity = this->_engine->createEntity("LevelCompleteMessage");
-    this->_engine->addComponent<Transform>(messageEntity, Transform(400.f, 300.f, 0.f, 1.5f));
-    this->_engine->addComponent<Text>(messageEntity, Text(completionMessage.c_str()));
-    this->_engine->addComponent<Sprite>(messageEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+    // Get the current player's score to display in the menu
+    uint32_t finalScore = 0;
+    auto& scores = this->_engine->getComponents<Score>();
+    for (auto& scoreOpt : scores) {
+        if (scoreOpt.has_value()) {
+            finalScore = scoreOpt->score;
+            break;  // Get first player's score
+        }
+    }
+    
+    // Add bonus score to final score
+    finalScore += bonus_score;
+    
+    LOG_INFO_CAT("Coordinator", "Final score: {} (bonus: {})", finalScore, bonus_score);
 
     // Update game state based on completion
     if (next_level == 0xFF) {
@@ -2369,23 +2416,14 @@ void Coordinator::handlePacketLevelComplete(const common::protocol::Packet &pack
         _gameRunning = false;
         stopMusic();  // Stop level music
         LOG_INFO_CAT("Coordinator", "Game ended - all levels completed, music stopped");
-
-        // Display final game stats
-        std::string timeMessage = "Completion Time: " + std::to_string(completion_time) + " seconds";
-        Entity timeEntity = this->_engine->createEntity("CompletionTime");
-        this->_engine->addComponent<Transform>(timeEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(timeEntity, Text(timeMessage.c_str()));
-        this->_engine->addComponent<Sprite>(timeEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
+        
+        // Notify Game to display the score menu with the final score
+        if (_levelCompleteCallback) {
+            _levelCompleteCallback(finalScore);
+        }
     } else {
         // More levels to play - keep game running
         LOG_INFO_CAT("Coordinator", "Waiting for server to start level {}", next_level);
-
-        // Display "Next Level" message
-        std::string nextLevelMessage = "Next Level: " + std::to_string(next_level);
-        Entity nextEntity = this->_engine->createEntity("NextLevelMessage");
-        this->_engine->addComponent<Transform>(nextEntity, Transform(400.f, 350.f, 0.f, 1.0f));
-        this->_engine->addComponent<Text>(nextEntity, Text(nextLevelMessage.c_str()));
-        this->_engine->addComponent<Sprite>(nextEntity, Sprite(Assets::DEFAULT_BULLET, ZIndex::IS_UI_HUD));
     }
 }
 
@@ -2421,6 +2459,35 @@ void Coordinator::handlePacketLevelStart(const common::protocol::Packet &packet)
 
     // Set game to running state
     _gameRunning = true;
+    
+    // Create or update Level component on client side (for timer display)
+    try {
+        Entity levelEntity = this->_engine->createEntity("Level_" + std::to_string(level_id), EntityCategory::LOCAL);
+        Level levelComponent;
+        levelComponent.levelDuration = static_cast<float>(estimated_duration);
+        levelComponent.elapsedTime = 0.f;
+        levelComponent.started = true;
+        levelComponent.completed = false;
+        levelComponent.currentWaveIndex = 0;
+        this->_engine->addComponent<Level>(levelEntity, levelComponent);
+        LOG_INFO_CAT("Coordinator", "Created Level component on client: entity={} duration={} seconds", 
+            static_cast<std::size_t>(levelEntity), estimated_duration);
+
+        // Create HUD score and timer entities only after LEVEL_START
+        this->createScoreEntity(
+            /*scoreId*/ 1,
+            /*posX*/ 300.f,
+            /*posY*/ 50.f,
+            /*initialScore*/ 0
+        );
+        this->createTimerEntity(
+            /*posX*/ 1500.f,
+            /*posY*/ 50.f
+        );
+        LOG_INFO_CAT("Coordinator", "Created HUD score and timer entities after LEVEL_START");
+    } catch (const std::exception& e) {
+        LOG_ERROR_CAT("Coordinator", "Failed to create Level component or HUD entities: {}", e.what());
+    }
     
     // Notify Game to clear the menu (client-side)
     if (_levelStartCallback) {
@@ -3466,7 +3533,7 @@ void Coordinator::playMusic(protocol::AudioEffectType musicType)
             return;
     }
 
-    this->_engine->getAudioManager()->playMusic(musicPath, 0.5f); // 50% volume
+    this->_engine->getAudioManager()->playMusic(musicPath, 0.1f); // 100% volume
 
     LOG_INFO_CAT("Coordinator", "Playing music: %s", musicPath.c_str());
 }
