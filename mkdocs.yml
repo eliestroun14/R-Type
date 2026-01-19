@@ -132,6 +132,9 @@ nav:
   - Build System:
     - Overview: Cmake/cpm-rationale.md
 
+  - Justification:
+    - Technical & Architectural Choices: Justification/index.md
+
   - Client:
     - Overview: Client/index.md
     - Graphical library: Client/graphical-lib.md
